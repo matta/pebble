@@ -59,7 +59,7 @@ struct Issue {
 
 ## Workflows
 
-### Land the Plan
+### Push the Pebbles
 This workflow requires the following steps to be done in order:
 1. `just check` must pass.
 2. `just test` must pass.

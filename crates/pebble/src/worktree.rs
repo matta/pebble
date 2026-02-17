@@ -113,7 +113,11 @@ mod tests {
             .current_dir(dir)
             .status()
             .expect("Failed to execute git");
-        assert!(status.success(), "git command failed: git {}", args.join(" "));
+        assert!(
+            status.success(),
+            "git command failed: git {}",
+            args.join(" ")
+        );
     }
 
     fn setup_git_repo(path: &std::path::Path) {
@@ -213,7 +217,10 @@ mod tests {
 
         // Add remote and push master (which we'll use as sync branch base for this test)
         // Actually, we need to push a branch named 'beads-sync' to the remote
-        run_git(&["remote", "add", "origin", remote_root.to_str().unwrap()], &local_root);
+        run_git(
+            &["remote", "add", "origin", remote_root.to_str().unwrap()],
+            &local_root,
+        );
 
         run_git(&["checkout", "-b", "beads-sync"], &local_root);
 
@@ -238,7 +245,7 @@ mod tests {
             .current_dir(&worktree_path)
             .output()
             .expect("Failed to check branch");
-        
+
         // Since we use --detach, it might be "HEAD"
         let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
         assert!(branch == "HEAD" || branch == "beads-sync");

@@ -9,6 +9,7 @@
 - Configuration: **Strict**. The only supported format is 'sync-branch' configuration as found in `../mydoo/.beads/config.yaml`. Other configurations are unsupported.
 - The repository `../beads` is synced to this release commit.
 - Use `../mydoo` as a reference testbed where beads is set up correctly.
+- [ ] Implement field-level 3-way merge algorithm (matching `beads` behavior)
 - [ ] Rename `.bead-whitelist` to `.pebble-whitelist`
 - [ ] Rename `.beads` directory to `.pebble`
 - [ ] Rename `beads-sync` branch references to `pebble-sync`
@@ -17,22 +18,19 @@
 - [x] Implement check-beads xtask command
 .args(["add", ".beads/issues.jsonl"])
 .args(["checkout", "-b", "beads-sync"])
-.args(["push", "-u", "origin", "beads-sync"])
 .is_some_and(|name| name == ".bead-whitelist")
 .join(".git/beads-worktrees")
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
 // For now, assume .beads/config.yaml in CWD.
-// Or if we specify refspec: `git push origin HEAD:beads-sync`?
-// Wait, if we are in detached HEAD in worktree, `git push origin beads-sync`
-// will push the *local* `beads-sync` branch if it exists, or fail?
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
 Ok(worktree_path.join(".beads/issues.jsonl"))
 This document outlines the step-by-step plan to implement `pebble`, a simplified Rust version of `beads`.
 This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
+assert!(branch == "HEAD" || branch == "beads-sync");
 assert!(path.parent().unwrap().exists()); // Worktree should be created and contain .beads
 assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
 bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
@@ -53,10 +51,10 @@ let worktree_path = self.root.join(".git/beads-worktrees/beads-sync");
 println!("Found forbidden words 'bead' or 'beads' in the following locations:");
 println!("Found {} unused lines in .bead-whitelist:", unused.len());
 root.join(".beads/config.yaml"),
+run_git(&["checkout", "-b", "beads-sync"], &local_root);
+run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
 std::fs::create_dir(repo_root.join(".beads")).unwrap();
 std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
 } => check_beads(all, generate_whitelist, minimize_whitelist),
-- [ ] Implement field-level 3-way merge algorithm (matching `beads` behavior)
-- [ ] Implement `pebble merge` command (internal tool for git merge driver)
