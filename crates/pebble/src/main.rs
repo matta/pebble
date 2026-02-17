@@ -255,9 +255,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_git_config(key: &str) -> std::io::Result<String> {
+fn get_git_config(key: &str) -> Result<String> {
     std::process::Command::new("git")
         .args(["config", key])
         .check_output()
         .map(|s| s.trim().to_string())
+        .map_err(Into::into)
 }
