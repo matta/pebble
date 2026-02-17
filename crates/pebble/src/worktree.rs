@@ -104,16 +104,20 @@ impl WorktreeManager {
         let worktree_path = self.ensure_worktree()?;
 
         // git fetch origin <sync_branch>
-        Command::new("git")
+        let status = Command::new("git")
             .args(["fetch", "origin", &self.sync_branch])
             .current_dir(&worktree_path)
             .status()
-            .with_context(|| "Failed to fetch from remote")?;
+            .with_context(|| "Failed to execute git fetch")?;
+
+        if !status.success() {
+            return Err(eyre!("Failed to fetch from remote: git exited with {}", status));
+        }
 
         // git merge origin/<sync_branch>
         // We use --ff-only to fail if there are conflicts for now (Phase 1)
         // Ideally we would support 3-way merge but let's start simple
-        Command::new("git")
+        let status = Command::new("git")
             .args([
                 "merge",
                 "--ff-only",
@@ -121,14 +125,25 @@ impl WorktreeManager {
             ])
             .current_dir(&worktree_path)
             .status()
-            .with_context(|| "Failed to merge remote changes")?;
+            .with_context(|| "Failed to execute git merge")?;
+
+        if !status.success() {
+            return Err(eyre!(
+                "Failed to merge remote changes: git exited with {}",
+                status
+            ));
+        }
 
         // git push origin <sync_branch>
-        Command::new("git")
+        let status = Command::new("git")
             .args(["push", "origin", &self.sync_branch])
             .current_dir(&worktree_path)
             .status()
-            .with_context(|| "Failed to push to remote")?;
+            .with_context(|| "Failed to execute git push")?;
+
+        if !status.success() {
+            return Err(eyre!("Failed to push to remote: git exited with {}", status));
+        }
 
         Ok(())
     }
