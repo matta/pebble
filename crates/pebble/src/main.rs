@@ -145,8 +145,10 @@ fn main() -> Result<()> {
                 let id = format!("{}-{}", prefix, suffix);
 
                 let now = chrono::Local::now().to_rfc3339();
-                let user_name = get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());
-                let user_email = get_git_config("user.email").unwrap_or_else(|_| "unknown".to_string());
+                let user_name =
+                    get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());
+                let user_email =
+                    get_git_config("user.email").unwrap_or_else(|_| "unknown".to_string());
 
                 let issue = pebble::store::Issue {
                     id: id.clone(),
