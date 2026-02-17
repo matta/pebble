@@ -1,5 +1,6 @@
+use crate::command::CommandExt;
 use color_eyre::Result;
-use color_eyre::eyre::{Context, eyre};
+use color_eyre::eyre::Context;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -42,7 +43,7 @@ impl WorktreeManager {
         // but if the branch doesn't exist locally, we might need to fetch it first.
         // For phase 1, let's assume we can just add the worktree.
 
-        let output = Command::new("git")
+        Command::new("git")
             .args([
                 "worktree",
                 "add",
@@ -50,15 +51,8 @@ impl WorktreeManager {
                 path.to_str().unwrap(),
             ])
             .current_dir(&self.repo_root)
-            .output()
+            .check_output_utf8()
             .with_context(|| "Failed to execute git worktree add")?;
-
-        if !output.status.success() {
-            return Err(eyre!(
-                "git worktree add failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
-        }
 
         Ok(path)
     }
@@ -104,52 +98,31 @@ impl WorktreeManager {
         let worktree_path = self.ensure_worktree()?;
 
         // git fetch origin <sync_branch>
-        let status = Command::new("git")
+        Command::new("git")
             .args(["fetch", "origin", &self.sync_branch])
             .current_dir(&worktree_path)
-            .status()
+            .check_run()
             .with_context(|| "Failed to execute git fetch")?;
-
-        if !status.success() {
-            return Err(eyre!(
-                "Failed to fetch from remote: git exited with {}",
-                status
-            ));
-        }
 
         // git merge origin/<sync_branch>
         // We use --ff-only to fail if there are conflicts for now (Phase 1)
         // Ideally we would support 3-way merge but let's start simple
-        let status = Command::new("git")
+        Command::new("git")
             .args([
                 "merge",
                 "--ff-only",
                 &format!("origin/{}", self.sync_branch),
             ])
             .current_dir(&worktree_path)
-            .status()
+            .check_run()
             .with_context(|| "Failed to execute git merge")?;
 
-        if !status.success() {
-            return Err(eyre!(
-                "Failed to merge remote changes: git exited with {}",
-                status
-            ));
-        }
-
         // git push origin <sync_branch>
-        let status = Command::new("git")
+        Command::new("git")
             .args(["push", "origin", &self.sync_branch])
             .current_dir(&worktree_path)
-            .status()
+            .check_run()
             .with_context(|| "Failed to execute git push")?;
-
-        if !status.success() {
-            return Err(eyre!(
-                "Failed to push to remote: git exited with {}",
-                status
-            ));
-        }
 
         Ok(())
     }
@@ -161,16 +134,11 @@ mod tests {
     use tempfile::TempDir;
 
     fn run_git(args: &[&str], dir: &std::path::Path) {
-        let status = Command::new("git")
+        Command::new("git")
             .args(args)
             .current_dir(dir)
-            .status()
-            .expect("Failed to execute git");
-        assert!(
-            status.success(),
-            "git command failed: git {}",
-            args.join(" ")
-        );
+            .check_run()
+            .unwrap_or_else(|e| panic!("Failed to execute git {}: {}", args.join(" "), e));
     }
 
     fn setup_git_repo(path: &std::path::Path) {
@@ -242,10 +210,10 @@ mod tests {
         let output = Command::new("git")
             .args(["rev-parse", "--is-inside-work-tree"])
             .current_dir(&worktree_path)
-            .output()
+            .check_output_utf8()
             .expect("Failed to run git status in worktree");
 
-        assert!(output.status.success(), "Not inside a worktree");
+        assert_eq!(output.trim(), "true", "Not inside a worktree");
     }
 
     #[test]
@@ -295,11 +263,11 @@ mod tests {
         let output = Command::new("git")
             .args(["rev-parse", "--abbrev-ref", "HEAD"])
             .current_dir(&worktree_path)
-            .output()
+            .check_output_utf8()
             .expect("Failed to check branch");
 
         // Since we use --detach, it might be "HEAD"
-        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let branch = output.trim().to_string();
         assert!(branch == "HEAD" || branch == "beads-sync");
     }
 }
