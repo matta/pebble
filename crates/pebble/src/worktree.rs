@@ -43,12 +43,10 @@ impl WorktreeManager {
         // For phase 1, let's assume we can just add the worktree.
 
         let output = Command::new("git")
-            .args([
-                "worktree",
-                "add",
-                "--detach", // use detach to avoid branch conflicts for now
-                path.to_str().unwrap(),
-            ])
+            .arg("worktree")
+            .arg("add")
+            .arg("--detach") // use detach to avoid branch conflicts for now
+            .arg(&path)
             .current_dir(&self.repo_root)
             .output()
             .with_context(|| "Failed to execute git worktree add")?;
@@ -160,17 +158,17 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn run_git(args: &[&str], dir: &std::path::Path) {
+    fn run_git<I, S>(args: I, dir: &std::path::Path)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<std::ffi::OsStr>,
+    {
         let status = Command::new("git")
             .args(args)
             .current_dir(dir)
             .status()
             .expect("Failed to execute git");
-        assert!(
-            status.success(),
-            "git command failed: git {}",
-            args.join(" ")
-        );
+        assert!(status.success(), "git command failed");
     }
 
     fn setup_git_repo(path: &std::path::Path) {
@@ -270,7 +268,12 @@ mod tests {
         // Add remote and push master (which we'll use as sync branch base for this test)
         // Actually, we need to push a branch named 'beads-sync' to the remote
         run_git(
-            &["remote", "add", "origin", remote_root.to_str().unwrap()],
+            [
+                "remote".as_ref(),
+                "add".as_ref(),
+                "origin".as_ref(),
+                remote_root.as_os_str(),
+            ],
             &local_root,
         );
 
