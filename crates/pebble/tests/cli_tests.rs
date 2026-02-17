@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
+use pebble::command::CommandExt;
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -20,19 +21,19 @@ impl TestEnv {
             .arg("-b")
             .arg("main")
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
 
         // git config
         std::process::Command::new("git")
             .args(["config", "user.email", "test@example.com"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
         std::process::Command::new("git")
             .args(["config", "user.name", "Test User"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
 
         // .beads/config.yaml
@@ -48,37 +49,37 @@ impl TestEnv {
         std::process::Command::new("git")
             .args(["add", "."])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
         std::process::Command::new("git")
             .args(["commit", "-m", "initial"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
 
         // Create sync branch with issues.jsonl
         std::process::Command::new("git")
             .args(["checkout", "-b", "beads-sync"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
         std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
         std::process::Command::new("git")
             .args(["add", ".beads/issues.jsonl"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
         std::process::Command::new("git")
             .args(["commit", "-m", "sync init"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
 
         // switch back to main
         std::process::Command::new("git")
             .args(["checkout", "main"])
             .current_dir(&root)
-            .status()
+            .check_run()
             .unwrap();
 
         Self {
@@ -213,6 +214,16 @@ fn test_add_and_show_issue() {
 }
 
 #[test]
+fn test_show_non_existent_issue() {
+    let env = TestEnv::setup();
+    env.pebble()
+        .args(["show", "non-existent-id"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Issue non-existent-id not found"));
+}
+
+#[test]
 fn test_edit_issue() {
     let env = TestEnv::setup();
     // 1. Add issue
@@ -241,6 +252,16 @@ fn test_edit_issue() {
         .assert()
         .success()
         .stdout(predicate::str::contains("New Edited Title"));
+}
+
+#[test]
+fn test_edit_non_existent_issue() {
+    let env = TestEnv::setup();
+    env.pebble()
+        .args(["edit", "non-existent-id", "--title", "New Title"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Issue non-existent-id not found"));
 }
 
 #[test]
