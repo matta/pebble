@@ -23,7 +23,7 @@
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
-.unwrap_or_else(|| std::path::PathBuf::from(".beads/config.yaml"));
+const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
