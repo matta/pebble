@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use color_eyre::eyre::{Context, eyre};
 use pebble::config::Config;
-use rand::Rng;
+use rand::RngExt;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
