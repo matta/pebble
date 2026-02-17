@@ -39,17 +39,25 @@ fn check_beads(all: bool, generate_whitelist: bool) -> Result<()> {
     let root = std::env::current_dir()?;
     let whitelist_path = root.join(".bead-whitelist");
 
-    let files = if all || generate_whitelist {
-        get_git_files(&root, &["ls-files"])?
+    let files: HashSet<String> = if all || generate_whitelist {
+        get_git_files(&root, &["ls-files"])?.into_iter().collect()
     } else {
         // Get both staged and unstaged changes
-        let mut files = get_git_files(&root, &["diff", "--name-only", "HEAD"])?;
+        let mut files: HashSet<String> = get_git_files(&root, &["diff", "--name-only", "HEAD"])?
+            .into_iter()
+            .collect();
         // Also get untracked files
         files.extend(get_git_files(
             &root,
             &["ls-files", "--others", "--exclude-standard"],
         )?);
-        files
+
+        if files.is_empty() {
+            // If the repo is clean, default to checking all tracked files
+            get_git_files(&root, &["ls-files"])?.into_iter().collect()
+        } else {
+            files
+        }
     };
 
     let mut violations = Vec::new();
