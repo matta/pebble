@@ -13,6 +13,11 @@ The approach is strict TDD. We will write a failing test, then implement the cod
     - [ ] Test creating a fresh database
     - [ ] Test applying migrations (schema creation)
 
+## Phase 1.5: Tooling & CI (Completed)
+- [x] Restructure workspace (pebble + xtask)
+- [x] Implement check-beads xtask command
+- [x] Hook into `just check`
+
 ## Phase 2: Core Data Model & JSONL Store
 - [x] Remove SQLite code (`src/db.rs`) and dependencies
 - [x] Implement `Issue` struct matching `AGENTS.md` schema
