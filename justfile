@@ -9,3 +9,7 @@ test:
 fix:
     cargo fmt
     cargo clippy --fix --workspace --all-targets --allow-dirty --allow-staged
+
+# Install the pebble binary to the Cargo bin directory
+install:
+    cargo install --path crates/pebble --force
