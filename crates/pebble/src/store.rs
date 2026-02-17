@@ -110,7 +110,6 @@ impl JsonlStore {
         }
 
         let mut writer = std::io::BufWriter::new(file);
-
         if needs_newline {
             writeln!(writer)?;
         }
