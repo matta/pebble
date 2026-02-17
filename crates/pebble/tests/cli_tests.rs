@@ -75,6 +75,23 @@ impl TestEnv {
         }
     }
 
+    fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
+        let worktree_path = self.root.join(".git/beads-worktrees/beads-sync");
+        let issues_dir = worktree_path.join(".beads");
+        std::fs::create_dir_all(&issues_dir).unwrap();
+        let issues_path = issues_dir.join("issues.jsonl");
+
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&issues_path)
+            .unwrap();
+
+        let json = serde_json::to_string(issue).unwrap();
+        use std::io::Write;
+        writeln!(file, "{}", json).unwrap();
+    }
+
     fn pebble(&self) -> Command {
         let mut cmd = Command::new(cargo_bin!("pebble"));
         cmd.current_dir(&self.root);
@@ -120,6 +137,30 @@ fn test_list_issues_empty() {
         .assert()
         .success()
         .stdout(predicate::str::contains("No issues found."));
+}
+
+#[test]
+fn test_list_issues_with_data() {
+    let env = TestEnv::setup();
+    let issue = serde_json::json!({
+        "id": "test-123",
+        "title": "Fixture Issue",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "task",
+        "owner": "test@example.com",
+        "created_at": "2026-01-01T00:00:00Z",
+        "created_by": "Tester",
+        "updated_at": "2026-01-01T00:00:00Z",
+        "description": "A test fixture issue"
+    });
+    env.add_issue_to_worktree(&issue);
+
+    env.pebble()
+        .arg("list")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test-123 [open] Fixture Issue"));
 }
 
 #[test]

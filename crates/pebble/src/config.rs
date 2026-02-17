@@ -23,17 +23,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_mydoo_config() {
-        // Read the actual config file from the workspace
-        let content = std::fs::read_to_string("../../../mydoo/.beads/config.yaml")
-            .expect("Failed to read config file");
-
-        let config: Config = serde_yaml::from_str(&content).expect("Failed to parse config");
+    fn test_config_parsing() {
+        let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
+        let config: Config = serde_yaml::from_str(content).expect("Failed to parse config");
 
         assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
-        // Verify other fields from comments or default values if they were present in the file
-        // The provided file has most things commented out, so they should be None
-        assert_eq!(config.issue_prefix, None);
-        assert_eq!(config.no_db, None);
+        assert_eq!(config.issue_prefix, Some("pebble".to_string()));
     }
 }
