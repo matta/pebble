@@ -51,10 +51,8 @@ impl JsonlStore {
     ///
     /// # Errors
     ///
-    /// Returns `Err` if:
-    /// - The file exists but cannot be opened.
-    /// - A line cannot be read from the file.
-    /// - A line cannot be parsed as a valid [`Issue`] JSON object.
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, read failure)
+    /// or if a line cannot be parsed as a valid [`Issue`] JSON object.
     ///
     /// # Examples
     ///
@@ -121,12 +119,8 @@ impl JsonlStore {
     ///
     /// # Errors
     ///
-    /// Returns `Err` if:
-    /// - The file cannot be opened for appending or created.
-    /// - The file metadata cannot be read.
-    /// - The file cursor cannot be repositioned (seek failure).
-    /// - The issue cannot be serialized to JSON.
-    /// - Write operations fail.
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, seek failure, write failure)
+    /// or if the issue cannot be serialized to JSON.
     ///
     /// # Examples
     ///
