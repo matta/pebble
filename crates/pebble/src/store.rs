@@ -74,7 +74,6 @@ impl JsonlStore {
         let mut writer = std::io::BufWriter::new(file);
 
         for issue in issues {
-            // Optimization: Use to_writer to stream directly to buffer, avoiding intermediate String allocation
             serde_json::to_writer(&mut writer, issue)?;
             writeln!(writer)?;
         }
