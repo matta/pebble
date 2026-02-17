@@ -3,7 +3,6 @@ use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
-use std::path::Path;
 
 /// Represents a single issue or task within the system.
 ///
