@@ -113,6 +113,45 @@ impl TestEnv {
 }
 
 #[test]
+fn test_config_get_unknown_key() {
+    let env = TestEnv::setup();
+    env.pebble()
+        .args(["config", "get", "unknown-key"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Unknown config key: unknown-key"));
+}
+
+#[test]
+fn test_config_get_unset_key() {
+    let env = TestEnv::setup();
+    env.pebble()
+        .args(["config", "get", "no-db"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Config key 'no-db' not set"));
+}
+
+#[test]
+fn test_config_daemon_unsupported() {
+    let temp_dir = TempDir::new().unwrap();
+    let root = temp_dir.path();
+    std::fs::create_dir(root.join(".beads")).unwrap();
+    std::fs::write(
+        root.join(".beads/config.yaml"),
+        "sync-branch: beads-sync\nauto-start-daemon: true\n",
+    )
+    .unwrap();
+
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(root)
+        .arg("list")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Daemon mode is not supported"));
+}
+
+#[test]
 fn test_version_flag() {
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.arg("--version")

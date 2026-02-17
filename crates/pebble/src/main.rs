@@ -75,15 +75,50 @@ fn main() -> Result<()> {
     if let Some(command) = &cli.command {
         let config = load_config(cli.config.as_deref())?;
 
+        if config.no_daemon == Some(false) || config.auto_start_daemon == Some(true) {
+            return Err(eyre!("Daemon mode is not supported"));
+        }
+
         match command {
             Commands::Config { command } => match command {
-                ConfigCommands::Get { key } => {
-                    if key == "sync-branch"
-                        && let Some(val) = &config.sync_branch
-                    {
-                        println!("{}", val);
+                ConfigCommands::Get { key } => match key.as_str() {
+                    "sync-branch" => {
+                        if let Some(val) = &config.sync_branch {
+                            println!("{}", val);
+                        } else {
+                            return Err(eyre!("Config key 'sync-branch' not set"));
+                        }
                     }
-                }
+                    "issue-prefix" => {
+                        if let Some(val) = &config.issue_prefix {
+                            println!("{}", val);
+                        } else {
+                            return Err(eyre!("Config key 'issue-prefix' not set"));
+                        }
+                    }
+                    "no-db" => {
+                        if let Some(val) = &config.no_db {
+                            println!("{}", val);
+                        } else {
+                            return Err(eyre!("Config key 'no-db' not set"));
+                        }
+                    }
+                    "no-daemon" => {
+                        if let Some(val) = &config.no_daemon {
+                            println!("{}", val);
+                        } else {
+                            return Err(eyre!("Config key 'no-daemon' not set"));
+                        }
+                    }
+                    "auto-start-daemon" => {
+                        if let Some(val) = &config.auto_start_daemon {
+                            println!("{}", val);
+                        } else {
+                            return Err(eyre!("Config key 'auto-start-daemon' not set"));
+                        }
+                    }
+                    _ => return Err(eyre!("Unknown config key: {}", key)),
+                },
             },
             Commands::Sync => {
                 let sync_branch = config
