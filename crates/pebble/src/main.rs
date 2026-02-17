@@ -115,7 +115,7 @@ fn main() -> Result<()> {
                     pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
 
                 let jsonl_path = manager.get_absolute_jsonl_path()?;
-                if !json {
+                if !*json {
                     println!("Using database: {}", jsonl_path.display());
                 }
                 let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
