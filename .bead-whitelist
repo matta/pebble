@@ -23,7 +23,6 @@
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
-const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
@@ -36,6 +35,7 @@ assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
 bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
 bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
 check_beads(all, false, false)?;
+const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
 if lower_line.contains("bead") {
 let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
@@ -50,8 +50,8 @@ let worktree_path = self.root.join(".git/beads-worktrees/beads-sync");
 println!("Found forbidden words 'bead' or 'beads' in the following locations:");
 println!("Found {} unused lines in .bead-whitelist:", unused.len());
 root.join(".beads/config.yaml"),
-run_git(&["checkout", "-b", "beads-sync"], &local_root);
-run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
+run_git(["checkout", "-b", "beads-sync"], &local_root);
+run_git(["push", "-u", "origin", "beads-sync"], &local_root);
 std::fs::create_dir(repo_root.join(".beads")).unwrap();
 std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir

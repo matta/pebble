@@ -136,11 +136,18 @@ mod tests {
         I: IntoIterator<Item = S>,
         S: AsRef<std::ffi::OsStr>,
     {
+        let args_vec: Vec<S> = args.into_iter().collect();
         Command::new("git")
-            .args(args)
+            .args(&args_vec)
             .current_dir(dir)
             .check_run()
-            .unwrap_or_else(|e| panic!("Failed to execute git: {}", e));
+            .unwrap_or_else(|e| {
+                let args_str: Vec<_> = args_vec
+                    .iter()
+                    .map(|s| s.as_ref().to_string_lossy())
+                    .collect();
+                panic!("Failed to execute git {}: {}", args_str.join(" "), e)
+            });
     }
 
     fn setup_git_repo(path: &std::path::Path) {
@@ -241,10 +248,10 @@ mod tests {
         // Actually, we need to push a branch named 'beads-sync' to the remote
         run_git(
             [
-                "remote".as_ref(),
-                "add".as_ref(),
-                "origin".as_ref(),
-                remote_root.as_os_str(),
+                "remote",
+                "add",
+                "origin",
+                remote_root.to_str().expect("valid path"),
             ],
             &local_root,
         );
