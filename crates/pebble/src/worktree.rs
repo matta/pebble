@@ -68,6 +68,38 @@ impl WorktreeManager {
         Ok(worktree_path.join(".beads/issues.jsonl"))
     }
 
+    /// Synchronizes the local worktree with the remote repository.
+    ///
+    /// This method performs a sequence of Git operations to ensure the worktree
+    /// is up-to-date and local changes are pushed. Specifically, it:
+    /// 1. Ensures the worktree exists (creating it if necessary).
+    /// 2. Fetches the latest changes from the remote `origin` for the configured sync branch.
+    /// 3. Merges the remote changes into the local worktree using `--ff-only`.
+    /// 4. Pushes the local worktree state back to `origin`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if:
+    /// * The worktree creation/access fails.
+    /// * Any of the Git commands (`fetch`, `merge`, `push`) fail (return a non-zero exit code).
+    /// * The merge requires conflict resolution (since `--ff-only` is used).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use pebble::worktree::WorktreeManager;
+    /// use std::path::PathBuf;
+    ///
+    /// let manager = WorktreeManager::new(
+    ///     PathBuf::from("/path/to/repo"),
+    ///     "beads-sync".to_string()
+    /// );
+    ///
+    /// // Requires a valid git environment and remote
+    /// if let Err(e) = manager.sync() {
+    ///     eprintln!("Sync failed: {}", e);
+    /// }
+    /// ```
     pub fn sync(&self) -> Result<()> {
         let worktree_path = self.ensure_worktree()?;
 
