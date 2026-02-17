@@ -28,6 +28,10 @@ pub struct Issue {
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
+/// A persistent store for managing issues in a JSON Lines (JSONL) file.
+///
+/// This struct handles reading and writing [`Issue`] records to a file at a specified path.
+/// Each line in the file corresponds to a single JSON object representing an issue.
 pub struct JsonlStore {
     path: String,
 }
@@ -39,6 +43,37 @@ impl JsonlStore {
         }
     }
 
+    /// Reads and deserializes all issues from the store file.
+    ///
+    /// This method opens the file at the configured path and processes it line by line.
+    /// Empty lines or lines containing only whitespace are skipped. If the file does not exist,
+    /// an empty vector is returned successfully.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, read failure)
+    /// or if a line cannot be parsed as a valid [`Issue`] JSON object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::{JsonlStore, Issue};
+    /// use std::io::Write;
+    /// use tempfile::NamedTempFile;
+    ///
+    /// # fn main() -> color_eyre::Result<()> {
+    /// let mut file = NamedTempFile::new()?;
+    /// let json = r#"{"id":"1","title":"Test","status":"open","priority":1,"issue_type":"bug","created_at":"2023-01-01","updated_at":"2023-01-01","closed_at":null,"close_reason":null}"#;
+    /// writeln!(file, "{}", json)?;
+    ///
+    /// let store = JsonlStore::new(file.path().to_str().unwrap());
+    /// let issues = store.read_issues()?;
+    ///
+    /// assert_eq!(issues.len(), 1);
+    /// assert_eq!(issues[0].title, "Test");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn read_issues(&self) -> Result<Vec<Issue>> {
         self.read_issues_inner()
             .with_context(|| format!("Failed to read issues from {}", self.path))
@@ -82,6 +117,51 @@ impl JsonlStore {
         Ok(())
     }
 
+    /// Appends a new issue to the end of the store file.
+    ///
+    /// If the file does not exist, it is created. If the file exists but does not end with a
+    /// newline character, one is inserted before the new record to ensure valid JSONL format.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, seek failure, write failure)
+    /// or if the issue cannot be serialized to JSON.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::{JsonlStore, Issue};
+    /// use tempfile::NamedTempFile;
+    ///
+    /// # fn main() -> color_eyre::Result<()> {
+    /// let file = NamedTempFile::new()?;
+    /// let store = JsonlStore::new(file.path().to_str().unwrap());
+    ///
+    /// let issue = Issue {
+    ///     id: "2".to_string(),
+    ///     title: "New Issue".to_string(),
+    ///     description: "Description".to_string(),
+    ///     status: "open".to_string(),
+    ///     priority: 1,
+    ///     issue_type: "bug".to_string(),
+    ///     owner: "me".to_string(),
+    ///     created_at: "2023-01-01".to_string(),
+    ///     created_by: "me".to_string(),
+    ///     updated_at: "2023-01-01".to_string(),
+    ///     closed_at: None,
+    ///     close_reason: None,
+    ///     dependencies: vec![],
+    ///     extra: Default::default(),
+    /// };
+    ///
+    /// store.append_issue(&issue)?;
+    ///
+    /// let issues = store.read_issues()?;
+    /// assert_eq!(issues.len(), 1);
+    /// assert_eq!(issues[0].id, "2");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn append_issue(&self, issue: &Issue) -> Result<()> {
         self.append_issue_inner(issue)
             .with_context(|| format!("Failed to append issue to {}", self.path))
