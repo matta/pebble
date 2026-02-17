@@ -333,4 +333,51 @@ mod tests {
         assert_eq!(issues[0], issue1);
         assert_eq!(issues[1], issue2);
     }
+
+    #[test]
+    fn test_read_issues_empty_file() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap();
+        let store = JsonlStore::new(path);
+
+        let issues = store.read_issues().expect("Failed to read issues");
+        assert_eq!(issues.len(), 0);
+    }
+
+    #[test]
+    fn test_read_issues_corrupted_json() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"id": "1", ... "#).unwrap();
+        let path = file.path().to_str().unwrap();
+        let store = JsonlStore::new(path);
+
+        let result = store.read_issues();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_issues_mixed_valid_and_invalid() {
+        let mut file = NamedTempFile::new().unwrap();
+        let valid_json = r#"{"id":"1","title":"Valid","status":"open","priority":1,"issue_type":"task","owner":"me","created_at":"2023-01-01","updated_at":"2023-01-01","closed_at":null,"close_reason":null}"#;
+        writeln!(file, "{}", valid_json).unwrap();
+        writeln!(file, "invalid json").unwrap();
+
+        let path = file.path().to_str().unwrap();
+        let store = JsonlStore::new(path);
+
+        let result = store.read_issues();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_issues_nonexistent_file() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string();
+        file.close().unwrap(); // Delete the file
+
+        let store = JsonlStore::new(&path);
+        let issues = store.read_issues().expect("Failed to read issues");
+
+        assert_eq!(issues.len(), 0);
+    }
 }
