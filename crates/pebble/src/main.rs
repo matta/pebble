@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use pebble::config::Config;
+use rand::Rng;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -17,11 +18,36 @@ enum Commands {
         command: ConfigCommands,
     },
     Sync,
+    List,
+    Add {
+        title: String,
+        #[arg(long)]
+        description: Option<String>,
+    },
+    Show {
+        id: String,
+    },
+    Edit {
+        id: String,
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
 enum ConfigCommands {
     Get { key: String },
+}
+
+fn load_config() -> Result<Config> {
+    // For now, assume .beads/config.yaml in CWD.
+    let config_path = ".beads/config.yaml";
+    let content = std::fs::read_to_string(config_path)
+        .with_context(|| format!("Failed to read config file at {}", config_path))?;
+    let config: Config = serde_yaml::from_str(&content).context("Failed to parse config")?;
+    Ok(config)
 }
 
 fn main() -> Result<()> {
@@ -30,29 +56,15 @@ fn main() -> Result<()> {
     match &cli.command {
         Some(Commands::Config { command }) => match command {
             ConfigCommands::Get { key } => {
-                // Determine config path.
-                // For now, assume .beads/config.yaml in CWD.
-                // The test sets CWD to ../mydoo, so .beads/config.yaml should be present there.
-                let config_path = ".beads/config.yaml";
-                let content = std::fs::read_to_string(config_path)
-                    .with_context(|| format!("Failed to read config file at {}", config_path))?;
-                let config: Config =
-                    serde_yaml::from_str(&content).context("Failed to parse config")?;
+                let config = load_config()?;
 
-                if key == "sync-branch"
-                    && let Some(val) = config.sync_branch
-                {
+                if key == "sync-branch" && let Some(val) = config.sync_branch {
                     println!("{}", val);
                 }
             }
         },
         Some(Commands::Sync) => {
-            let config_path = ".beads/config.yaml";
-            let content = std::fs::read_to_string(config_path)
-                .with_context(|| format!("Failed to read config file at {}", config_path))?;
-            let config: Config =
-                serde_yaml::from_str(&content).context("Failed to parse config")?;
-
+            let config = load_config()?;
             let sync_branch = config
                 .sync_branch
                 .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
@@ -64,8 +76,157 @@ fn main() -> Result<()> {
             manager.sync()?;
             println!("Sync complete.");
         }
+        Some(Commands::List) => {
+            let config = load_config()?;
+            let sync_branch = config
+                .sync_branch
+                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+
+            let repo_root = std::env::current_dir()?;
+            let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
+
+            let jsonl_path = manager.get_absolute_jsonl_path()?;
+            let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+            let issues = store.read_issues()?;
+
+            if issues.is_empty() {
+                println!("No issues found.");
+            } else {
+                for issue in issues {
+                    println!("{} [{}] {}", issue.id, issue.status, issue.title);
+                }
+            }
+        }
+        Some(Commands::Add { title, description }) => {
+            let config = load_config()?;
+            let sync_branch = config
+                .sync_branch
+                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+
+            let repo_root = std::env::current_dir()?;
+            let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
+
+            let jsonl_path = manager.get_absolute_jsonl_path()?;
+            let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+
+            let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
+            let suffix: String = rand::thread_rng()
+                .sample_iter(&rand::distributions::Alphanumeric)
+                .take(3)
+                .map(char::from)
+                .collect::<String>()
+                .to_lowercase();
+            let id = format!("{}-{}", prefix, suffix);
+
+            let now = chrono::Local::now().to_rfc3339();
+            let user_name = get_git_config("user.name");
+            let user_email = get_git_config("user.email");
+
+            let issue = pebble::store::Issue {
+                id: id.clone(),
+                title: title.clone(),
+                description: description.clone().unwrap_or_default(),
+                status: "open".to_string(),
+                priority: 0,
+                issue_type: "task".to_string(),
+                owner: user_email.clone(),
+                created_at: now.clone(),
+                created_by: user_name,
+                updated_at: now,
+                closed_at: None,
+                close_reason: None,
+                dependencies: vec![],
+                extra: std::collections::HashMap::new(),
+            };
+
+            store.append_issue(&issue)?;
+            println!("Added issue {}", id);
+        }
+        Some(Commands::Show { id }) => {
+            let config = load_config()?;
+            let sync_branch = config
+                .sync_branch
+                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+
+            let repo_root = std::env::current_dir()?;
+            let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
+
+            let jsonl_path = manager.get_absolute_jsonl_path()?;
+            let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+            let issues = store.read_issues()?;
+
+            let issue = issues.into_iter().find(|i| i.id == *id).ok_or_else(|| {
+                anyhow::anyhow!("Issue {} not found", id)
+            })?;
+
+            println!("ID:          {}", issue.id);
+            println!("Status:      {}", issue.status);
+            println!("Title:       {}", issue.title);
+            println!("Type:        {}", issue.issue_type);
+            println!("Priority:    {}", issue.priority);
+            println!("Owner:       {}", issue.owner);
+            println!("Created At:  {}", issue.created_at);
+            println!("Created By:  {}", issue.created_by);
+            println!("Updated At:  {}", issue.updated_at);
+            if let Some(closed_at) = issue.closed_at {
+                println!("Closed At:   {}", closed_at);
+            }
+            if let Some(reason) = issue.close_reason {
+                println!("Close Reason: {}", reason);
+            }
+            if !issue.description.is_empty() {
+                println!("\nDescription:\n{}", issue.description);
+            }
+        }
+        Some(Commands::Edit {
+            id,
+            title,
+            description,
+        }) => {
+            let config = load_config()?;
+            let sync_branch = config
+                .sync_branch
+                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+
+            let repo_root = std::env::current_dir()?;
+            let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
+
+            let jsonl_path = manager.get_absolute_jsonl_path()?;
+            let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+            let mut issues = store.read_issues()?;
+
+            let issue = issues.iter_mut().find(|i| i.id == *id).ok_or_else(|| {
+                anyhow::anyhow!("Issue {} not found", id)
+            })?;
+
+            let mut changed = false;
+            if let Some(t) = title {
+                issue.title = t.clone();
+                changed = true;
+            }
+            if let Some(d) = description {
+                issue.description = d.clone();
+                changed = true;
+            }
+
+            if changed {
+                issue.updated_at = chrono::Local::now().to_rfc3339();
+                store.write_issues(&issues)?;
+                println!("Updated issue {}", id);
+            } else {
+                println!("No changes provided for issue {}", id);
+            }
+        }
         None => {}
     }
 
     Ok(())
+}
+
+fn get_git_config(key: &str) -> String {
+    std::process::Command::new("git")
+        .args(["config", key])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "unknown".to_string())
 }

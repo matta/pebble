@@ -8,16 +8,23 @@ use std::path::Path;
 pub struct Issue {
     pub id: String,
     pub title: String,
+    #[serde(default)]
     pub description: String,
     pub status: String,
     pub priority: i32,
     pub issue_type: String,
+    #[serde(default)]
     pub owner: String,
     pub created_at: String,
+    #[serde(default)]
     pub created_by: String,
     pub updated_at: String,
     pub closed_at: Option<String>,
     pub close_reason: Option<String>,
+    #[serde(default)]
+    pub dependencies: Vec<serde_json::Value>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 pub struct JsonlStore {
@@ -68,6 +75,34 @@ impl JsonlStore {
 
         Ok(())
     }
+
+    pub fn append_issue(&self, issue: &Issue) -> Result<()> {
+        let path = Path::new(&self.path);
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .with_context(|| format!("Failed to open file for appending at {}", self.path))?;
+
+        // If file is not empty and doesn't end with newline, add one
+        let metadata = std::fs::metadata(path)?;
+        if metadata.len() > 0 {
+            use std::io::{Read, Seek, SeekFrom};
+            let mut f = std::fs::File::open(path)?;
+            f.seek(SeekFrom::End(-1))?;
+            let mut last_byte = [0u8; 1];
+            f.read_exact(&mut last_byte)?;
+            if last_byte[0] != b'\n' {
+                writeln!(file)?;
+            }
+        }
+
+        let json = serde_json::to_string(issue)
+            .with_context(|| format!("Failed to serialize issue: {:?}", issue))?;
+        writeln!(file, "{}", json)?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -111,11 +146,62 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_string(),
             closed_at: None,
             close_reason: None,
+            dependencies: vec![],
+            extra: Default::default(),
         }];
 
         store.write_issues(&issues).expect("Failed to write issues");
 
         let read_back = store.read_issues().expect("Failed to read back issues");
         assert_eq!(read_back, issues);
+    }
+
+    #[test]
+    fn test_append_issue() {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string();
+        let store = JsonlStore::new(&path);
+
+        let issue1 = Issue {
+            id: "test-1".to_string(),
+            title: "Title 1".to_string(),
+            description: "Desc 1".to_string(),
+            status: "open".to_string(),
+            priority: 1,
+            issue_type: "task".to_string(),
+            owner: "me".to_string(),
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            created_by: "Me".to_string(),
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+            closed_at: None,
+            close_reason: None,
+            dependencies: vec![],
+            extra: Default::default(),
+        };
+
+        let issue2 = Issue {
+            id: "test-2".to_string(),
+            title: "Title 2".to_string(),
+            description: "Desc 2".to_string(),
+            status: "open".to_string(),
+            priority: 2,
+            issue_type: "task".to_string(),
+            owner: "me".to_string(),
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            created_by: "Me".to_string(),
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+            closed_at: None,
+            close_reason: None,
+            dependencies: vec![],
+            extra: Default::default(),
+        };
+
+        store.append_issue(&issue1).expect("Failed to append issue 1");
+        store.append_issue(&issue2).expect("Failed to append issue 2");
+
+        let issues = store.read_issues().expect("Failed to read issues");
+        assert_eq!(issues.len(), 2);
+        assert_eq!(issues[0], issue1);
+        assert_eq!(issues[1], issue2);
     }
 }

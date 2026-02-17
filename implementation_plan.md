@@ -27,7 +27,7 @@ The approach is strict TDD. We will write a failing test, then implement the cod
     - [x] Test writing issues to a JSONL file
     - [x] Test appending a new issue
 
-## Phase 3: Worktree Architecture & Sync
+## Phase 3: Worktree Architecture & Sync (Completed)
 - [x] Implement `pebble sync` stub
 - [x] Fail if no `sync-branch` is configured
 - [x] Implement `WorktreeManager`
@@ -37,14 +37,22 @@ The approach is strict TDD. We will write a failing test, then implement the cod
     - [x] `git fetch` in worktree
     - [x] `git merge` (fast-forward) in worktree
     - [x] `git push` from worktree
-- [ ] Update `pebble` to use Worktree Path
-    - [ ] Ensure `store` uses the worktree path, NOT local file
+- [x] Update `pebble` to use Worktree Path
+    - [x] Ensure `store` uses the worktree path, NOT local file
 
-## Phase 4: CLI Commands (Worktree-Native)
-- [ ] Implement `pebble list` (reads from worktree)
-- [ ] Implement `pebble add` (writes to worktree)
-- [ ] Implement `pebble show` (reads from worktree)
-- [ ] Implement `pebble edit` (writes to worktree)
+## Phase 4: CLI Commands (Worktree-Native) (Completed)
+- [x] Implement `pebble list` (reads from worktree)
+- [x] Implement `pebble add` (writes to worktree)
+- [x] Implement `pebble show` (reads from worktree)
+- [x] Implement `pebble edit` (writes to worktree)
+
+## Phase 5: Renaming & Cleanup (Eliminate 'beads')
+- [ ] Rename `.beads` directory to `.pebble`
+- [ ] Rename `beads-sync` branch references to `pebble-sync`
+- [ ] Update `WorktreeManager` to use `.git/pebble-worktrees`
+- [ ] Rename `xtask check-beads` to `xtask check-pebble`
+- [ ] Rename `.bead-whitelist` to `.pebble-whitelist`
+- [ ] Update all code, comments, and tests to use `pebble` instead of `beads`
 
 ## Rules
 1. **One Fail at a Time**: don't write multiple failing tests.
