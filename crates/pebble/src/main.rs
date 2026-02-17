@@ -12,6 +12,10 @@ struct Cli {
     #[arg(short = 'C', long)]
     directory: Option<std::path::PathBuf>,
 
+    /// Path to the configuration file
+    #[arg(short, long, env = "PEBBLE_CONFIG")]
+    config: Option<std::path::PathBuf>,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -46,11 +50,12 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-fn load_config() -> Result<Config> {
-    // For now, assume .beads/config.yaml in CWD.
-    let config_path = ".beads/config.yaml";
-    let content = std::fs::read_to_string(config_path)
-        .with_context(|| format!("Failed to read config file at {}", config_path))?;
+fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
+    let config_path = path
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from(".beads/config.yaml"));
+    let content = std::fs::read_to_string(&config_path)
+        .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
     let config: Config = serde_yaml::from_str(&content).context("Failed to parse config")?;
     Ok(config)
 }
@@ -67,7 +72,7 @@ fn main() -> Result<()> {
     match &cli.command {
         Some(Commands::Config { command }) => match command {
             ConfigCommands::Get { key } => {
-                let config = load_config()?;
+                let config = load_config(cli.config.as_deref())?;
 
                 if key == "sync-branch"
                     && let Some(val) = config.sync_branch
@@ -77,7 +82,7 @@ fn main() -> Result<()> {
             }
         },
         Some(Commands::Sync) => {
-            let config = load_config()?;
+            let config = load_config(cli.config.as_deref())?;
             let sync_branch = config
                 .sync_branch
                 .ok_or_else(|| eyre!("sync-branch not configured"))?;
@@ -90,7 +95,7 @@ fn main() -> Result<()> {
             println!("Sync complete.");
         }
         Some(Commands::List) => {
-            let config = load_config()?;
+            let config = load_config(cli.config.as_deref())?;
             let sync_branch = config
                 .sync_branch
                 .ok_or_else(|| eyre!("sync-branch not configured"))?;
@@ -112,7 +117,7 @@ fn main() -> Result<()> {
             }
         }
         Some(Commands::Add { title, description }) => {
-            let config = load_config()?;
+            let config = load_config(cli.config.as_deref())?;
             let sync_branch = config
                 .sync_branch
                 .ok_or_else(|| eyre!("sync-branch not configured"))?;
@@ -157,7 +162,7 @@ fn main() -> Result<()> {
             println!("Added issue {}", id);
         }
         Some(Commands::Show { id }) => {
-            let config = load_config()?;
+            let config = load_config(cli.config.as_deref())?;
             let sync_branch = config
                 .sync_branch
                 .ok_or_else(|| eyre!("sync-branch not configured"))?;
@@ -198,7 +203,7 @@ fn main() -> Result<()> {
             title,
             description,
         }) => {
-            let config = load_config()?;
+            let config = load_config(cli.config.as_deref())?;
             let sync_branch = config
                 .sync_branch
                 .ok_or_else(|| eyre!("sync-branch not configured"))?;
