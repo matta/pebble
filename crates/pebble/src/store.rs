@@ -5,6 +5,36 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
+/// Represents a single issue or task within the system.
+///
+/// This struct maps directly to the JSON object stored in `issues.jsonl`.
+/// It contains all metadata related to an issue, including its lifecycle state,
+/// ownership, and descriptive content.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::store::Issue;
+///
+/// let issue = Issue {
+///     id: "PROJECT-123".to_string(),
+///     title: "Implement documentation".to_string(),
+///     description: "Add doc comments to public API".to_string(),
+///     status: "open".to_string(),
+///     priority: 1,
+///     issue_type: "task".to_string(),
+///     owner: "alice@example.com".to_string(),
+///     created_at: "2023-10-27T10:00:00Z".to_string(),
+///     created_by: "Alice".to_string(),
+///     updated_at: "2023-10-27T10:00:00Z".to_string(),
+///     closed_at: None,
+///     close_reason: None,
+///     dependencies: vec![],
+///     extra: std::collections::HashMap::new(),
+/// };
+///
+/// assert_eq!(issue.status, "open");
+/// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Issue {
     pub id: String,
