@@ -2,7 +2,7 @@ use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{BufReader, Write};
+use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -100,7 +100,6 @@ impl JsonlStore {
         let mut needs_newline = false;
         let metadata = file.metadata()?;
         if metadata.len() > 0 {
-            use std::io::{Read, Seek, SeekFrom};
             file.seek(SeekFrom::End(-1))?;
             let mut last_byte = [0u8; 1];
             file.read_exact(&mut last_byte)?;
@@ -114,7 +113,6 @@ impl JsonlStore {
             writeln!(writer)?;
         }
 
-        // Optimization: Use to_writer to stream directly to buffer, avoiding intermediate String allocation
         serde_json::to_writer(&mut writer, issue)?;
         writeln!(writer)?;
         writer.flush()?;
