@@ -30,7 +30,9 @@ impl ExitStatusExt for ExitStatus {
     }
 
     fn exit_ok_with_context(&self, context: &str) -> io::Result<()> {
-        ExitStatusExt::exit_ok(self).map_err(|e| Error::other(format!("{}: {}", context, e)))
+        #[allow(unstable_name_collisions)]
+        self.exit_ok()
+            .map_err(|e| Error::other(format!("{}: {}", context, e)))
     }
 }
 
@@ -61,7 +63,8 @@ impl CommandExt for Command {
         let output = self.output()?;
 
         // Use our Layer 1 extension to check status
-        if let Err(e) = ExitStatusExt::exit_ok(&output.status) {
+        #[allow(unstable_name_collisions)]
+        if let Err(e) = output.status.exit_ok() {
             // Enhancement: Include stderr in the error message for debugging
             let stderr_preview = String::from_utf8_lossy(&output.stderr);
             let rich_error = format!("{}; stderr: {}", e, stderr_preview.trim());
@@ -76,7 +79,8 @@ impl CommandExt for Command {
         // We use .status() so streams are inherited (printed to terminal)
         // unless the user manually overrode them on the Command struct previously.
         let status = self.status()?;
-        ExitStatusExt::exit_ok(&status)
+        #[allow(unstable_name_collisions)]
+        status.exit_ok()
     }
 }
 
@@ -96,9 +100,8 @@ mod tests {
     #[test]
     fn test_check_output_utf8_failure() {
         // Use a command that is guaranteed to fail and output to stderr
-        // `ls /nonexistent` is standard enough on unix, but let's be safe
-        let result = Command::new("ls")
-            .arg("/nonexistent_path_test_check_output_utf8")
+        let result = Command::new("git")
+            .arg("this-is-an-invalid-command")
             .check_output_utf8();
 
         assert!(result.is_err());

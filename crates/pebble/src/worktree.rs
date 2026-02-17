@@ -44,12 +44,10 @@ impl WorktreeManager {
         // For phase 1, let's assume we can just add the worktree.
 
         Command::new("git")
-            .args([
-                "worktree",
-                "add",
-                "--detach", // use detach to avoid branch conflicts for now
-                path.to_str().unwrap(),
-            ])
+            .arg("worktree")
+            .arg("add")
+            .arg("--detach") // use detach to avoid branch conflicts for now
+            .arg(&path)
             .current_dir(&self.repo_root)
             .check_output_utf8()
             .with_context(|| "Failed to execute git worktree add")?;
