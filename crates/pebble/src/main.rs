@@ -124,8 +124,8 @@ fn main() -> Result<()> {
             let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
 
             let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
-            let suffix: String = rand::thread_rng()
-                .sample_iter(&rand::distributions::Alphanumeric)
+            let suffix: String = rand::rng()
+                .sample_iter(&rand::distr::Alphanumeric)
                 .take(3)
                 .map(char::from)
                 .collect::<String>()
