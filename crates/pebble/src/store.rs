@@ -5,6 +5,36 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
+/// Represents a single issue or task within the system.
+///
+/// This struct maps directly to the JSON object stored in `issues.jsonl`.
+/// It contains all metadata related to an issue, including its lifecycle state,
+/// ownership, and descriptive content.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::store::Issue;
+///
+/// let issue = Issue {
+///     id: "PROJECT-123".to_string(),
+///     title: "Implement documentation".to_string(),
+///     description: "Add doc comments to public API".to_string(),
+///     status: "open".to_string(),
+///     priority: 1,
+///     issue_type: "task".to_string(),
+///     owner: "alice@example.com".to_string(),
+///     created_at: "2023-10-27T10:00:00Z".to_string(),
+///     created_by: "Alice".to_string(),
+///     updated_at: "2023-10-27T10:00:00Z".to_string(),
+///     closed_at: None,
+///     close_reason: None,
+///     dependencies: vec![],
+///     extra: std::collections::HashMap::new(),
+/// };
+///
+/// assert_eq!(issue.status, "open");
+/// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Issue {
     pub id: String,
@@ -82,6 +112,49 @@ impl JsonlStore {
         Ok(())
     }
 
+    /// Appends a new issue to the JSONL store.
+    ///
+    /// This method opens the underlying file in append mode and writes the
+    /// serialized [`Issue`] as a new line. If the file does not end with a newline
+    /// character, one is inserted before the new record to ensure valid JSONL format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if:
+    /// * The file cannot be opened or created.
+    /// * The file metadata cannot be read.
+    /// * Reading the last byte of the file fails.
+    /// * Serialization of the issue fails.
+    /// * Writing to the file fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::{JsonlStore, Issue};
+    /// use tempfile::NamedTempFile;
+    ///
+    /// let file = NamedTempFile::new().unwrap();
+    /// let store = JsonlStore::new(file.path().to_str().unwrap());
+    ///
+    /// let issue = Issue {
+    ///     id: "TEST-1".to_string(),
+    ///     title: "New Issue".to_string(),
+    ///     description: "".to_string(),
+    ///     status: "open".to_string(),
+    ///     priority: 0,
+    ///     issue_type: "task".to_string(),
+    ///     owner: "".to_string(),
+    ///     created_at: "".to_string(),
+    ///     created_by: "".to_string(),
+    ///     updated_at: "".to_string(),
+    ///     closed_at: None,
+    ///     close_reason: None,
+    ///     dependencies: vec![],
+    ///     extra: std::collections::HashMap::new(),
+    /// };
+    ///
+    /// store.append_issue(&issue).unwrap();
+    /// ```
     pub fn append_issue(&self, issue: &Issue) -> Result<()> {
         self.append_issue_inner(issue)
             .with_context(|| format!("Failed to append issue to {}", self.path))
