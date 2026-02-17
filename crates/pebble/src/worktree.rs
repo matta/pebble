@@ -121,10 +121,9 @@ mod tests {
     }
 
     fn setup_git_repo(path: &std::path::Path) {
-        run_git(&["init"], path);
+        run_git(&["init", "-b", "main"], path);
         run_git(&["config", "user.email", "test@example.com"], path);
         run_git(&["config", "user.name", "Test User"], path);
-        run_git(&["config", "init.defaultBranch", "main"], path);
     }
 
     #[test]
