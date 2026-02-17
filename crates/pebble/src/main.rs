@@ -56,12 +56,10 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
-
 fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
-    let config_path = path
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::PathBuf::from(DEFAULT_CONFIG_PATH));
+    let config_path = path.map(std::path::PathBuf::from).unwrap_or_else(|| {
+        std::path::PathBuf::from(pebble::constants::BEADS_DIR).join(pebble::constants::CONFIG_FILE)
+    });
     let content = std::fs::read_to_string(&config_path)
         .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
     let config: Config = serde_yaml::from_str(&content).context("Failed to parse config")?;

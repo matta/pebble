@@ -19,7 +19,7 @@ impl WorktreeManager {
 
     pub fn get_worktree_path(&self) -> PathBuf {
         self.repo_root
-            .join(".git/beads-worktrees")
+            .join(crate::constants::WORKTREES_DIR)
             .join(&self.sync_branch)
     }
 
@@ -57,7 +57,9 @@ impl WorktreeManager {
 
     pub fn get_absolute_jsonl_path(&self) -> Result<PathBuf> {
         let worktree_path = self.ensure_worktree()?;
-        Ok(worktree_path.join(".beads/issues.jsonl"))
+        Ok(worktree_path
+            .join(crate::constants::BEADS_DIR)
+            .join(crate::constants::ISSUES_FILE))
     }
 
     /// Synchronizes the local worktree with the remote repository.

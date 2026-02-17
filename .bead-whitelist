@@ -19,15 +19,13 @@
 .args(["add", ".beads/issues.jsonl"])
 .args(["checkout", "-b", "beads-sync"])
 .is_some_and(|name| name == ".bead-whitelist")
-.join(".git/beads-worktrees")
+.join(crate::constants::BEADS_DIR)
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
-const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
-Ok(worktree_path.join(".beads/issues.jsonl"))
 This document outlines the step-by-step plan to implement `pebble`, a simplified Rust version of `beads`.
 This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
 assert!(branch == "HEAD" || branch == "beads-sync");
@@ -49,6 +47,8 @@ let whitelist_path = root.join(".bead-whitelist");
 let worktree_path = self.root.join(".git/beads-worktrees/beads-sync");
 println!("Found forbidden words 'bead' or 'beads' in the following locations:");
 println!("Found {} unused lines in .bead-whitelist:", unused.len());
+pub const BEADS_DIR: &str = ".beads";
+pub const WORKTREES_DIR: &str = ".git/beads-worktrees";
 root.join(".beads/config.yaml"),
 run_git(&["checkout", "-b", "beads-sync"], &local_root);
 run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
@@ -56,4 +56,5 @@ std::fs::create_dir(repo_root.join(".beads")).unwrap();
 std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
+std::path::PathBuf::from(pebble::constants::BEADS_DIR).join(pebble::constants::CONFIG_FILE)
 } => check_beads(all, generate_whitelist, minimize_whitelist),
