@@ -25,7 +25,7 @@ mod tests {
     #[test]
     fn parse_mydoo_config() {
         // Read the actual config file from the workspace
-        let content = std::fs::read_to_string("../mydoo/.beads/config.yaml")
+        let content = std::fs::read_to_string("../../../mydoo/.beads/config.yaml")
             .expect("Failed to read config file");
         
         let config: Config = serde_yaml::from_str(&content)

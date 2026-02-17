@@ -14,7 +14,7 @@ fn test_version_flag() {
 fn test_config_get_sync_branch() {
     let mut cmd = Command::cargo_bin("pebble").unwrap();
     
-    cmd.current_dir("../mydoo") // Run in mydoo so it finds .beads/config.yaml
+    cmd.current_dir("../../../mydoo") // Run in mydoo so it finds .beads/config.yaml
        .args(&["config", "get", "sync-branch"])
        .assert()
        .success()
