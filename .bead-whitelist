@@ -23,7 +23,7 @@
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
-// For now, assume .beads/config.yaml in CWD.
+.unwrap_or_else(|| std::path::PathBuf::from(".beads/config.yaml"));
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
@@ -38,7 +38,6 @@ bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimiz
 check_beads(all, false, false)?;
 fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
 if lower_line.contains("bead") {
-let config_path = ".beads/config.yaml";
 let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
 let entry = "foo bead bar";
 let expected = repo_root.join(".git/beads-worktrees/beads-sync");
