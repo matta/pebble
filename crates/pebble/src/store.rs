@@ -196,8 +196,12 @@ mod tests {
             extra: Default::default(),
         };
 
-        store.append_issue(&issue1).expect("Failed to append issue 1");
-        store.append_issue(&issue2).expect("Failed to append issue 2");
+        store
+            .append_issue(&issue1)
+            .expect("Failed to append issue 1");
+        store
+            .append_issue(&issue2)
+            .expect("Failed to append issue 2");
 
         let issues = store.read_issues().expect("Failed to read issues");
         assert_eq!(issues.len(), 2);

@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use assert_cmd::cargo_bin;
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -75,7 +76,7 @@ impl TestEnv {
     }
 
     fn pebble(&self) -> Command {
-        let mut cmd = Command::cargo_bin("pebble").unwrap();
+        let mut cmd = Command::new(cargo_bin!("pebble"));
         cmd.current_dir(&self.root);
         cmd
     }
@@ -83,7 +84,7 @@ impl TestEnv {
 
 #[test]
 fn test_version_flag() {
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.arg("--version")
         .assert()
         .success()
@@ -103,7 +104,7 @@ fn test_config_get_sync_branch() {
 #[test]
 fn test_sync_fail_no_config() {
     let temp_dir = TempDir::new().unwrap();
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(temp_dir.path())
         .arg("sync")
         .assert()

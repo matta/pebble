@@ -58,7 +58,9 @@ fn main() -> Result<()> {
             ConfigCommands::Get { key } => {
                 let config = load_config()?;
 
-                if key == "sync-branch" && let Some(val) = config.sync_branch {
+                if key == "sync-branch"
+                    && let Some(val) = config.sync_branch
+                {
                     println!("{}", val);
                 }
             }
@@ -155,9 +157,10 @@ fn main() -> Result<()> {
             let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
             let issues = store.read_issues()?;
 
-            let issue = issues.into_iter().find(|i| i.id == *id).ok_or_else(|| {
-                anyhow::anyhow!("Issue {} not found", id)
-            })?;
+            let issue = issues
+                .into_iter()
+                .find(|i| i.id == *id)
+                .ok_or_else(|| anyhow::anyhow!("Issue {} not found", id))?;
 
             println!("ID:          {}", issue.id);
             println!("Status:      {}", issue.status);
@@ -195,9 +198,10 @@ fn main() -> Result<()> {
             let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
             let mut issues = store.read_issues()?;
 
-            let issue = issues.iter_mut().find(|i| i.id == *id).ok_or_else(|| {
-                anyhow::anyhow!("Issue {} not found", id)
-            })?;
+            let issue = issues
+                .iter_mut()
+                .find(|i| i.id == *id)
+                .ok_or_else(|| anyhow::anyhow!("Issue {} not found", id))?;
 
             let mut changed = false;
             if let Some(t) = title {
