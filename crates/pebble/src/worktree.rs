@@ -92,7 +92,7 @@ impl WorktreeManager {
     ///
     /// let manager = WorktreeManager::new(
     ///     PathBuf::from("/path/to/repo"),
-    ///     "beads-sync".to_string()
+    ///     "my-sync-branch".to_string()
     /// );
     ///
     /// // Requires a valid git environment and remote
