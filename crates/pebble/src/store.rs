@@ -3,7 +3,6 @@ use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
-use std::path::Path;
 
 /// Represents a single issue or task within the system.
 ///
@@ -63,14 +62,12 @@ pub struct Issue {
 /// This struct handles reading and writing [`Issue`] records to a file at a specified path.
 /// Each line in the file corresponds to a single JSON object representing an issue.
 pub struct JsonlStore {
-    path: String,
+    path: std::path::PathBuf,
 }
 
 impl JsonlStore {
-    pub fn new(path: &str) -> Self {
-        Self {
-            path: path.to_string(),
-        }
+    pub fn new<P: Into<std::path::PathBuf>>(path: P) -> Self {
+        Self { path: path.into() }
     }
 
     /// Reads and deserializes all issues from the store file.
@@ -96,7 +93,7 @@ impl JsonlStore {
     /// let json = r#"{"id":"1","title":"Test","status":"open","priority":1,"issue_type":"bug","created_at":"2023-01-01","updated_at":"2023-01-01","closed_at":null,"close_reason":null}"#;
     /// writeln!(file, "{}", json)?;
     ///
-    /// let store = JsonlStore::new(file.path().to_str().unwrap());
+    /// let store = JsonlStore::new(file.path());
     /// let issues = store.read_issues()?;
     ///
     /// assert_eq!(issues.len(), 1);
@@ -106,16 +103,15 @@ impl JsonlStore {
     /// ```
     pub fn read_issues(&self) -> Result<Vec<Issue>> {
         self.read_issues_inner()
-            .with_context(|| format!("Failed to read issues from {}", self.path))
+            .with_context(|| format!("Failed to read issues from {}", self.path.display()))
     }
 
     fn read_issues_inner(&self) -> Result<Vec<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        if !self.path.exists() {
             return Ok(Vec::new());
         }
 
-        let file = File::open(path)?;
+        let file = File::open(&self.path)?;
         let reader = BufReader::new(file);
         let mut issues = Vec::new();
 
@@ -131,7 +127,7 @@ impl JsonlStore {
 
     pub fn write_issues(&self, issues: &[Issue]) -> Result<()> {
         self.write_issues_inner(issues)
-            .with_context(|| format!("Failed to write issues to {}", self.path))
+            .with_context(|| format!("Failed to write issues to {}", self.path.display()))
     }
 
     fn write_issues_inner(&self, issues: &[Issue]) -> Result<()> {
@@ -165,7 +161,7 @@ impl JsonlStore {
     ///
     /// # fn main() -> color_eyre::Result<()> {
     /// let file = NamedTempFile::new()?;
-    /// let store = JsonlStore::new(file.path().to_str().unwrap());
+    /// let store = JsonlStore::new(file.path());
     ///
     /// let issue = Issue {
     ///     id: "2".to_string(),
@@ -194,16 +190,15 @@ impl JsonlStore {
     /// ```
     pub fn append_issue(&self, issue: &Issue) -> Result<()> {
         self.append_issue_inner(issue)
-            .with_context(|| format!("Failed to append issue to {}", self.path))
+            .with_context(|| format!("Failed to append issue to {}", self.path.display()))
     }
 
     fn append_issue_inner(&self, issue: &Issue) -> Result<()> {
-        let path = Path::new(&self.path);
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .read(true)
-            .open(path)?;
+            .open(&self.path)?;
 
         // If file is not empty and doesn't end with newline, add one
         let mut needs_newline = false;
@@ -242,8 +237,7 @@ mod tests {
         let issue_json = r#"{"id":"mydoo-0kq","title":"Test Issue","description":"Desc","status":"open","priority":0,"issue_type":"task","owner":"me","created_at":"2026-01-01T00:00:00Z","created_by":"Me","updated_at":"2026-01-01T00:00:00Z","closed_at":null,"close_reason":null}"#;
         writeln!(file, "{}", issue_json).unwrap();
 
-        let path = file.path().to_str().unwrap();
-        let store = JsonlStore::new(path);
+        let store = JsonlStore::new(file.path());
 
         let issues = store.read_issues().expect("Failed to read issues");
 
@@ -255,8 +249,7 @@ mod tests {
     #[test]
     fn test_write_issues() {
         let file = NamedTempFile::new().unwrap();
-        let path = file.path().to_str().unwrap().to_string();
-        let store = JsonlStore::new(&path);
+        let store = JsonlStore::new(file.path());
 
         let issues = vec![Issue {
             id: "test-1".to_string(),
@@ -284,8 +277,7 @@ mod tests {
     #[test]
     fn test_append_issue() {
         let file = NamedTempFile::new().unwrap();
-        let path = file.path().to_str().unwrap().to_string();
-        let store = JsonlStore::new(&path);
+        let store = JsonlStore::new(file.path());
 
         let issue1 = Issue {
             id: "test-1".to_string(),
