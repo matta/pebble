@@ -118,7 +118,7 @@ fn main() -> Result<()> {
                 if !*json {
                     println!("Using database: {}", jsonl_path.display());
                 }
-                let store = pebble::store::JsonlStore::new(jsonl_path);
+                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
                 let issues = store.read_issues()?;
 
                 if *json {
@@ -142,7 +142,7 @@ fn main() -> Result<()> {
                     pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
 
                 let jsonl_path = manager.get_absolute_jsonl_path()?;
-                let store = pebble::store::JsonlStore::new(jsonl_path);
+                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
 
                 let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
                 let suffix: String = rand::rng()
@@ -188,7 +188,7 @@ fn main() -> Result<()> {
                     pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
 
                 let jsonl_path = manager.get_absolute_jsonl_path()?;
-                let store = pebble::store::JsonlStore::new(jsonl_path);
+                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
                 let issues = store.read_issues()?;
 
                 let issue = issues
@@ -234,7 +234,7 @@ fn main() -> Result<()> {
                     pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
 
                 let jsonl_path = manager.get_absolute_jsonl_path()?;
-                let store = pebble::store::JsonlStore::new(jsonl_path);
+                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
                 let mut issues = store.read_issues()?;
 
                 let issue = issues

@@ -123,7 +123,9 @@ fn create_test_issue(id: &str, title: &str) -> serde_json::Value {
         "created_at": "2026-01-01T00:00:00Z",
         "created_by": "Tester",
         "updated_at": "2026-01-01T00:00:00Z",
-        "description": "A test fixture issue"
+        "description": "A test fixture issue",
+        "closed_at": null,
+        "close_reason": null
     })
 }
 
