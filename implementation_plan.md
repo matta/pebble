@@ -25,13 +25,13 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 ## Phase 3: Worktree Architecture & Sync
 - [x] Implement `pebble sync` stub
 - [x] Fail if no `sync-branch` is configured
-- [ ] Implement `WorktreeManager`
-    - [ ] Logic to find/create git worktree for `sync-branch`
-    - [ ] Logic to get absolute path to `issues.jsonl` in worktree
-- [ ] Implement `pebble sync`
-    - [ ] `git fetch` in worktree
-    - [ ] `git merge` (fast-forward) in worktree
-    - [ ] `git push` from worktree
+- [x] Implement `WorktreeManager`
+    - [x] Logic to find/create git worktree for `sync-branch`
+    - [x] Logic to get absolute path to `issues.jsonl` in worktree
+- [x] Implement `pebble sync`
+    - [x] `git fetch` in worktree
+    - [x] `git merge` (fast-forward) in worktree
+    - [x] `git push` from worktree
 - [ ] Update `pebble` to use Worktree Path
     - [ ] Ensure `store` uses the worktree path, NOT local file
 

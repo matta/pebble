@@ -50,9 +50,19 @@ fn main() -> Result<()> {
         },
         Some(Commands::Sync) => {
             let config_path = ".beads/config.yaml";
-            let _content = std::fs::read_to_string(config_path)
+            let content = std::fs::read_to_string(config_path)
                 .with_context(|| format!("Failed to read config file at {}", config_path))?;
-            println!("Sync command not implemented yet");
+            let config: Config = serde_yaml::from_str(&content)
+                .context("Failed to parse config")?;
+
+            let sync_branch = config.sync_branch.ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+            
+            let repo_root = std::env::current_dir()?;
+            let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
+            
+            println!("Syncing...");
+            manager.sync()?;
+            println!("Sync complete.");
         },
         None => {}
     }
