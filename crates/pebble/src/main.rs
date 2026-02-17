@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use color_eyre::eyre::{Context, eyre};
+use pebble::command::CommandExt;
 use pebble::config::Config;
 use rand::RngExt;
 
@@ -242,7 +243,7 @@ fn main() -> Result<()> {
 fn get_git_config(key: &str) -> String {
     std::process::Command::new("git")
         .args(["config", key])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .check_output()
+        .map(|s| s.trim().to_string())
         .unwrap_or_else(|_| "unknown".to_string())
 }
