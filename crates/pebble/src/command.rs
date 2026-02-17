@@ -46,7 +46,7 @@ pub trait CommandExt {
     /// Runs the command, captures stdout/stderr, checks for success.
     /// Returns stdout as a String on success.
     /// Returns an Error containing stderr info on failure.
-    fn check_output_utf8(&mut self) -> io::Result<String>;
+    fn check_output(&mut self) -> io::Result<String>;
 
     /// Analog to Python's `subprocess.check_call(...)`.
     /// Runs the command, inheriting stdout/stderr (unless configured otherwise),
@@ -55,7 +55,7 @@ pub trait CommandExt {
 }
 
 impl CommandExt for Command {
-    fn check_output_utf8(&mut self) -> io::Result<String> {
+    fn check_output(&mut self) -> io::Result<String> {
         // Ensure we capture output to process it
         self.stdout(Stdio::piped());
         self.stderr(Stdio::piped());
@@ -89,20 +89,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_check_output_utf8_success() {
+    fn test_check_output_success() {
         let output = Command::new("echo")
             .arg("hello world")
-            .check_output_utf8()
+            .check_output()
             .expect("Failed to run echo");
         assert_eq!(output.trim(), "hello world");
     }
 
     #[test]
-    fn test_check_output_utf8_failure() {
+    fn test_check_output_failure() {
         // Use a command that is guaranteed to fail and output to stderr
         let result = Command::new("git")
             .arg("this-is-an-invalid-command")
-            .check_output_utf8();
+            .check_output();
 
         assert!(result.is_err());
         let err = result.unwrap_err();

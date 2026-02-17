@@ -49,7 +49,7 @@ impl WorktreeManager {
             .arg("--detach") // use detach to avoid branch conflicts for now
             .arg(&path)
             .current_dir(&self.repo_root)
-            .check_output_utf8()
+            .check_output()
             .with_context(|| "Failed to execute git worktree add")?;
 
         Ok(path)
@@ -208,7 +208,7 @@ mod tests {
         let output = Command::new("git")
             .args(["rev-parse", "--is-inside-work-tree"])
             .current_dir(&worktree_path)
-            .check_output_utf8()
+            .check_output()
             .expect("Failed to run git status in worktree");
 
         assert_eq!(output.trim(), "true", "Not inside a worktree");
@@ -261,7 +261,7 @@ mod tests {
         let output = Command::new("git")
             .args(["rev-parse", "--abbrev-ref", "HEAD"])
             .current_dir(&worktree_path)
-            .check_output_utf8()
+            .check_output()
             .expect("Failed to check branch");
 
         // Since we use --detach, it might be "HEAD"

@@ -243,7 +243,7 @@ fn main() -> Result<()> {
 fn get_git_config(key: &str) -> String {
     std::process::Command::new("git")
         .args(["config", key])
-        .check_output_utf8()
+        .check_output()
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|_| "unknown".to_string())
 }
