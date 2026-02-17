@@ -2,7 +2,7 @@ use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufReader, Write};
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -50,13 +50,10 @@ impl JsonlStore {
         let reader = BufReader::new(file);
         let mut issues = Vec::new();
 
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-            let issue: Issue = serde_json::from_str(&line)
-                .with_context(|| format!("Failed to parse issue from line: {}", line))?;
+        // Optimization: Stream JSON objects directly from reader to avoid allocating String for each line
+        let deserializer = serde_json::Deserializer::from_reader(reader);
+        for issue in deserializer.into_iter::<Issue>() {
+            let issue = issue.context("Failed to parse issue")?;
             issues.push(issue);
         }
 
@@ -69,21 +66,24 @@ impl JsonlStore {
         let mut writer = std::io::BufWriter::new(file);
 
         for issue in issues {
-            let json = serde_json::to_string(issue)
+            // Optimization: Use to_writer to stream directly to buffer, avoiding intermediate String allocation
+            serde_json::to_writer(&mut writer, issue)
                 .with_context(|| format!("Failed to serialize issue: {:?}", issue))?;
-            writeln!(writer, "{}", json)?;
+            writeln!(writer)?;
         }
+        writer.flush()?;
 
         Ok(())
     }
 
     pub fn append_issue(&self, issue: &Issue) -> Result<()> {
         let path = Path::new(&self.path);
-        let mut file = std::fs::OpenOptions::new()
+        let file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(path)
             .with_context(|| format!("Failed to open file for appending at {}", self.path))?;
+        let mut writer = std::io::BufWriter::new(file);
 
         // If file is not empty and doesn't end with newline, add one
         let metadata = std::fs::metadata(path)?;
@@ -94,13 +94,15 @@ impl JsonlStore {
             let mut last_byte = [0u8; 1];
             f.read_exact(&mut last_byte)?;
             if last_byte[0] != b'\n' {
-                writeln!(file)?;
+                writeln!(writer)?;
             }
         }
 
-        let json = serde_json::to_string(issue)
+        // Optimization: Use to_writer to stream directly to buffer, avoiding intermediate String allocation
+        serde_json::to_writer(&mut writer, issue)
             .with_context(|| format!("Failed to serialize issue: {:?}", issue))?;
-        writeln!(file, "{}", json)?;
+        writeln!(writer)?;
+        writer.flush()?;
 
         Ok(())
     }
