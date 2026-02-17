@@ -131,18 +131,29 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn run_git(args: &[&str], dir: &std::path::Path) {
+    fn run_git<I, S>(args: I, dir: &std::path::Path)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<std::ffi::OsStr>,
+    {
+        let args_vec: Vec<S> = args.into_iter().collect();
         Command::new("git")
-            .args(args)
+            .args(&args_vec)
             .current_dir(dir)
             .check_run()
-            .unwrap_or_else(|e| panic!("Failed to execute git {}: {}", args.join(" "), e));
+            .unwrap_or_else(|e| {
+                let args_str: Vec<_> = args_vec
+                    .iter()
+                    .map(|s| s.as_ref().to_string_lossy())
+                    .collect();
+                panic!("Failed to execute git {}: {}", args_str.join(" "), e)
+            });
     }
 
     fn setup_git_repo(path: &std::path::Path) {
-        run_git(&["init", "-b", "main"], path);
-        run_git(&["config", "user.email", "test@example.com"], path);
-        run_git(&["config", "user.name", "Test User"], path);
+        run_git(["init", "-b", "main"], path);
+        run_git(["config", "user.email", "test@example.com"], path);
+        run_git(["config", "user.name", "Test User"], path);
     }
 
     #[test]
@@ -164,8 +175,8 @@ mod tests {
 
         std::fs::create_dir(repo_root.join(".beads")).unwrap();
         std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
-        run_git(&["add", "."], &repo_root);
-        run_git(&["commit", "-m", "Initial"], &repo_root);
+        run_git(["add", "."], &repo_root);
+        run_git(["commit", "-m", "Initial"], &repo_root);
 
         let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
         let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
@@ -188,8 +199,8 @@ mod tests {
         // Create initial commit so we have a valid HEAD
         // Worktree creation often requires a valid HEAD or existing branch
         std::fs::write(repo_root.join("README.md"), "Initial commit").unwrap();
-        run_git(&["add", "."], &repo_root);
-        run_git(&["commit", "-m", "Initial commit"], &repo_root);
+        run_git(["add", "."], &repo_root);
+        run_git(["commit", "-m", "Initial commit"], &repo_root);
 
         let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
 
@@ -220,7 +231,7 @@ mod tests {
         let remote_dir = TempDir::new().unwrap();
         let remote_root = remote_dir.path().to_path_buf();
 
-        run_git(&["init", "--bare"], &remote_root);
+        run_git(["init", "--bare"], &remote_root);
 
         // Setup the "local" repo
         let local_dir = TempDir::new().unwrap();
@@ -230,22 +241,27 @@ mod tests {
 
         // Create initial content to push to "remote" so we have something to fetch
         std::fs::write(local_root.join("README.md"), "Initial content").unwrap();
-        run_git(&["add", "."], &local_root);
-        run_git(&["commit", "-m", "Initial"], &local_root);
+        run_git(["add", "."], &local_root);
+        run_git(["commit", "-m", "Initial"], &local_root);
 
         // Add remote and push master (which we'll use as sync branch base for this test)
         // Actually, we need to push a branch named 'beads-sync' to the remote
         run_git(
-            &["remote", "add", "origin", remote_root.to_str().unwrap()],
+            [
+                "remote",
+                "add",
+                "origin",
+                remote_root.to_str().expect("valid path"),
+            ],
             &local_root,
         );
 
-        run_git(&["checkout", "-b", "beads-sync"], &local_root);
+        run_git(["checkout", "-b", "beads-sync"], &local_root);
 
-        run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
+        run_git(["push", "-u", "origin", "beads-sync"], &local_root);
 
         // Now switch back to main to simulate user state
-        run_git(&["checkout", "main"], &local_root);
+        run_git(["checkout", "main"], &local_root);
 
         // Now test the WorktreeManager
         let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
