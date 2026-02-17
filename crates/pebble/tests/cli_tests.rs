@@ -136,6 +136,7 @@ fn test_list_issues_empty() {
         .arg("list")
         .assert()
         .success()
+        .stdout(predicate::str::contains("Using database:"))
         .stdout(predicate::str::contains("No issues found."));
 }
 
@@ -160,6 +161,7 @@ fn test_list_issues_with_data() {
         .arg("list")
         .assert()
         .success()
+        .stdout(predicate::str::contains("Using database:"))
         .stdout(predicate::str::contains("test-123 [open] Fixture Issue"));
 }
 
@@ -227,4 +229,21 @@ fn test_edit_issue() {
         .assert()
         .success()
         .stdout(predicate::str::contains("New Edited Title"));
+}
+
+#[test]
+fn test_directory_flag() {
+    let env = TestEnv::setup();
+    let temp_dir = TempDir::new().unwrap();
+
+    // Run pebble from a completely different directory, pointing to env.root with -C
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(temp_dir.path())
+        .arg("-C")
+        .arg(&env.root)
+        .arg("list")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Using database:"))
+        .stdout(predicate::str::contains("No issues found."));
 }

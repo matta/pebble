@@ -7,6 +7,10 @@ use rand::Rng;
 #[command(version, about, long_about = None)]
 #[command(name = "pebble")]
 struct Cli {
+    /// Change to this directory before doing anything else
+    #[arg(short = 'C', long)]
+    directory: Option<std::path::PathBuf>,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -53,6 +57,11 @@ fn load_config() -> Result<Config> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    if let Some(ref dir) = cli.directory {
+        std::env::set_current_dir(dir)
+            .with_context(|| format!("Failed to change directory to {}", dir.display()))?;
+    }
+
     match &cli.command {
         Some(Commands::Config { command }) => match command {
             ConfigCommands::Get { key } => {
@@ -88,6 +97,7 @@ fn main() -> Result<()> {
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
 
             let jsonl_path = manager.get_absolute_jsonl_path()?;
+            println!("Using database: {}", jsonl_path.display());
             let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
             let issues = store.read_issues()?;
 

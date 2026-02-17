@@ -57,6 +57,15 @@ struct Issue {
 - Maintain compatibility with the existing `bd` command interface where applicable for the subset of features supported.
 - Do not implement daemon mode.
 
+## Workflows
+
+### Land the Plan
+This workflow requires the following steps to be done in order:
+1. `just check` must pass.
+2. `just test` must pass.
+3. `git commit`.
+4. `git push`.
+
 ## Gates
 
 ### Push Gate
