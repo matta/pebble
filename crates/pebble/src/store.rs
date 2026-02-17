@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use color_eyre::Result;
+use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};

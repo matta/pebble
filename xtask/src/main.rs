@@ -1,5 +1,6 @@
-use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
+use color_eyre::eyre::bail;
+use color_eyre::Result;
 use std::collections::HashSet;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -41,6 +42,7 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
+    color_eyre::install()?;
     let cli = Cli::parse();
     match cli.command {
         Commands::Check { all } => {

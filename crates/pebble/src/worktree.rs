@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use color_eyre::Result;
+use color_eyre::eyre::{Context, eyre};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -53,7 +54,7 @@ impl WorktreeManager {
             .with_context(|| "Failed to execute git worktree add")?;
 
         if !output.status.success() {
-            return Err(anyhow::anyhow!(
+            return Err(eyre!(
                 "git worktree add failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             ));

@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use color_eyre::Result;
+use color_eyre::eyre::{Context, eyre};
 use pebble::config::Config;
 use rand::Rng;
 
@@ -55,6 +56,7 @@ fn load_config() -> Result<Config> {
 }
 
 fn main() -> Result<()> {
+    color_eyre::install()?;
     let cli = Cli::parse();
 
     if let Some(ref dir) = cli.directory {
@@ -78,7 +80,7 @@ fn main() -> Result<()> {
             let config = load_config()?;
             let sync_branch = config
                 .sync_branch
-                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+                .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
             let repo_root = std::env::current_dir()?;
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
@@ -91,7 +93,7 @@ fn main() -> Result<()> {
             let config = load_config()?;
             let sync_branch = config
                 .sync_branch
-                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+                .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
             let repo_root = std::env::current_dir()?;
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
@@ -113,7 +115,7 @@ fn main() -> Result<()> {
             let config = load_config()?;
             let sync_branch = config
                 .sync_branch
-                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+                .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
             let repo_root = std::env::current_dir()?;
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
@@ -158,7 +160,7 @@ fn main() -> Result<()> {
             let config = load_config()?;
             let sync_branch = config
                 .sync_branch
-                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+                .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
             let repo_root = std::env::current_dir()?;
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
@@ -170,7 +172,7 @@ fn main() -> Result<()> {
             let issue = issues
                 .into_iter()
                 .find(|i| i.id == *id)
-                .ok_or_else(|| anyhow::anyhow!("Issue {} not found", id))?;
+                .ok_or_else(|| eyre!("Issue {} not found", id))?;
 
             println!("ID:          {}", issue.id);
             println!("Status:      {}", issue.status);
@@ -199,7 +201,7 @@ fn main() -> Result<()> {
             let config = load_config()?;
             let sync_branch = config
                 .sync_branch
-                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+                .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
             let repo_root = std::env::current_dir()?;
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
@@ -211,7 +213,7 @@ fn main() -> Result<()> {
             let issue = issues
                 .iter_mut()
                 .find(|i| i.id == *id)
-                .ok_or_else(|| anyhow::anyhow!("Issue {} not found", id))?;
+                .ok_or_else(|| eyre!("Issue {} not found", id))?;
 
             let mut changed = false;
             if let Some(t) = title {
