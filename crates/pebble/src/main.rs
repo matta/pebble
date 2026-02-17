@@ -28,7 +28,10 @@ enum Commands {
         command: ConfigCommands,
     },
     Sync,
-    List,
+    List {
+        #[arg(long)]
+        json: bool,
+    },
     Add {
         title: String,
         #[arg(long)]
@@ -36,6 +39,8 @@ enum Commands {
     },
     Show {
         id: String,
+        #[arg(long)]
+        json: bool,
     },
     Edit {
         id: String,
@@ -99,7 +104,7 @@ fn main() -> Result<()> {
                 manager.sync()?;
                 println!("Sync complete.");
             }
-            Commands::List => {
+            Commands::List { json } => {
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -110,11 +115,15 @@ fn main() -> Result<()> {
                     pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
 
                 let jsonl_path = manager.get_absolute_jsonl_path()?;
-                println!("Using database: {}", jsonl_path.display());
+                if !*json {
+                    println!("Using database: {}", jsonl_path.display());
+                }
                 let store = pebble::store::JsonlStore::new(jsonl_path);
                 let issues = store.read_issues()?;
 
-                if issues.is_empty() {
+                if *json {
+                    println!("{}", serde_json::to_string_pretty(&issues)?);
+                } else if issues.is_empty() {
                     println!("No issues found.");
                 } else {
                     for issue in issues {
@@ -168,7 +177,7 @@ fn main() -> Result<()> {
                 store.append_issue(&issue)?;
                 println!("Added issue {}", id);
             }
-            Commands::Show { id } => {
+            Commands::Show { id, json } => {
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -187,23 +196,27 @@ fn main() -> Result<()> {
                     .find(|i| i.id == *id)
                     .ok_or_else(|| eyre!("Issue {} not found", id))?;
 
-                println!("ID:          {}", issue.id);
-                println!("Status:      {}", issue.status);
-                println!("Title:       {}", issue.title);
-                println!("Type:        {}", issue.issue_type);
-                println!("Priority:    {}", issue.priority);
-                println!("Owner:       {}", issue.owner);
-                println!("Created At:  {}", issue.created_at);
-                println!("Created By:  {}", issue.created_by);
-                println!("Updated At:  {}", issue.updated_at);
-                if let Some(closed_at) = issue.closed_at {
-                    println!("Closed At:   {}", closed_at);
-                }
-                if let Some(reason) = issue.close_reason {
-                    println!("Close Reason: {}", reason);
-                }
-                if !issue.description.is_empty() {
-                    println!("\nDescription:\n{}", issue.description);
+                if *json {
+                    println!("{}", serde_json::to_string_pretty(&issue)?);
+                } else {
+                    println!("ID:          {}", issue.id);
+                    println!("Status:      {}", issue.status);
+                    println!("Title:       {}", issue.title);
+                    println!("Type:        {}", issue.issue_type);
+                    println!("Priority:    {}", issue.priority);
+                    println!("Owner:       {}", issue.owner);
+                    println!("Created At:  {}", issue.created_at);
+                    println!("Created By:  {}", issue.created_by);
+                    println!("Updated At:  {}", issue.updated_at);
+                    if let Some(closed_at) = issue.closed_at {
+                        println!("Closed At:   {}", closed_at);
+                    }
+                    if let Some(reason) = issue.close_reason {
+                        println!("Close Reason: {}", reason);
+                    }
+                    if !issue.description.is_empty() {
+                        println!("\nDescription:\n{}", issue.description);
+                    }
                 }
             }
             Commands::Edit {
