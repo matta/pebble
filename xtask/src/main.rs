@@ -14,6 +14,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Run all checks
+    Check {
+        /// Scan all tracked files instead of just edited ones
+        #[arg(long)]
+        all: bool,
+    },
     /// Check for forbidden words like "bead" or "beads"
     CheckBeads {
         /// Scan all tracked files instead of just edited ones
@@ -22,52 +28,75 @@ enum Commands {
         /// Generate the whitelist from current codebase
         #[arg(long)]
         generate_whitelist: bool,
+        /// Remove lines from whitelist that are no longer found
+        #[arg(long)]
+        minimize_whitelist: bool,
+    },
+    /// Check for files that are too long
+    CheckFileLength {
+        /// Scan all tracked files instead of just edited ones
+        #[arg(long)]
+        all: bool,
     },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Commands::Check { all } => {
+            check_beads(all, false, false)?;
+            check_file_length(all)?;
+            Ok(())
+        }
         Commands::CheckBeads {
             all,
             generate_whitelist,
-        } => check_beads(all, generate_whitelist),
+            minimize_whitelist,
+        } => check_beads(all, generate_whitelist, minimize_whitelist),
+        Commands::CheckFileLength { all } => check_file_length(all),
     }
 }
 
-fn check_beads(all: bool, generate_whitelist: bool) -> Result<()> {
-    let root = std::env::current_dir()?;
-    let whitelist_path = root.join(".bead-whitelist");
-
-    let files: HashSet<String> = if all || generate_whitelist {
-        get_git_files(&root, &["ls-files"])?.into_iter().collect()
+fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
+    if all {
+        Ok(get_git_files(root, &["ls-files"])?.into_iter().collect())
     } else {
         // Get both staged and unstaged changes
-        let mut files: HashSet<String> = get_git_files(&root, &["diff", "--name-only", "HEAD"])?
+        let mut files: HashSet<String> = get_git_files(root, &["diff", "--name-only", "HEAD"])?
             .into_iter()
             .collect();
         // Also get untracked files
         files.extend(get_git_files(
-            &root,
+            root,
             &["ls-files", "--others", "--exclude-standard"],
         )?);
 
         if files.is_empty() {
             // If the repo is clean, default to checking all tracked files
-            get_git_files(&root, &["ls-files"])?.into_iter().collect()
+            Ok(get_git_files(root, &["ls-files"])?.into_iter().collect())
         } else {
-            files
+            Ok(files)
         }
-    };
+    }
+}
+
+fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
+    let root = std::env::current_dir()?;
+    let whitelist_path = root.join(".bead-whitelist");
+
+    // Whitelist generation and minimization always scan all files
+    let scan_all = all || generate_whitelist || minimize_whitelist;
+    let files = get_files_to_check(&root, scan_all)?;
 
     let mut violations = Vec::new();
-    let whitelist = if whitelist_path.exists() && !generate_whitelist {
+    let whitelist: HashSet<String> = if whitelist_path.exists() && !generate_whitelist {
         let content = fs::read_to_string(&whitelist_path)?;
-        content.lines().map(|l| l.trim().to_string()).collect()
+        content.lines().map(canonicalize).collect()
     } else {
         HashSet::new()
     };
 
+    let mut found_whitelisted = HashSet::new();
     let mut new_whitelist = HashSet::new();
 
     for file_path in files {
@@ -108,15 +137,14 @@ fn check_beads(all: bool, generate_whitelist: bool) -> Result<()> {
                 Err(_) => continue, // Skip binary or invalid utf8
             };
 
-            // Check for "bead" or "beads" case-insensitive
-            let lower_line = line.to_lowercase();
-            if lower_line.contains("bead") {
-                let trimmed = line.trim().to_string();
-                if generate_whitelist {
-                    new_whitelist.insert(trimmed);
-                } else if !whitelist.contains(&trimmed) {
-                    violations.push((file_path.clone(), line_num + 1, line.clone()));
-                }
+            if process_line(
+                &line,
+                generate_whitelist,
+                &whitelist,
+                &mut new_whitelist,
+                &mut found_whitelisted,
+            ) {
+                violations.push((file_path.clone(), line_num + 1, line.clone()));
             }
         }
     }
@@ -126,14 +154,81 @@ fn check_beads(all: bool, generate_whitelist: bool) -> Result<()> {
         sorted_whitelist.sort();
         fs::write(&whitelist_path, sorted_whitelist.join("\n"))?;
         println!("Generated whitelist at {:?}", whitelist_path);
-    } else if !violations.is_empty() {
-        println!("Found forbidden words 'bead' or 'beads' in the following locations:");
-        for (file, line, content) in violations {
-            println!("{}:{}: {}", file, line, content.trim());
-        }
-        bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
+    } else if minimize_whitelist {
+        let mut sorted_whitelist: Vec<_> = found_whitelisted.into_iter().collect();
+        sorted_whitelist.sort();
+        fs::write(&whitelist_path, sorted_whitelist.join("\n"))?;
+        println!("Minimized whitelist at {:?}", whitelist_path);
     } else {
+        if !violations.is_empty() {
+            println!("Found forbidden words 'bead' or 'beads' in the following locations:");
+            for (file, line, content) in violations {
+                println!("{}:{}: {}", file, line, content.trim());
+            }
+            bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
+        }
+
+        if scan_all && found_whitelisted.len() < whitelist.len() {
+            let unused: Vec<_> = whitelist.difference(&found_whitelisted).collect();
+            println!("Found {} unused lines in .bead-whitelist:", unused.len());
+            for line in unused {
+                println!("  {}", line);
+            }
+            bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
+        }
+
         println!("No forbidden words found.");
+    }
+
+    Ok(())
+}
+
+fn check_file_length(all: bool) -> Result<()> {
+    let root = std::env::current_dir()?;
+    let files = get_files_to_check(&root, all)?;
+    let mut violations = Vec::new();
+    const MAX_LINES: usize = 500;
+
+    for file_path in files {
+        let path = root.join(&file_path);
+        if !path.exists() || path.is_dir() {
+            continue;
+        }
+
+        // Only check Rust files
+        if path.extension().is_none_or(|ext| ext != "rs") {
+            continue;
+        }
+
+        let file = match fs::File::open(&path) {
+            Ok(f) => f,
+            Err(_) => continue,
+        };
+        let reader = BufReader::new(file);
+        let line_count = reader.lines().count();
+
+        if line_count > MAX_LINES {
+            violations.push((file_path, line_count));
+        }
+    }
+
+    if !violations.is_empty() {
+        println!("The following Rust files exceed {} lines:", MAX_LINES);
+        for (file, lines) in violations {
+            println!("{}: {} lines", file, lines);
+        }
+        println!("\nSuggestions for corrective action:");
+        println!(
+            "- Split tests out into separate files (e.g., tests/ directory or separate module)."
+        );
+        println!("- Improve modularization by extracting large components into new modules.");
+        println!("- Refactor long functions into smaller, more manageable pieces.");
+        bail!("Files too long. Please refactor or split them.");
+    } else {
+        println!(
+            "All Rust files are within the line limit ({} lines).",
+            MAX_LINES
+        );
     }
 
     Ok(())
@@ -148,4 +243,74 @@ fn get_git_files(root: &Path, args: &[&str]) -> Result<Vec<String>> {
 
     let stdout = String::from_utf8(output.stdout)?;
     Ok(stdout.lines().map(|s| s.to_string()).collect())
+}
+
+fn canonicalize(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn process_line(
+    line: &str,
+    generate_whitelist: bool,
+    whitelist: &HashSet<String>,
+    new_whitelist: &mut HashSet<String>,
+    found_whitelisted: &mut HashSet<String>,
+) -> bool {
+    let lower_line = line.to_lowercase();
+    if lower_line.contains("bead") {
+        let canonical = canonicalize(line);
+        if generate_whitelist {
+            new_whitelist.insert(canonical);
+            false
+        } else if whitelist.contains(&canonical) {
+            found_whitelisted.insert(canonical);
+            false
+        } else {
+            true
+        }
+    } else {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_process_line() {
+        let mut whitelist = HashSet::new();
+        let entry = "foo bead bar";
+        whitelist.insert(canonicalize(entry));
+
+        let mut new_whitelist = HashSet::new();
+        let mut found_whitelisted = HashSet::new();
+
+        // Exact match
+        assert!(!process_line(
+            "foo bead bar",
+            false,
+            &whitelist,
+            &mut new_whitelist,
+            &mut found_whitelisted
+        ));
+
+        // Whitespace mismatch
+        assert!(!process_line(
+            "  foo   bead   bar  ",
+            false,
+            &whitelist,
+            &mut new_whitelist,
+            &mut found_whitelisted
+        ));
+
+        // Violation
+        assert!(process_line(
+            "other bead",
+            false,
+            &whitelist,
+            &mut new_whitelist,
+            &mut found_whitelisted
+        ));
+    }
 }

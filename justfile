@@ -1,7 +1,7 @@
 check:
     cargo fmt -- --check
     cargo clippy --workspace --all-targets -- -D warnings
-    cargo xtask check-beads
+    cargo xtask check
 
 fix:
     cargo fmt

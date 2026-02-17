@@ -1,3 +1,6 @@
+" foo bead bar ",
+"foo bead bar",
+"other bead",
 - **Configuration Parsing**: Must parse `.beads/config.yaml` format. Specifically handle `sync-branch`.
 - **No Local Copy**: The `issues.jsonl` file does **NOT** exist in the user's working directory (e.g., `.beads/issues.jsonl`).
 - **Reference**: The `../beads` directory contains the original implementation (Go). Consult it for behavior clarification when needed, but do not copy-paste code directly. Focus on re-implementation in idiomatic Rust.
@@ -11,7 +14,6 @@
 .join(".git/beads-worktrees")
 .stdout(predicate::str::contains("beads-sync"));
 // Actually, we need to push a branch named 'beads-sync' to the remote
-// Check for "bead" or "beads" case-insensitive
 // For now, assume .beads/config.yaml in CWD.
 // Or if we specify refspec: `git push origin HEAD:beads-sync`?
 // The test sets CWD to ../mydoo, so .beads/config.yaml should be present there.
@@ -26,18 +28,21 @@ This project is a Rust re-implementation of the existing `beads` tool, with a dr
 assert!(path.parent().unwrap().exists()); // Worktree should be created and contain .beads
 assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
 bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
-cargo xtask check-beads
+bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
+check_beads(all, false, false)?;
 cmd.current_dir("../../../mydoo") // Run in mydoo so it finds .beads/config.yaml
-fn check_beads(all: bool, generate_whitelist: bool) -> Result<()> {
+fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
 if lower_line.contains("bead") {
 let config_path = ".beads/config.yaml";
 let content = std::fs::read_to_string("../../../mydoo/.beads/config.yaml")
+let entry = "foo bead bar";
 let expected = repo_root.join(".git/beads-worktrees/beads-sync");
 let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
 let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
 let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
 let whitelist_path = root.join(".bead-whitelist");
 println!("Found forbidden words 'bead' or 'beads' in the following locations:");
+println!("Found {} unused lines in .bead-whitelist:", unused.len());
 std::fs::create_dir(repo_root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
-} => check_beads(all, generate_whitelist),
+} => check_beads(all, generate_whitelist, minimize_whitelist),
