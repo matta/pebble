@@ -2,7 +2,7 @@ use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -40,23 +40,24 @@ impl JsonlStore {
     }
 
     pub fn read_issues(&self) -> Result<Vec<Issue>> {
+        self.read_issues_inner()
+            .with_context(|| format!("Failed to read issues from {}", self.path))
+    }
+
+    fn read_issues_inner(&self) -> Result<Vec<Issue>> {
         let path = Path::new(&self.path);
         if !path.exists() {
             return Ok(Vec::new());
         }
 
-        let file =
-            File::open(path).with_context(|| format!("Failed to open file at {}", self.path))?;
+        let file = File::open(path)?;
         let reader = BufReader::new(file);
         let mut issues = Vec::new();
 
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-            let issue: Issue = serde_json::from_str(&line)
-                .with_context(|| format!("Failed to parse issue from line: {}", line))?;
+        // Optimization: Stream JSON objects directly from reader to avoid allocating String for each line
+        let deserializer = serde_json::Deserializer::from_reader(reader);
+        for issue in deserializer.into_iter::<Issue>() {
+            let issue = issue?;
             issues.push(issue);
         }
 
@@ -64,43 +65,57 @@ impl JsonlStore {
     }
 
     pub fn write_issues(&self, issues: &[Issue]) -> Result<()> {
-        let file = File::create(&self.path)
-            .with_context(|| format!("Failed to create file at {}", self.path))?;
+        self.write_issues_inner(issues)
+            .with_context(|| format!("Failed to write issues to {}", self.path))
+    }
+
+    fn write_issues_inner(&self, issues: &[Issue]) -> Result<()> {
+        let file = File::create(&self.path)?;
         let mut writer = std::io::BufWriter::new(file);
 
         for issue in issues {
-            let json = serde_json::to_string(issue)
-                .with_context(|| format!("Failed to serialize issue: {:?}", issue))?;
-            writeln!(writer, "{}", json)?;
+            // Optimization: Use to_writer to stream directly to buffer, avoiding intermediate String allocation
+            serde_json::to_writer(&mut writer, issue)?;
+            writeln!(writer)?;
         }
+        writer.flush()?;
 
         Ok(())
     }
 
     pub fn append_issue(&self, issue: &Issue) -> Result<()> {
+        self.append_issue_inner(issue)
+            .with_context(|| format!("Failed to append issue to {}", self.path))
+    }
+
+    fn append_issue_inner(&self, issue: &Issue) -> Result<()> {
         let path = Path::new(&self.path);
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(path)
-            .with_context(|| format!("Failed to open file for appending at {}", self.path))?;
+            .read(true)
+            .open(path)?;
 
         // If file is not empty and doesn't end with newline, add one
-        let metadata = std::fs::metadata(path)?;
+        let mut needs_newline = false;
+        let metadata = file.metadata()?;
         if metadata.len() > 0 {
-            use std::io::{Read, Seek, SeekFrom};
-            let mut f = std::fs::File::open(path)?;
-            f.seek(SeekFrom::End(-1))?;
+            file.seek(SeekFrom::End(-1))?;
             let mut last_byte = [0u8; 1];
-            f.read_exact(&mut last_byte)?;
+            file.read_exact(&mut last_byte)?;
             if last_byte[0] != b'\n' {
-                writeln!(file)?;
+                needs_newline = true;
             }
         }
 
-        let json = serde_json::to_string(issue)
-            .with_context(|| format!("Failed to serialize issue: {:?}", issue))?;
-        writeln!(file, "{}", json)?;
+        let mut writer = std::io::BufWriter::new(file);
+        if needs_newline {
+            writeln!(writer)?;
+        }
+
+        serde_json::to_writer(&mut writer, issue)?;
+        writeln!(writer)?;
+        writer.flush()?;
 
         Ok(())
     }
