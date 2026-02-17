@@ -54,6 +54,18 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [ ] Rename `.bead-whitelist` to `.pebble-whitelist`
 - [ ] Update all code, comments, and tests to use `pebble` instead of `beads`
 
+## Phase 6: Intelligent 3-Way Merge for Sync
+- [ ] Implement `pebble merge` command (internal tool for git merge driver)
+- [ ] Implement field-level 3-way merge algorithm (matching `beads` behavior)
+    - [ ] Match issues by (ID, CreatedAt, CreatedBy)
+    - [ ] Latest `updated_at` wins for `title` and `description`
+    - [ ] `closed` status wins over `open`
+    - [ ] Dependencies: removals are authoritative (3-way merge)
+    - [ ] Timestamps: `max(left, right)` for `updated_at`
+- [ ] Update `pebble sync` to handle merge conflicts
+    - [ ] Use `git merge` with custom merge driver if available, or manual 3-way merge logic
+- [ ] Add TDD tests for various merge scenarios (conflicts, additions, deletions)
+
 ## Rules
 1. **One Fail at a Time**: don't write multiple failing tests.
 2. **Refactor**: Refactor after passing.
