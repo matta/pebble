@@ -107,6 +107,22 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    fn run_git(args: &[&str], dir: &std::path::Path) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .status()
+            .expect("Failed to execute git");
+        assert!(status.success(), "git command failed: git {}", args.join(" "));
+    }
+
+    fn setup_git_repo(path: &std::path::Path) {
+        run_git(&["init"], path);
+        run_git(&["config", "user.email", "test@example.com"], path);
+        run_git(&["config", "user.name", "Test User"], path);
+        run_git(&["config", "init.defaultBranch", "main"], path);
+    }
+
     #[test]
     fn test_worktree_path_generation() {
         let repo_root = PathBuf::from("/tmp/repo");
@@ -115,8 +131,6 @@ mod tests {
         assert_eq!(manager.get_worktree_path(), expected);
     }
 
-    // ... existing test_ensure_worktree_creation ...
-
     #[test]
     fn test_get_absolute_jsonl_path() {
         // Setup a dummy git repo (similar to ensure_worktree_creation)
@@ -124,24 +138,12 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo_root = temp_dir.path().to_path_buf();
 
-        Command::new("git")
-            .args(["init"])
-            .current_dir(&repo_root)
-            .output()
-            .expect("Failed to init git repo");
+        setup_git_repo(&repo_root);
 
         std::fs::create_dir(repo_root.join(".beads")).unwrap();
         std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
-        Command::new("git")
-            .args(["add", "."])
-            .current_dir(&repo_root)
-            .output()
-            .expect("add failed");
-        Command::new("git")
-            .args(["commit", "-m", "Initial"])
-            .current_dir(&repo_root)
-            .output()
-            .expect("commit failed");
+        run_git(&["add", "."], &repo_root);
+        run_git(&["commit", "-m", "Initial"], &repo_root);
 
         let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
         let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
@@ -159,29 +161,17 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo_root = temp_dir.path().to_path_buf();
 
-        Command::new("git")
-            .args(["init"])
-            .current_dir(&repo_root)
-            .output()
-            .expect("Failed to init git repo");
+        setup_git_repo(&repo_root);
 
         // Create initial commit so we have a valid HEAD
         // Worktree creation often requires a valid HEAD or existing branch
         std::fs::write(repo_root.join("README.md"), "Initial commit").unwrap();
-        Command::new("git")
-            .args(["add", "."])
-            .current_dir(&repo_root)
-            .output()
-            .expect("Failed to add files");
-        Command::new("git")
-            .args(["commit", "-m", "Initial commit"])
-            .current_dir(&repo_root)
-            .output()
-            .expect("Failed to commit");
+        run_git(&["add", "."], &repo_root);
+        run_git(&["commit", "-m", "Initial commit"], &repo_root);
 
         let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
 
-        // This should trigger worktree creation logic (which is currently unimplemented)
+        // This should trigger worktree creation logic
         let worktree_path = manager
             .ensure_worktree()
             .expect("Failed to ensure worktree");
@@ -193,13 +183,13 @@ mod tests {
         );
 
         // Check if git works inside the worktree
-        let status = Command::new("git")
+        let output = Command::new("git")
             .args(["rev-parse", "--is-inside-work-tree"])
             .current_dir(&worktree_path)
-            .status()
+            .output()
             .expect("Failed to run git status in worktree");
 
-        assert!(status.success(), "Not inside a worktree");
+        assert!(output.status.success(), "Not inside a worktree");
     }
 
     #[test]
@@ -208,61 +198,29 @@ mod tests {
         let remote_dir = TempDir::new().unwrap();
         let remote_root = remote_dir.path().to_path_buf();
 
-        Command::new("git")
-            .args(["init", "--bare"])
-            .current_dir(&remote_root)
-            .output()
-            .expect("Failed to init remote repo");
+        run_git(&["init", "--bare"], &remote_root);
 
         // Setup the "local" repo
         let local_dir = TempDir::new().unwrap();
         let local_root = local_dir.path().to_path_buf();
 
-        Command::new("git")
-            .args(["init"])
-            .current_dir(&local_root)
-            .output()
-            .expect("Failed to init local repo");
+        setup_git_repo(&local_root);
 
         // Create initial content to push to "remote" so we have something to fetch
         std::fs::write(local_root.join("README.md"), "Initial content").unwrap();
-        Command::new("git")
-            .args(["add", "."])
-            .current_dir(&local_root)
-            .output()
-            .expect("add failed");
-        Command::new("git")
-            .args(["commit", "-m", "Initial"])
-            .current_dir(&local_root)
-            .output()
-            .expect("commit failed");
+        run_git(&["add", "."], &local_root);
+        run_git(&["commit", "-m", "Initial"], &local_root);
 
         // Add remote and push master (which we'll use as sync branch base for this test)
         // Actually, we need to push a branch named 'beads-sync' to the remote
-        Command::new("git")
-            .args(["remote", "add", "origin", remote_root.to_str().unwrap()])
-            .current_dir(&local_root)
-            .output()
-            .expect("Failed to add remote");
+        run_git(&["remote", "add", "origin", remote_root.to_str().unwrap()], &local_root);
 
-        Command::new("git")
-            .args(["checkout", "-b", "beads-sync"])
-            .current_dir(&local_root)
-            .output()
-            .expect("Failed to checkout sync branch");
+        run_git(&["checkout", "-b", "beads-sync"], &local_root);
 
-        Command::new("git")
-            .args(["push", "-u", "origin", "beads-sync"])
-            .current_dir(&local_root)
-            .output()
-            .expect("Failed to push sync branch");
+        run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
 
         // Now switch back to main to simulate user state
-        Command::new("git")
-            .args(["checkout", "-b", "main"])
-            .current_dir(&local_root)
-            .output()
-            .expect("Failed to checkout main");
+        run_git(&["checkout", "main"], &local_root);
 
         // Now test the WorktreeManager
         let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
@@ -275,29 +233,14 @@ mod tests {
         assert!(worktree_path.exists());
 
         // Verify we are on the correct branch in worktree
-        let _output = Command::new("git")
-            .args(["branch", "--show-current"])
+        let output = Command::new("git")
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
             .current_dir(&worktree_path)
             .output()
             .expect("Failed to check branch");
-        // In detached HEAD (from 'worktree add --detach'), branch name might be empty or HEAD
-        // But let's check if the HEAD ref matches the sync branch ref
-
-        // Actually worktree add --detach HEAD means we are detached at the commit.
-        // But our sync() implementation does `git fetch`, `git merge`, `git push`.
-        // `git push origin <sync_branch>` pushes the local ref to remote.
-        // Wait, if we are in detached HEAD in worktree, `git push origin beads-sync`
-        // will push the *local* `beads-sync` branch if it exists, or fail?
-        // Or if we specify refspec: `git push origin HEAD:beads-sync`?
-
-        // My implementation in sync() uses: `git push origin <sync_branch>`
-        // This requires a local branch named <sync_branch> to exist?
-        // No, git push origin branchName usually implies pushing local branchName to remote branchName.
-        // But in the worktree we checked out --detach <commit>. We might not have the branch ref locally in the worktree context?
-        // Actually worktrees share refs? Yes.
-
-        // Let's rely on the fact that ensure_worktree uses --detach path.
-        // But we probably need to checkout the branch properly for `git push` to be simple.
-        // For now, let's see if the test passes with current logic.
+        
+        // Since we use --detach, it might be "HEAD"
+        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        assert!(branch == "HEAD" || branch == "beads-sync");
     }
 }

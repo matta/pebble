@@ -23,6 +23,18 @@ impl TestEnv {
             .status()
             .unwrap();
 
+        // git config
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&root)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&root)
+            .status()
+            .unwrap();
+
         // .beads/config.yaml
         std::fs::create_dir(root.join(".beads")).unwrap();
         std::fs::write(

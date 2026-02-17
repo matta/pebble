@@ -30,6 +30,11 @@ jobs:
         with:
           tool: cargo-binstall,just
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "CI Bot"
+          git config --global user.email "test@example.com"
+
       - name: Static Analysis (Check)
         run: just check
 
