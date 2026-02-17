@@ -13,7 +13,8 @@ fn test_custom_config_path_flag() {
     fs::write(
         &custom_config,
         "sync-branch: custom-sync\nissue-prefix: custom\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -31,10 +32,7 @@ fn test_custom_config_path_env() {
     let root = temp_dir.path();
     let custom_config = root.join("env-config.yaml");
 
-    fs::write(
-        &custom_config,
-        "sync-branch: env-sync\nissue-prefix: env\n",
-    ).unwrap();
+    fs::write(&custom_config, "sync-branch: env-sync\nissue-prefix: env\n").unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -51,10 +49,7 @@ fn test_custom_config_path_relative() {
     let root = temp_dir.path();
     let custom_config = root.join("rel-config.yaml");
 
-    fs::write(
-        &custom_config,
-        "sync-branch: rel-sync\nissue-prefix: rel\n",
-    ).unwrap();
+    fs::write(&custom_config, "sync-branch: rel-sync\nissue-prefix: rel\n").unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
