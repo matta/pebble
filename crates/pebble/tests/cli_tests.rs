@@ -112,6 +112,21 @@ impl TestEnv {
     }
 }
 
+fn create_test_issue(id: &str, title: &str) -> serde_json::Value {
+    serde_json::json!({
+        "id": id,
+        "title": title,
+        "status": "open",
+        "priority": 0,
+        "issue_type": "task",
+        "owner": "test@example.com",
+        "created_at": "2026-01-01T00:00:00Z",
+        "created_by": "Tester",
+        "updated_at": "2026-01-01T00:00:00Z",
+        "description": "A test fixture issue"
+    })
+}
+
 #[test]
 fn test_version_flag() {
     let mut cmd = Command::new(cargo_bin!("pebble"));
@@ -156,18 +171,7 @@ fn test_list_issues_empty() {
 #[test]
 fn test_list_issues_with_data() {
     let env = TestEnv::setup();
-    let issue = serde_json::json!({
-        "id": "test-123",
-        "title": "Fixture Issue",
-        "status": "open",
-        "priority": 0,
-        "issue_type": "task",
-        "owner": "test@example.com",
-        "created_at": "2026-01-01T00:00:00Z",
-        "created_by": "Tester",
-        "updated_at": "2026-01-01T00:00:00Z",
-        "description": "A test fixture issue"
-    });
+    let issue = create_test_issue("test-123", "Fixture Issue");
     env.add_issue_to_worktree(&issue);
 
     env.pebble()
@@ -279,4 +283,49 @@ fn test_directory_flag() {
         .success()
         .stdout(predicate::str::contains("Using database:"))
         .stdout(predicate::str::contains("No issues found."));
+}
+
+#[test]
+fn test_list_issues_json() {
+    let env = TestEnv::setup();
+    let issue = create_test_issue("test-json", "JSON Issue");
+    env.add_issue_to_worktree(&issue);
+
+    let output = env
+        .pebble()
+        .arg("list")
+        .arg("--json")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let issues: Vec<serde_json::Value> =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+    assert_eq!(issues.len(), 1);
+    assert_eq!(issues[0]["id"], "test-json");
+}
+
+#[test]
+fn test_show_issue_json() {
+    let env = TestEnv::setup();
+    let issue = create_test_issue("test-json-show", "JSON Show Issue");
+    env.add_issue_to_worktree(&issue);
+
+    let output = env
+        .pebble()
+        .args(["show", "test-json-show", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let issue_out: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+    assert_eq!(issue_out["id"], "test-json-show");
+    assert_eq!(issue_out["title"], "JSON Show Issue");
 }
