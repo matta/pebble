@@ -1,6 +1,6 @@
 use crate::command::CommandExt;
 use color_eyre::Result;
-use color_eyre::eyre::Context;
+use color_eyre::eyre::{Context, eyre};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -60,13 +60,82 @@ impl WorktreeManager {
         Ok(worktree_path.join(".beads/issues.jsonl"))
     }
 
+    fn commit_local_changes(&self, worktree_path: &PathBuf) -> Result<()> {
+        // Stage all changes (including new files)
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(worktree_path)
+            .check_run()
+            .with_context(|| "Failed to stage changes")?;
+
+        // Check if there are changes to commit
+        let status = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(worktree_path)
+            .check_output()
+            .with_context(|| "Failed to check status")?;
+
+        if !status.trim().is_empty() {
+            Command::new("git")
+                .args(["commit", "-m", "Auto-sync"])
+                .current_dir(worktree_path)
+                .check_run()
+                .with_context(|| "Failed to commit changes")?;
+        }
+        Ok(())
+    }
+
+    fn resolve_conflicts(&self, worktree_path: &PathBuf) -> Result<()> {
+        println!("Conflict detected. Opening editor to resolve...");
+
+        // specific diff-filter=U for unmerged (conflicted) files
+        let output = Command::new("git")
+            .args(["diff", "--name-only", "--diff-filter=U"])
+            .current_dir(worktree_path)
+            .check_output()
+            .with_context(|| "Failed to list conflicted files")?;
+
+        if output.trim().is_empty() {
+            return Ok(());
+        }
+
+        let files: Vec<&str> = output.lines().collect();
+        let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+
+        // We use status() to let the editor take over stdin/stdout
+        let status = Command::new(&editor)
+            .args(&files)
+            .current_dir(worktree_path)
+            .status()
+            .with_context(|| format!("Failed to launch editor {}", editor))?;
+
+        if !status.success() {
+            return Err(eyre!("Editor exited with error"));
+        }
+
+        // Assume resolved. Stage and commit.
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(worktree_path)
+            .check_run()
+            .with_context(|| "Failed to stage resolved files")?;
+
+        Command::new("git")
+            .args(["commit", "--no-edit"])
+            .current_dir(worktree_path)
+            .check_run() // check_run uses exit_ok()
+            .with_context(|| "Failed to commit merge resolution")?;
+
+        Ok(())
+    }
+
     /// Synchronizes the local worktree with the remote repository.
     ///
     /// This method performs a sequence of Git operations to ensure the worktree
     /// is up-to-date and local changes are pushed. Specifically, it:
     /// 1. Ensures the worktree exists (creating it if necessary).
     /// 2. Fetches the latest changes from the remote `origin` for the configured sync branch.
-    /// 3. Merges the remote changes into the local worktree using `--ff-only`.
+    /// 3. Merges the remote changes into the local worktree.
     /// 4. Pushes the local worktree state back to `origin`.
     ///
     /// # Errors
@@ -74,7 +143,7 @@ impl WorktreeManager {
     /// Returns an `Err` if:
     /// * The worktree creation/access fails.
     /// * Any of the Git commands (`fetch`, `merge`, `push`) fail (return a non-zero exit code).
-    /// * The merge requires conflict resolution (since `--ff-only` is used).
+    /// * The merge requires conflict resolution and the interactive resolution fails.
     ///
     /// # Examples
     ///
@@ -95,29 +164,40 @@ impl WorktreeManager {
     pub fn sync(&self) -> Result<()> {
         let worktree_path = self.ensure_worktree()?;
 
-        // git fetch origin <sync_branch>
+        // 1. Commit any local changes first (required for 3-way merge)
+        self.commit_local_changes(&worktree_path)
+            .with_context(|| "Failed to commit local changes before sync")?;
+
+        // 2. git fetch origin <sync_branch>
         Command::new("git")
             .args(["fetch", "origin", &self.sync_branch])
             .current_dir(&worktree_path)
             .check_run()
             .with_context(|| "Failed to execute git fetch")?;
 
-        // git merge origin/<sync_branch>
-        // We use --ff-only to fail if there are conflicts for now (Phase 1)
-        // Ideally we would support 3-way merge but let's start simple
-        Command::new("git")
+        // 3. git merge origin/<sync_branch> (3-way)
+        let merge_status = Command::new("git")
             .args([
                 "merge",
-                "--ff-only",
+                // removed --ff-only
                 &format!("origin/{}", self.sync_branch),
             ])
             .current_dir(&worktree_path)
-            .check_run()
-            .with_context(|| "Failed to execute git merge")?;
+            .status()
+            .with_context(|| "Failed to execute git merge command")?;
 
-        // git push origin <sync_branch>
+        if !merge_status.success() {
+            if let Some(1) = merge_status.code() {
+                // Conflict
+                self.resolve_conflicts(&worktree_path)?;
+            } else {
+                return Err(eyre!("Git merge failed with status: {}", merge_status));
+            }
+        }
+
+        // 4. git push origin HEAD:<sync_branch>
         Command::new("git")
-            .args(["push", "origin", &self.sync_branch])
+            .args(["push", "origin", &format!("HEAD:{}", self.sync_branch)])
             .current_dir(&worktree_path)
             .check_run()
             .with_context(|| "Failed to execute git push")?;
