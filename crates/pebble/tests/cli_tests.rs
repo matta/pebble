@@ -213,6 +213,16 @@ fn test_add_and_show_issue() {
 }
 
 #[test]
+fn test_show_non_existent_issue() {
+    let env = TestEnv::setup();
+    env.pebble()
+        .args(["show", "non-existent-id"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Issue non-existent-id not found"));
+}
+
+#[test]
 fn test_edit_issue() {
     let env = TestEnv::setup();
     // 1. Add issue
@@ -241,6 +251,16 @@ fn test_edit_issue() {
         .assert()
         .success()
         .stdout(predicate::str::contains("New Edited Title"));
+}
+
+#[test]
+fn test_edit_non_existent_issue() {
+    let env = TestEnv::setup();
+    env.pebble()
+        .args(["edit", "non-existent-id", "--title", "New Title"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Issue non-existent-id not found"));
 }
 
 #[test]
