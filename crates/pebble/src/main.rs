@@ -68,6 +68,30 @@ fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     Ok(config)
 }
 
+fn get_worktree_manager(config: &Config) -> Result<pebble::worktree::WorktreeManager> {
+    let sync_branch = config
+        .sync_branch
+        .as_deref()
+        .ok_or_else(|| eyre!("sync-branch not configured"))?;
+
+    let repo_root = std::env::current_dir()?;
+    Ok(pebble::worktree::WorktreeManager::new(
+        repo_root,
+        sync_branch.to_string(),
+    ))
+}
+
+fn get_store(config: &Config) -> Result<(pebble::store::JsonlStore, std::path::PathBuf)> {
+    let manager = get_worktree_manager(config)?;
+    let jsonl_path = manager.get_absolute_jsonl_path()?;
+    let store = pebble::store::JsonlStore::new(
+        jsonl_path
+            .to_str()
+            .ok_or_else(|| eyre!("Path contains invalid UTF-8 characters"))?,
+    );
+    Ok((store, jsonl_path))
+}
+
 fn main() -> Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();
@@ -91,34 +115,18 @@ fn main() -> Result<()> {
                 }
             },
             Commands::Sync => {
-                let sync_branch = config
-                    .sync_branch
-                    .as_deref()
-                    .ok_or_else(|| eyre!("sync-branch not configured"))?;
-
-                let repo_root = std::env::current_dir()?;
-                let manager =
-                    pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
+                let manager = get_worktree_manager(&config)?;
 
                 println!("Syncing...");
                 manager.sync()?;
                 println!("Sync complete.");
             }
             Commands::List { json } => {
-                let sync_branch = config
-                    .sync_branch
-                    .as_deref()
-                    .ok_or_else(|| eyre!("sync-branch not configured"))?;
+                let (store, jsonl_path) = get_store(&config)?;
 
-                let repo_root = std::env::current_dir()?;
-                let manager =
-                    pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
-
-                let jsonl_path = manager.get_absolute_jsonl_path()?;
                 if !*json {
                     println!("Using database: {}", jsonl_path.display());
                 }
-                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
                 let issues = store.read_issues()?;
 
                 if *json {
@@ -132,17 +140,7 @@ fn main() -> Result<()> {
                 }
             }
             Commands::Add { title, description } => {
-                let sync_branch = config
-                    .sync_branch
-                    .as_deref()
-                    .ok_or_else(|| eyre!("sync-branch not configured"))?;
-
-                let repo_root = std::env::current_dir()?;
-                let manager =
-                    pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
-
-                let jsonl_path = manager.get_absolute_jsonl_path()?;
-                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+                let (store, _) = get_store(&config)?;
 
                 let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
                 let suffix: String = rand::rng()
@@ -180,17 +178,7 @@ fn main() -> Result<()> {
                 println!("Added issue {}", id);
             }
             Commands::Show { id, json } => {
-                let sync_branch = config
-                    .sync_branch
-                    .as_deref()
-                    .ok_or_else(|| eyre!("sync-branch not configured"))?;
-
-                let repo_root = std::env::current_dir()?;
-                let manager =
-                    pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
-
-                let jsonl_path = manager.get_absolute_jsonl_path()?;
-                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+                let (store, _) = get_store(&config)?;
                 let issues = store.read_issues()?;
 
                 let issue = issues
@@ -226,17 +214,7 @@ fn main() -> Result<()> {
                 title,
                 description,
             } => {
-                let sync_branch = config
-                    .sync_branch
-                    .as_deref()
-                    .ok_or_else(|| eyre!("sync-branch not configured"))?;
-
-                let repo_root = std::env::current_dir()?;
-                let manager =
-                    pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
-
-                let jsonl_path = manager.get_absolute_jsonl_path()?;
-                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+                let (store, _) = get_store(&config)?;
                 let mut issues = store.read_issues()?;
 
                 let issue = issues
