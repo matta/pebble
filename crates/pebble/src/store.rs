@@ -78,25 +78,26 @@ impl JsonlStore {
 
     pub fn append_issue(&self, issue: &Issue) -> Result<()> {
         let path = Path::new(&self.path);
-        let file = std::fs::OpenOptions::new()
+        let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
+            .read(true)
             .open(path)
             .with_context(|| format!("Failed to open file for appending at {}", self.path))?;
-        let mut writer = std::io::BufWriter::new(file);
 
         // If file is not empty and doesn't end with newline, add one
-        let metadata = std::fs::metadata(path)?;
+        let metadata = file.metadata()?;
         if metadata.len() > 0 {
             use std::io::{Read, Seek, SeekFrom};
-            let mut f = std::fs::File::open(path)?;
-            f.seek(SeekFrom::End(-1))?;
+            file.seek(SeekFrom::End(-1))?;
             let mut last_byte = [0u8; 1];
-            f.read_exact(&mut last_byte)?;
+            file.read_exact(&mut last_byte)?;
             if last_byte[0] != b'\n' {
-                writeln!(writer)?;
+                writeln!(file)?;
             }
         }
+
+        let mut writer = std::io::BufWriter::new(file);
 
         // Optimization: Use to_writer to stream directly to buffer, avoiding intermediate String allocation
         serde_json::to_writer(&mut writer, issue)
