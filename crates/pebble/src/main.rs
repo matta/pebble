@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use pebble::config::Config;
-use anyhow::{Context, Result};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -21,9 +21,7 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ConfigCommands {
-    Get {
-        key: String,
-    },
+    Get { key: String },
 }
 
 fn main() -> Result<()> {
@@ -38,13 +36,13 @@ fn main() -> Result<()> {
                 let config_path = ".beads/config.yaml";
                 let content = std::fs::read_to_string(config_path)
                     .with_context(|| format!("Failed to read config file at {}", config_path))?;
-                let config: Config = serde_yaml::from_str(&content)
-                    .context("Failed to parse config")?;
+                let config: Config =
+                    serde_yaml::from_str(&content).context("Failed to parse config")?;
 
-                if key == "sync-branch" {
-                    if let Some(val) = config.sync_branch {
-                        println!("{}", val);
-                    }
+                if key == "sync-branch"
+                    && let Some(val) = config.sync_branch
+                {
+                    println!("{}", val);
                 }
             }
         },
@@ -52,20 +50,22 @@ fn main() -> Result<()> {
             let config_path = ".beads/config.yaml";
             let content = std::fs::read_to_string(config_path)
                 .with_context(|| format!("Failed to read config file at {}", config_path))?;
-            let config: Config = serde_yaml::from_str(&content)
-                .context("Failed to parse config")?;
+            let config: Config =
+                serde_yaml::from_str(&content).context("Failed to parse config")?;
 
-            let sync_branch = config.sync_branch.ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
-            
+            let sync_branch = config
+                .sync_branch
+                .ok_or_else(|| anyhow::anyhow!("sync-branch not configured"))?;
+
             let repo_root = std::env::current_dir()?;
             let manager = pebble::worktree::WorktreeManager::new(repo_root, sync_branch);
-            
+
             println!("Syncing...");
             manager.sync()?;
             println!("Sync complete.");
-        },
+        }
         None => {}
     }
-    
+
     Ok(())
 }

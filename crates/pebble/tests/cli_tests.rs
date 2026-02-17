@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use assert_cmd::Command;
 use predicates::prelude::*;
 
@@ -13,12 +14,12 @@ fn test_version_flag() {
 #[test]
 fn test_config_get_sync_branch() {
     let mut cmd = Command::cargo_bin("pebble").unwrap();
-    
+
     cmd.current_dir("../../../mydoo") // Run in mydoo so it finds .beads/config.yaml
-       .args(&["config", "get", "sync-branch"])
-       .assert()
-       .success()
-       .stdout(predicate::str::contains("beads-sync"));
+        .args(["config", "get", "sync-branch"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("beads-sync"));
 }
 
 #[test]
@@ -26,7 +27,7 @@ fn test_sync_fail_no_config() {
     // Create a temp dir to run in, ensuring no config
     let temp_dir = tempfile::tempdir().unwrap();
     let mut cmd = Command::cargo_bin("pebble").unwrap();
-    
+
     cmd.current_dir(&temp_dir)
         .arg("sync")
         .assert()

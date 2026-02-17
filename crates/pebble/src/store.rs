@@ -1,8 +1,8 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use anyhow::{Context, Result};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Issue {
@@ -26,7 +26,9 @@ pub struct JsonlStore {
 
 impl JsonlStore {
     pub fn new(path: &str) -> Self {
-        Self { path: path.to_string() }
+        Self {
+            path: path.to_string(),
+        }
     }
 
     pub fn read_issues(&self) -> Result<Vec<Issue>> {
@@ -35,7 +37,8 @@ impl JsonlStore {
             return Ok(Vec::new());
         }
 
-        let file = File::open(path).with_context(|| format!("Failed to open file at {}", self.path))?;
+        let file =
+            File::open(path).with_context(|| format!("Failed to open file at {}", self.path))?;
         let reader = BufReader::new(file);
         let mut issues = Vec::new();
 
@@ -53,7 +56,8 @@ impl JsonlStore {
     }
 
     pub fn write_issues(&self, issues: &[Issue]) -> Result<()> {
-        let file = File::create(&self.path).with_context(|| format!("Failed to create file at {}", self.path))?;
+        let file = File::create(&self.path)
+            .with_context(|| format!("Failed to create file at {}", self.path))?;
         let mut writer = std::io::BufWriter::new(file);
 
         for issue in issues {
@@ -77,12 +81,12 @@ mod tests {
         let mut file = NamedTempFile::new().unwrap();
         let issue_json = r#"{"id":"mydoo-0kq","title":"Test Issue","description":"Desc","status":"open","priority":0,"issue_type":"task","owner":"me","created_at":"2026-01-01T00:00:00Z","created_by":"Me","updated_at":"2026-01-01T00:00:00Z","closed_at":null,"close_reason":null}"#;
         writeln!(file, "{}", issue_json).unwrap();
-        
+
         let path = file.path().to_str().unwrap();
         let store = JsonlStore::new(path);
-        
+
         let issues = store.read_issues().expect("Failed to read issues");
-        
+
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].id, "mydoo-0kq");
         assert_eq!(issues[0].title, "Test Issue");
@@ -94,22 +98,20 @@ mod tests {
         let path = file.path().to_str().unwrap().to_string();
         let store = JsonlStore::new(&path);
 
-        let issues = vec![
-            Issue {
-                id: "test-1".to_string(),
-                title: "Title 1".to_string(),
-                description: "Desc 1".to_string(),
-                status: "open".to_string(),
-                priority: 1,
-                issue_type: "task".to_string(),
-                owner: "me".to_string(),
-                created_at: "2026-01-01T00:00:00Z".to_string(),
-                created_by: "Me".to_string(),
-                updated_at: "2026-01-01T00:00:00Z".to_string(),
-                closed_at: None,
-                close_reason: None,
-            },
-        ];
+        let issues = vec![Issue {
+            id: "test-1".to_string(),
+            title: "Title 1".to_string(),
+            description: "Desc 1".to_string(),
+            status: "open".to_string(),
+            priority: 1,
+            issue_type: "task".to_string(),
+            owner: "me".to_string(),
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            created_by: "Me".to_string(),
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+            closed_at: None,
+            close_reason: None,
+        }];
 
         store.write_issues(&issues).expect("Failed to write issues");
 
