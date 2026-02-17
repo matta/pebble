@@ -56,3 +56,9 @@ struct Issue {
 - Strictly adhere to TDD. Write failing tests first, then implement.
 - Maintain compatibility with the existing `bd` command interface where applicable for the subset of features supported.
 - Do not implement daemon mode.
+
+## Gates
+
+### Push Gate
+- **Requirement**: `just check` must pass cleanly.
+- **Enforcement**: Agents must run `just check` and ensure it exits with code 0 before pushing any code to the repository.
