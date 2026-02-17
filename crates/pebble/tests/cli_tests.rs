@@ -119,7 +119,7 @@ fn test_config_get_unknown_key() {
         .args(["config", "get", "unknown-key"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Unknown config key: unknown-key"));
+        .stderr(predicate::str::contains("Unknown config key 'unknown-key'"));
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn test_config_daemon_unsupported() {
     std::fs::create_dir(root.join(".beads")).unwrap();
     std::fs::write(
         root.join(".beads/config.yaml"),
-        "sync-branch: beads-sync\nauto-start-daemon: true\n",
+        "sync-branch: pebble-sync\nauto-start-daemon: true\n",
     )
     .unwrap();
 
