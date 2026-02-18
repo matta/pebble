@@ -81,8 +81,6 @@ fn test_import_idempotency() {
         updated_at: "2026-01-01T10:00:00Z".to_string(),
         closed_at: None,
         close_reason: None,
-        dependencies: vec![],
-        extra: Default::default(),
     };
     let json = serde_json::to_string(&issue).unwrap();
     fs::write(
