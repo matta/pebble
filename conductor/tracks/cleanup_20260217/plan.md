@@ -3,7 +3,7 @@
 ## Phase 1: Environment & Directory Renaming
 This phase focuses on the structural changes required to rename the project's local configuration and tooling references.
 
-- [ ] **Task: Rename .beads to .pebble**
+- [~] **Task: Rename .beads to .pebble**
     - [ ] Write a test in `crates/pebble/tests/config_test.rs` to verify that `pebble` looks for a directory named `.pebble` by default.
     - [ ] Implement the change in `crates/pebble/src/config.rs` to prioritize `.pebble` over `.beads`.
 - [ ] **Task: Update xtask and justfile**

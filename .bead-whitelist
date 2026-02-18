@@ -1,42 +1,65 @@
 " foo bead bar ",
+"description": "Renaming project assets from beads to pebble while preserving legacy 'bead' terminology where appropriate (e.g., .bead-whitelist)."
 "foo bead bar",
 "other bead",
+"sync-branch: beads-fallback-sync
+"sync-branch: beads-sync
 "sync-branch: beads-sync\nissue-prefix: test\n",
 ## Phase 5: Renaming & Cleanup (Eliminate 'beads')
 - **Configuration Parsing**: Must parse `.beads/config.yaml` format. Specifically handle `sync-branch`.
+- **Developer**: A user of the Pebble CLI who expects consistent naming and a clear distinction between the current tool (Pebble) and the legacy tool (Beads).
 - **No Local Copy**: The `issues.jsonl` file does **NOT** exist in the user's working directory (e.g., `.beads/issues.jsonl`).
+- **Original Beads Users**: People looking for a more predictable, Rust-powered alternative to the original Go implementation.
+- **Preserve `.bead-whitelist`**: This file and the logic associated with it must NOT be renamed, as it represents a legacy whitelist configuration that Pebble should still respect.
 - **Reference**: The `../beads` directory contains the original implementation (Go). Consult it for behavior clarification when needed, but do not copy-paste code directly. Focus on re-implementation in idiomatic Rust.
+- **Selective Renaming**: Do not blindly rename "bead" or "beads" when it refers specifically to the original tool or its legacy components.
 - Configuration: **Strict**. The only supported format is 'sync-branch' configuration as found in `../mydoo/.beads/config.yaml`. Other configurations are unsupported.
 - The repository `../beads` is synced to this release commit.
 - Use `../mydoo` as a reference testbed where beads is set up correctly.
+- [ ] Ensure all mentions of the original tool as "beads" are preserved as per user instructions.
+- [ ] Ensure the xtask still correctly reads `.bead-whitelist`.
 - [ ] Implement field-level 3-way merge algorithm (matching `beads` behavior)
+- [ ] Implement the change in `crates/pebble/src/config.rs` to prioritize `.pebble` over `.beads`.
 - [ ] Rename `.bead-whitelist` to `.pebble-whitelist`
 - [ ] Rename `.beads` directory to `.pebble`
 - [ ] Rename `beads-sync` branch references to `pebble-sync`
 - [ ] Rename `xtask check-beads` to `xtask check-pebble`
+- [ ] Rename `xtask check-beads` to `xtask check-pebble` in `xtask/src/main.rs`.
 - [ ] Update all code, comments, and tests to use `pebble` instead of `beads`
+- [ ] Update string literals in `crates/pebble/src` from "beads" to "pebble" (where appropriate).
+- [ ] Write unit tests for CLI help output and error messages that contain "beads".
+- [ ] Xtask `check-pebble` runs and correctly references the existing `.bead-whitelist`.
 - [x] Implement check-beads xtask command
+- [~] **Task: Rename .beads to .pebble**
 .args(["add", ".beads/issues.jsonl"])
 .args(["checkout", "-b", "beads-sync"])
 .is_some_and(|name| name == ".bead-whitelist")
 .join(".git/beads-worktrees")
+.stdout(predicate::str::contains("beads-fallback-sync"));
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
-const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
+// Create both .pebble and .beads
+// Create only .beads
 /// Check for forbidden words like "bead" or "beads"
-CheckBeads {
-Commands::CheckBeads {
+1. **Directory Renaming**: The project-local configuration directory must be renamed from `.beads` to `.pebble`.
+2. **Branch Management**: The synchronization branch must be updated from `beads-sync` to `pebble-sync`.
+3. **Worktree Management**: The internal Git worktree path must be updated from `.git/beads-worktrees` to `.git/pebble-worktrees`.
+4. **Tooling & Xtask**: The `check-beads` xtask must be renamed to `check-pebble`.
+Complete the transition from `beads` to `pebble` by renaming project-specific directories, branches, and code references. This track focuses on establishing the project's new identity while maintaining compatibility with legacy "bead" terminology where it refers to external compatibility or specific legacy configurations.
 Ok(worktree_path.join(".beads/issues.jsonl"))
+Pebble is a simplified Rust re-implementation of the `beads` tool, focusing on a JSONL backend, strict Git-based worktree synchronization, and a Test-Driven Development (TDD) approach.
+Pebble is a streamlined, "bare-bones" alternative to `beads`. It intentionally strips away peripheral features to focus on a minimal, high-performance core for developers who value simplicity and zero overhead.
 This document outlines the step-by-step plan to implement `pebble`, a simplified Rust version of `beads`.
 This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
 assert!(branch == "HEAD" || branch == "beads-sync");
 assert!(path.parent().unwrap().exists()); // Worktree should be created and contain .beads
 assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
 bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
-bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
-check_beads(all, false, false)?;
-fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
+const DEFAULT_CONFIG_PATH_BEADS: &str = ".beads/config.yaml";
+fn test_default_config_discovery_beads_fallback() {
+fn test_default_config_discovery_pebble_over_beads() {
+fs::create_dir(root.join(".beads")).unwrap();
 if lower_line.contains("bead") {
 let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
 let entry = "foo bead bar";
@@ -56,4 +79,4 @@ std::fs::create_dir(repo_root.join(".beads")).unwrap();
 std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
-} => check_beads(all, generate_whitelist, minimize_whitelist),
+std::path::PathBuf::from(DEFAULT_CONFIG_PATH_BEADS)

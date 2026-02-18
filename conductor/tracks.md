@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Renaming and Cleanup**
+- [~] **Track: Renaming and Cleanup**
   *Link: [./tracks/cleanup_20260217/](./tracks/cleanup_20260217/)*

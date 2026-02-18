@@ -22,7 +22,7 @@ enum Commands {
         all: bool,
     },
     /// Check for forbidden words like "bead" or "beads"
-    CheckBeads {
+    CheckPebble {
         /// Scan all tracked files instead of just edited ones
         #[arg(long)]
         all: bool,
@@ -46,43 +46,47 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Check { all } => {
-            check_beads(all, false, false)?;
+            check_pebble(all, false, false)?;
             check_file_length(all)?;
             Ok(())
         }
-        Commands::CheckBeads {
+        Commands::CheckPebble {
             all,
             generate_whitelist,
             minimize_whitelist,
-        } => check_beads(all, generate_whitelist, minimize_whitelist),
+        } => check_pebble(all, generate_whitelist, minimize_whitelist),
         Commands::CheckFileLength { all } => check_file_length(all),
     }
 }
 
 fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
-    if all {
-        Ok(get_git_files(root, &["ls-files"])?.into_iter().collect())
-    } else {
+    let mut files: HashSet<String> = get_git_files(root, &["ls-files"])?.into_iter().collect();
+    // Also get untracked files
+    files.extend(get_git_files(
+        root,
+        &["ls-files", "--others", "--exclude-standard"],
+    )?);
+
+    if !all {
         // Get both staged and unstaged changes
-        let mut files: HashSet<String> = get_git_files(root, &["diff", "--name-only", "HEAD"])?
+        let mut changed: HashSet<String> = get_git_files(root, &["diff", "--name-only", "HEAD"])?
             .into_iter()
             .collect();
         // Also get untracked files
-        files.extend(get_git_files(
+        changed.extend(get_git_files(
             root,
             &["ls-files", "--others", "--exclude-standard"],
         )?);
 
-        if files.is_empty() {
-            // If the repo is clean, default to checking all tracked files
-            Ok(get_git_files(root, &["ls-files"])?.into_iter().collect())
-        } else {
-            Ok(files)
+        if !changed.is_empty() {
+            return Ok(changed);
         }
     }
+
+    Ok(files)
 }
 
-fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
+fn check_pebble(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
     let root = std::env::current_dir()?;
     let whitelist_path = root.join(".bead-whitelist");
 
@@ -176,7 +180,7 @@ fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) ->
             for line in unused {
                 println!("  {}", line);
             }
-            bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
+            bail!("Whitelist contains unused entries. Run 'cargo xtask check-pebble --minimize-whitelist' to clean it up.");
         }
 
         println!("No forbidden words found.");
