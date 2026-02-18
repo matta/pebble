@@ -30,7 +30,9 @@ impl Config {
 
     pub fn validate(&self) -> Result<()> {
         if self.sync_branch.is_none() {
-            return Err(color_eyre::eyre::eyre!("sync-branch is required in configuration"));
+            return Err(color_eyre::eyre::eyre!(
+                "sync-branch is required in configuration"
+            ));
         }
         Ok(())
     }

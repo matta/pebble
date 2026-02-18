@@ -9,20 +9,28 @@ fn test_config_get_issue_prefix() {
     let root = temp_dir.path();
 
     // 1. Initialize Git
-    Command::new("git").args(["init", "-b", "main"]).current_dir(root).assert().success();
+    Command::new("git")
+        .args(["init", "-b", "main"])
+        .current_dir(root)
+        .assert()
+        .success();
 
     // 2. Initialize Pebble
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
     cmd.current_dir(root).arg("init").assert().success();
 
     // 3. Set a custom prefix in config
     let config_path = root.join(".pebble/config.toml");
-    std::fs::write(config_path, r#"issue-prefix = "PROJ"
+    std::fs::write(
+        config_path,
+        r#"issue-prefix = "PROJ"
 sync-branch = "pebble-data"
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // 4. Test 'pebble config get issue-prefix'
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
     cmd.current_dir(root)
         .args(["config", "get", "issue-prefix"])
         .assert()
@@ -36,13 +44,20 @@ fn test_import_no_changes() {
     let root = temp_dir.path();
 
     // 1. Initialize Git & Pebble
-    Command::new("git").args(["init", "-b", "main"]).current_dir(root).assert().success();
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    Command::new("git")
+        .args(["init", "-b", "main"])
+        .current_dir(root)
+        .assert()
+        .success();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
     cmd.current_dir(root).arg("init").assert().success();
 
     // 2. Create an issue
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
-    cmd.current_dir(root).args(["add", "Test Issue"]).assert().success();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
+    cmd.current_dir(root)
+        .args(["add", "Test Issue"])
+        .assert()
+        .success();
 
     // 3. Get the JSONL content and write to an external file
     let issues_path = root.join(".git/x-pebble/issues.jsonl");
@@ -51,7 +66,7 @@ fn test_import_no_changes() {
     std::fs::write(&ext_path, content).unwrap();
 
     // 4. Import the same file - should report "No changes"
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
     cmd.current_dir(root)
         .args(["import", ext_path.to_str().unwrap()])
         .assert()
@@ -65,20 +80,30 @@ fn test_config_validation_fail() {
     let root = temp_dir.path();
 
     // 1. Initialize Git & Pebble
-    Command::new("git").args(["init", "-b", "main"]).current_dir(root).assert().success();
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    Command::new("git")
+        .args(["init", "-b", "main"])
+        .current_dir(root)
+        .assert()
+        .success();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
     cmd.current_dir(root).arg("init").assert().success();
 
     // 2. Create an INVALID config (missing sync-branch)
     let config_path = root.join(".pebble/config.toml");
-    std::fs::write(config_path, r#"issue-prefix = "PROJ"
-"#).unwrap();
+    std::fs::write(
+        config_path,
+        r#"issue-prefix = "PROJ"
+"#,
+    )
+    .unwrap();
 
     // 3. Any command should fail validation
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("pebble"));
     cmd.current_dir(root)
         .arg("list")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("sync-branch is required in configuration"));
+        .stderr(predicate::str::contains(
+            "sync-branch is required in configuration",
+        ));
 }
