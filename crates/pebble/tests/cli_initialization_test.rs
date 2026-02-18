@@ -1,5 +1,7 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
+use pebble::config::Config;
+use pebble::PEBBLE_DIR;
 use predicates::prelude::*;
 use tempfile::TempDir;
 
@@ -40,9 +42,9 @@ fn test_initialized_no_error() {
     use std::fs;
 
     // Create a .pebble directory and a dummy config
-    fs::create_dir(root.join(".pebble")).unwrap();
+    fs::create_dir(root.join(PEBBLE_DIR)).unwrap();
     fs::write(
-        root.join(".pebble/config.toml"),
+        Config::default_path(root),
         "sync-branch = \"pebble-sync\"\n",
     )
     .unwrap();

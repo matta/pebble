@@ -1,39 +1,47 @@
 use crate::command::CommandExt;
+use crate::{ISSUES_FILE, WORKTREE_DIR};
 use color_eyre::Result;
 use color_eyre::eyre::{Context, eyre};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use std::process::Command;
 
 pub trait GitProvider {
-    fn run(&self, args: &[&str], current_dir: &Path) -> Result<()>;
-    fn output(&self, args: &[&str], current_dir: &Path) -> Result<String>;
-    fn status(&self, args: &[&str], current_dir: &Path) -> Result<std::process::ExitStatus>;
+    fn run(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()>;
+    fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String>;
+    fn status(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<std::process::ExitStatus>;
 }
 
 pub struct RealGit;
 
 impl GitProvider for RealGit {
-    fn run(&self, args: &[&str], current_dir: &Path) -> Result<()> {
-        Command::new("git")
-            .args(args)
-            .current_dir(current_dir)
+    fn run(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        let mut cmd = Command::new("git");
+        for arg in args {
+            cmd.arg(arg);
+        }
+        cmd.current_dir(current_dir)
             .check_run()
             .map_err(Into::into)
     }
 
-    fn output(&self, args: &[&str], current_dir: &Path) -> Result<String> {
-        Command::new("git")
-            .args(args)
-            .current_dir(current_dir)
+    fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String> {
+        let mut cmd = Command::new("git");
+        for arg in args {
+            cmd.arg(arg);
+        }
+        cmd.current_dir(current_dir)
             .check_output()
             .map_err(Into::into)
     }
 
-    fn status(&self, args: &[&str], current_dir: &Path) -> Result<std::process::ExitStatus> {
-        Command::new("git")
-            .args(args)
-            .current_dir(current_dir)
+    fn status(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<std::process::ExitStatus> {
+        let mut cmd = Command::new("git");
+        for arg in args {
+            cmd.arg(arg);
+        }
+        cmd.current_dir(current_dir)
             .status()
             .map_err(Into::into)
     }
@@ -158,7 +166,10 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // git worktree add <path> <branch>
         Command::new("git")
-            .args(["worktree", "add", path.to_str().unwrap(), &self.sync_branch])
+            .arg("worktree")
+            .arg("add")
+            .arg(path)
+            .arg(&self.sync_branch)
             .current_dir(&self.repo_root)
             .check_run()
             .with_context(|| format!("Failed to add git worktree at {:?}", path))?;
@@ -199,7 +210,7 @@ impl<G: GitProvider> WorktreeManager<G> {
     }
 
     pub fn get_worktree_path(&self) -> PathBuf {
-        self.repo_root.join(".git/x-pebble")
+        self.repo_root.join(WORKTREE_DIR)
     }
 
     pub fn ensure_worktree(&self) -> Result<PathBuf> {
@@ -260,10 +271,10 @@ impl<G: GitProvider> WorktreeManager<G> {
             self.git
                 .run(
                     &[
-                        "worktree",
-                        "add",
-                        "--detach",
-                        path.to_str().unwrap(),
+                        &"worktree",
+                        &"add",
+                        &"--detach",
+                        &path,
                         &target,
                     ],
                     &self.repo_root,
@@ -275,11 +286,11 @@ impl<G: GitProvider> WorktreeManager<G> {
             self.git
                 .run(
                     &[
-                        "worktree",
-                        "add",
-                        "--detach",
-                        "--no-checkout",
-                        path.to_str().unwrap(),
+                        &"worktree",
+                        &"add",
+                        &"--detach",
+                        &"--no-checkout",
+                        &path,
                     ],
                     &self.repo_root,
                 )
@@ -287,11 +298,11 @@ impl<G: GitProvider> WorktreeManager<G> {
 
             // Create orphan branch inside worktree
             self.git
-                .run(&["checkout", "--orphan", &self.sync_branch], &path)
+                .run(&[&"checkout", &"--orphan", &self.sync_branch], &path)
                 .with_context(|| "Failed to create orphan branch")?;
 
             // Ensure index is empty
-            let _ = self.git.run(&["rm", "-rf", "."], &path);
+            let _ = self.git.run(&[&"rm", &"-rf", &"."], &path);
         }
 
         Ok(path)
@@ -299,24 +310,24 @@ impl<G: GitProvider> WorktreeManager<G> {
 
     pub fn get_absolute_jsonl_path(&self) -> Result<PathBuf> {
         let worktree_path = self.ensure_worktree()?;
-        Ok(worktree_path.join("issues.jsonl"))
+        Ok(worktree_path.join(ISSUES_FILE))
     }
 
     fn commit_local_changes(&self, worktree_path: &Path) -> Result<()> {
         // Stage all changes (including new files)
         self.git
-            .run(&["add", "."], worktree_path)
+            .run(&[&"add", &"."], worktree_path)
             .with_context(|| "Failed to stage changes")?;
 
         // Check if there are changes to commit
         let status = self
             .git
-            .output(&["status", "--porcelain"], worktree_path)
+            .output(&[&"status", &"--porcelain"], worktree_path)
             .with_context(|| "Failed to check status")?;
 
         if !status.trim().is_empty() {
             self.git
-                .run(&["commit", "--no-verify", "-m", "Auto-sync"], worktree_path)
+                .run(&[&"commit", &"--no-verify", &"-m", &"Auto-sync"], worktree_path)
                 .with_context(|| "Failed to commit changes")?;
         }
         Ok(())
@@ -328,7 +339,7 @@ impl<G: GitProvider> WorktreeManager<G> {
         // specific diff-filter=U for unmerged (conflicted) files
         let output = self
             .git
-            .output(&["diff", "--name-only", "--diff-filter=U"], worktree_path)
+            .output(&[&"diff", &"--name-only", &"--diff-filter=U"], worktree_path)
             .with_context(|| "Failed to list conflicted files")?;
 
         if output.trim().is_empty() {
@@ -363,11 +374,11 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // Assume resolved. Stage and commit.
         self.git
-            .run(&["add", "."], worktree_path)
+            .run(&[&"add", &"."], worktree_path)
             .with_context(|| "Failed to stage resolved files")?;
 
         self.git
-            .run(&["commit", "--no-verify", "--no-edit"], worktree_path)
+            .run(&[&"commit", &"--no-verify", &"--no-edit"], worktree_path)
             .with_context(|| "Failed to commit merge resolution")?;
 
         println!("Merge resolution committed.");
@@ -417,16 +428,17 @@ impl<G: GitProvider> WorktreeManager<G> {
         // 2. git fetch origin <sync_branch>
         self.git
             .run(
-                &["fetch", "origin", "--", &self.sync_branch],
+                &[&"fetch", &"origin", &"--", &self.sync_branch],
                 &worktree_path,
             )
             .with_context(|| "Failed to execute git fetch")?;
 
         // 3. git merge origin/<sync_branch> (3-way)
+        let merge_ref = format!("origin/{}", self.sync_branch);
         let merge_status = self
             .git
             .status(
-                &["merge", &format!("origin/{}", self.sync_branch)],
+                &[&"merge", &merge_ref],
                 &worktree_path,
             )
             .with_context(|| "Failed to execute git merge command")?;
@@ -444,13 +456,14 @@ impl<G: GitProvider> WorktreeManager<G> {
         }
 
         // 4. git push origin HEAD:<sync_branch>
+        let push_ref = format!("HEAD:{}", self.sync_branch);
         self.git
             .run(
                 &[
-                    "push",
-                    "origin",
-                    "--",
-                    &format!("HEAD:{}", self.sync_branch),
+                    &"push",
+                    &"origin",
+                    &"--",
+                    &push_ref,
                 ],
                 &worktree_path,
             )

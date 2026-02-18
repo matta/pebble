@@ -67,13 +67,12 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-const DEFAULT_CONFIG_PATH_PEBBLE: &str = ".pebble/config.toml";
+use pebble::PEBBLE_DIR;
 
 fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
-    let config_path = if let Some(p) = path {
-        std::path::PathBuf::from(p)
-    } else {
-        std::path::PathBuf::from(DEFAULT_CONFIG_PATH_PEBBLE)
+    let config_path = match path {
+        Some(p) => std::path::PathBuf::from(p),
+        None => Config::default_path(&std::env::current_dir()?),
     };
     let content = std::fs::read_to_string(&config_path)
         .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
@@ -169,19 +168,20 @@ fn main() -> Result<()> {
                 println!("Initializing worktree at {}...", worktree_path.display());
                 manager.init_worktree(&worktree_path)?;
 
-                let pebble_dir = repo_root.join(".pebble");
+                let pebble_dir = repo_root.join(PEBBLE_DIR);
                 if !pebble_dir.exists() {
                     std::fs::create_dir_all(&pebble_dir)?;
                 }
+                let config_path = Config::default_path(&repo_root);
                 println!(
                     "Saving configuration to {}...",
-                    pebble_dir.join("config.toml").display()
+                    config_path.display()
                 );
-                let config = pebble::config::Config {
+                let config = Config {
                     sync_branch: Some(sync_branch.clone()),
                     ..Default::default()
                 };
-                config.save(&pebble_dir.join("config.toml"))?;
+                config.save(&config_path)?;
 
                 println!("Pebble initialized successfully!");
             }

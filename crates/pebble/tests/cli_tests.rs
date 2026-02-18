@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
 use pebble::command::CommandExt;
+use pebble::config::Config;
+use pebble::{ISSUES_FILE, PEBBLE_DIR, WORKTREE_DIR};
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -37,9 +39,9 @@ impl TestEnv {
             .unwrap();
 
         // .pebble/config.toml
-        std::fs::create_dir(root.join(".pebble")).unwrap();
+        std::fs::create_dir(root.join(PEBBLE_DIR)).unwrap();
         std::fs::write(
-            root.join(".pebble/config.toml"),
+            Config::default_path(&root),
             "sync-branch = \"pebble-sync\"\n",
         )
         .unwrap();
@@ -59,18 +61,23 @@ impl TestEnv {
 
         // Create sync branch with issues.jsonl
         std::process::Command::new("git")
-            .args(["checkout", "-b", "pebble-sync"])
+            .arg("checkout")
+            .arg("-b")
+            .arg("pebble-sync")
             .current_dir(&root)
             .check_run()
             .unwrap();
-        std::fs::write(root.join(".pebble/issues.jsonl"), "").unwrap();
+        std::fs::write(root.join(ISSUES_FILE), "").unwrap();
         std::process::Command::new("git")
-            .args(["add", ".pebble/issues.jsonl"])
+            .arg("add")
+            .arg(root.join(ISSUES_FILE))
             .current_dir(&root)
             .check_run()
             .unwrap();
         std::process::Command::new("git")
-            .args(["commit", "-m", "sync init"])
+            .arg("commit")
+            .arg("-m")
+            .arg("sync init")
             .current_dir(&root)
             .check_run()
             .unwrap();
@@ -89,9 +96,9 @@ impl TestEnv {
     }
 
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
-        let worktree_path = self.root.join(".git/x-pebble");
+        let worktree_path = self.root.join(WORKTREE_DIR);
         std::fs::create_dir_all(&worktree_path).unwrap();
-        let issues_path = worktree_path.join("issues.jsonl");
+        let issues_path = worktree_path.join(ISSUES_FILE);
 
         let mut file = std::fs::OpenOptions::new()
             .create(true)

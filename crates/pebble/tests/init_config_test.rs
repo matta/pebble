@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
+use pebble::config::Config;
 use std::process::Command as std_command;
 use tempfile::TempDir;
 
@@ -49,8 +50,8 @@ fn test_init_writes_config() {
         .assert()
         .success();
 
-    // 1. Verify .pebble/config.toml exists
-    let config_path = root.join(".pebble/config.toml");
+    // 1. Verify config file exists
+    let config_path = Config::default_path(root);
     assert!(config_path.exists(), "Config file should be created");
 
     // 2. Verify content

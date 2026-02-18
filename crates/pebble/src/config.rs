@@ -1,6 +1,6 @@
 use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
@@ -14,8 +14,12 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn default_path(root: &Path) -> PathBuf {
+        root.join(crate::PEBBLE_DIR).join(crate::CONFIG_FILE)
+    }
+
     pub fn is_initialized(root: &Path) -> bool {
-        root.join(".pebble").is_dir()
+        root.join(crate::PEBBLE_DIR).is_dir()
     }
 
     pub fn save(&self, path: &Path) -> color_eyre::Result<()> {
