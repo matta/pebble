@@ -7,7 +7,7 @@ This project is a Rust re-implementation of the existing `beads` tool, with a dr
 1.  **Drastically Simpler**: Focus on core features, avoiding complexity.
 2.  **Reduced Feature Set**:
     - Backend: **JSONL ONLY**. No SQLite support.
-    - Configuration: **Strict**. The only supported format is 'sync-branch' configuration as found in `../mydoo/.beads/config.yaml`. Other configurations are unsupported.
+    - Configuration: **Strict**. The only supported format is TOML configuration in `.pebble/config.toml`. Other configurations are unsupported. (Note: Original `beads` used `.beads/config.yaml`).
     - Daemon Mode: **NOT SUPPORTED**. The program will not run as a daemon. Configuration suggesting daemon mode results in run time errors.
 3.  **TDD approach**:
     - **Test-Driven Development (TDD)** is mandatory.
@@ -22,7 +22,7 @@ This project is a Rust re-implementation of the existing `beads` tool, with a dr
 
 - **Testbed**: Use `../mydoo` for understanding the intended workflow and verifying behavior against the original `bd` tool.
 - **Reference**: The `../beads` directory contains the original implementation (Go). Consult it for behavior clarification when needed, but do not copy-paste code directly. Focus on re-implementation in idiomatic Rust.
-- **Configuration Parsing**: Must parse `.beads/config.yaml` format. Specifically handle `sync-branch`.
+- **Configuration Parsing**: Must parse `.pebble/config.toml` format. Specifically handle `sync-branch`.
 - **Database**: **JSONL**. The `issues.jsonl` file is the single source of truth.
 - **Architecture: Worktree-Only Data Storage**: 
     - **No Local Copy**: The `issues.jsonl` file does **NOT** exist in the user's working directory (e.g., `.beads/issues.jsonl`).

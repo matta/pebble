@@ -36,11 +36,11 @@ impl TestEnv {
             .check_run()
             .unwrap();
 
-        // .pebble/config.yaml
+        // .pebble/config.toml
         std::fs::create_dir(root.join(".pebble")).unwrap();
         std::fs::write(
-            root.join(".pebble/config.yaml"),
-            "sync-branch: pebble-sync\nissue-prefix: test\n",
+            root.join(".pebble/config.toml"),
+            "sync-branch = \"pebble-sync\"\nissue-prefix = \"test\"\n",
         )
         .unwrap();
 
@@ -154,8 +154,8 @@ fn test_config_daemon_unsupported() {
     let root = temp_dir.path();
     std::fs::create_dir(root.join(".pebble")).unwrap();
     std::fs::write(
-        root.join(".pebble/config.yaml"),
-        "sync-branch: pebble-sync\nauto-start-daemon: true\n",
+        root.join(".pebble/config.toml"),
+        "sync-branch = \"pebble-sync\"\nauto-start-daemon = true\n",
     )
     .unwrap();
 
@@ -165,7 +165,7 @@ fn test_config_daemon_unsupported() {
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "Configuration 'auto-start-daemon: true' is invalid as daemon mode is not supported.",
+            "Configuration 'auto-start-daemon = true' is invalid as daemon mode is not supported.",
         ));
 }
 

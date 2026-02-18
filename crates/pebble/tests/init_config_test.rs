@@ -49,13 +49,13 @@ fn test_init_writes_config() {
         .assert()
         .success();
 
-    // 1. Verify .pebble/config.yaml exists
-    let config_path = root.join(".pebble/config.yaml");
+    // 1. Verify .pebble/config.toml exists
+    let config_path = root.join(".pebble/config.toml");
     assert!(config_path.exists(), "Config file should be created");
 
     // 2. Verify content
     let content = std::fs::read_to_string(&config_path).unwrap();
-    assert!(content.contains(&format!("sync-branch: {}", sync_branch)));
+    assert!(content.contains(&format!("sync-branch = \"{}\"", sync_branch)));
 
     // 3. Verify 'pebble config get sync-branch' works
     let mut cmd = Command::new(cargo_bin!("pebble"));

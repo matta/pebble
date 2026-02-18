@@ -36,7 +36,7 @@ fn test_id_generation_length() {
     // Create config file and directory BEFORE commit
     let config_dir = path.join(".pebble");
     fs::create_dir(&config_dir).unwrap();
-    fs::write(config_dir.join("config.yaml"), "sync-branch: main\n").unwrap();
+    fs::write(config_dir.join("config.toml"), "sync-branch = \"main\"\n").unwrap();
 
     // Create an initial commit including .pebble
     fs::write(path.join("README.md"), "# Test Repo").unwrap();

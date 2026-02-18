@@ -42,8 +42,8 @@ fn test_initialized_no_error() {
     // Create a .pebble directory and a dummy config
     fs::create_dir(root.join(".pebble")).unwrap();
     fs::write(
-        root.join(".pebble/config.yaml"),
-        "sync-branch: pebble-sync\n",
+        root.join(".pebble/config.toml"),
+        "sync-branch = \"pebble-sync\"\n",
     )
     .unwrap();
 

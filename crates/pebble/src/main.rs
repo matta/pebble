@@ -67,7 +67,7 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-const DEFAULT_CONFIG_PATH_PEBBLE: &str = ".pebble/config.yaml";
+const DEFAULT_CONFIG_PATH_PEBBLE: &str = ".pebble/config.toml";
 
 fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     let config_path = if let Some(p) = path {
@@ -77,7 +77,7 @@ fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     };
     let content = std::fs::read_to_string(&config_path)
         .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
-    let config: Config = serde_yaml::from_str(&content).context("Failed to parse config")?;
+    let config: Config = toml::from_str(&content).context("Failed to parse config")?;
     config.validate()?;
     Ok(config)
 }
@@ -175,13 +175,13 @@ fn main() -> Result<()> {
                 }
                 println!(
                     "Saving configuration to {}...",
-                    pebble_dir.join("config.yaml").display()
+                    pebble_dir.join("config.toml").display()
                 );
                 let config = pebble::config::Config {
                     sync_branch: Some(sync_branch.clone()),
                     ..Default::default()
                 };
-                config.save(&pebble_dir.join("config.yaml"))?;
+                config.save(&pebble_dir.join("config.toml"))?;
 
                 println!("Pebble initialized successfully!");
             }
