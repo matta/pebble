@@ -27,7 +27,7 @@ fn setup_git_repo(path: &std::path::Path) {
 fn test_worktree_path_generation() {
     let repo_root = PathBuf::from("/tmp/repo");
     let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-    let expected = repo_root.join(WORKTREE_DIR);
+    let expected = repo_root.join(WORKTREE_DIR).join("pebble-sync");
     assert_eq!(manager.get_worktree_path(), expected);
 }
 
@@ -44,7 +44,10 @@ fn test_get_absolute_jsonl_path() {
     execute_git(&["commit", "-m", "Initial"], &repo_root);
 
     let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-    let expected = repo_root.join(WORKTREE_DIR).join(ISSUES_FILE);
+    let expected = repo_root
+        .join(WORKTREE_DIR)
+        .join("pebble-sync")
+        .join(ISSUES_FILE);
 
     let path = manager
         .get_absolute_jsonl_path()

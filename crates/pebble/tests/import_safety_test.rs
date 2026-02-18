@@ -46,7 +46,7 @@ fn test_import_refuses_dirty_worktree() {
     setup_pebble_repo(root);
 
     // Create a dirty file in the worktree
-    let worktree_path = root.join(".git/x-pebble");
+    let worktree_path = root.join(".git/x-pebble").join("pebble-data");
     fs::write(worktree_path.join("dirty.txt"), "dirty").unwrap();
 
     let import_file = root.join("external.jsonl");
