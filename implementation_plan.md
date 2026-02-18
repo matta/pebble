@@ -51,7 +51,7 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Rename `beads-sync` branch references to `pebble-sync`
 - [x] Update `WorktreeManager` to use `.git/pebble-worktrees`
 - [x] Update all code, comments, and tests to use `pebble` instead of `beads` where appropriate
-- [x] Preserve `.bead-whitelist` and `xtask check-beads` as per project requirements
+- [x] Preserve `.forbidden-word-whitelist` and `xtask check-forbidden-words` as per project requirements
 
 ## Phase 6: Intelligent 3-Way Merge for Sync
 - [ ] Implement `pebble merge` command (internal tool for git merge driver)
