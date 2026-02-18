@@ -137,10 +137,7 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // git fetch origin <sync_branch>
         self.git
-            .run(
-                &["fetch", "origin", &self.sync_branch],
-                &worktree_path,
-            )
+            .run(&["fetch", "origin", &self.sync_branch], &worktree_path)
             .with_context(|| "Failed to execute git fetch")?;
 
         // git merge origin/<sync_branch>
@@ -159,10 +156,7 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // git push origin <sync_branch>
         self.git
-            .run(
-                &["push", "origin", &self.sync_branch],
-                &worktree_path,
-            )
+            .run(&["push", "origin", &self.sync_branch], &worktree_path)
             .with_context(|| "Failed to execute git push")?;
 
         Ok(())
