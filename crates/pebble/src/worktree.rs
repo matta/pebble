@@ -161,20 +161,71 @@ impl WorktreeManager {
             })?;
         }
 
-        // Run git worktree add
-        // We use --detach because we don't need a local branch, just the checked output
-        // actually, we probably want to check out the specific branch
-        // but if the branch doesn't exist locally, we might need to fetch it first.
-        // For phase 1, let's assume we can just add the worktree.
-
-        Command::new("git")
-            .arg("worktree")
-            .arg("add")
-            .arg("--detach") // use detach to avoid branch conflicts for now
-            .arg(&path)
+        // Check if sync_branch exists locally
+        let has_local = Command::new("git")
+            .args(["rev-parse", "--verify", &self.sync_branch])
             .current_dir(&self.repo_root)
-            .check_output()
-            .with_context(|| "Failed to execute git worktree add")?;
+            .check_run()
+            .is_ok();
+
+        let target_branch = if has_local {
+            Some(self.sync_branch.clone())
+        } else {
+            // Try to fetch origin to update remote refs
+            // We ignore errors here (e.g. offline) as we might still have it cached or create new
+            let _ = Command::new("git")
+                .args(["fetch", "origin"])
+                .current_dir(&self.repo_root)
+                .check_run();
+
+            // Check if origin/sync_branch exists
+            let remote_ref = format!("origin/{}", self.sync_branch);
+            let has_remote = Command::new("git")
+                .args(["rev-parse", "--verify", &remote_ref])
+                .current_dir(&self.repo_root)
+                .check_run()
+                .is_ok();
+
+            if has_remote { Some(remote_ref) } else { None }
+        };
+
+        if let Some(target) = target_branch {
+            Command::new("git")
+                .arg("worktree")
+                .arg("add")
+                .arg("--detach")
+                .arg(&path)
+                .arg(&target)
+                .current_dir(&self.repo_root)
+                .check_output()
+                .with_context(|| "Failed to execute git worktree add")?;
+        } else {
+            // Initialize as orphan branch
+            // First create worktree without checking out anything (to avoid huge checkout)
+            Command::new("git")
+                .arg("worktree")
+                .arg("add")
+                .arg("--detach")
+                .arg("--no-checkout") // Don't checkout HEAD files
+                .arg(&path)
+                .current_dir(&self.repo_root)
+                .check_output()
+                .with_context(|| "Failed to execute git worktree add (orphan)")?;
+
+            // Create orphan branch inside worktree
+            Command::new("git")
+                .args(["checkout", "--orphan", &self.sync_branch])
+                .current_dir(&path)
+                .check_run()
+                .with_context(|| "Failed to create orphan branch")?;
+
+            // Ensure index is empty
+            Command::new("git")
+                .args(["rm", "-rf", "."])
+                .current_dir(&path)
+                .check_run()
+                .ok(); // Ignore if empty
+        }
 
         Ok(path)
     }

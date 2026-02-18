@@ -42,6 +42,9 @@
 // Create both .pebble and .beads
 // Create only .beads
 /// Check for forbidden words like "bead" or "beads"
+CheckBeads {
+Commands::CheckBeads {
+let jsonl_path = worktree_path.join(".beads/issues.jsonl");
 1. **Directory Renaming**: The project-local configuration directory must be renamed from `.beads` to `.pebble`.
 2. **Branch Management**: The synchronization branch must be updated from `beads-sync` to `pebble-sync`.
 3. **Worktree Management**: The internal Git worktree path must be updated from `.git/beads-worktrees` to `.git/pebble-worktrees`.
@@ -50,6 +53,7 @@ Complete the transition from `beads` to `pebble` by renaming project-specific di
 Ok(worktree_path.join(".beads/issues.jsonl"))
 Pebble is a simplified Rust re-implementation of the `beads` tool, focusing on a JSONL backend, strict Git-based worktree synchronization, and a Test-Driven Development (TDD) approach.
 Pebble is a streamlined, "bare-bones" alternative to `beads`. It intentionally strips away peripheral features to focus on a minimal, high-performance core for developers who value simplicity and zero overhead.
+
 This document outlines the step-by-step plan to implement `pebble`, a simplified Rust version of `beads`.
 This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
 assert!(branch == "HEAD" || branch == "beads-sync");
@@ -63,8 +67,8 @@ fs::create_dir(root.join(".beads")).unwrap();
 if lower_line.contains("bead") {
 let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
 let entry = "foo bead bar";
-let expected = repo_root.join(".git/beads-worktrees/beads-sync");
-let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
+        let expected = repo_root.join(".git/beads-worktrees/my-sync-branch");
+        let expected = repo_root.join(".git/beads-worktrees/my-sync-branch/.beads/issues.jsonl");
 let issues_dir = worktree_path.join(".beads");
 let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
 let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
@@ -80,3 +84,5 @@ std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
 std::path::PathBuf::from(DEFAULT_CONFIG_PATH_BEADS)
+} => check_beads(all, generate_whitelist, minimize_whitelist),
+
