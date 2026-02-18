@@ -23,6 +23,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Initialize a new Pebble repository
+    Init,
     Config {
         #[command(subcommand)]
         command: ConfigCommands,
@@ -86,19 +88,39 @@ fn main() -> Result<()> {
     }
 
     if let Some(command) = &cli.command {
-        let config = load_config(cli.config.as_deref())?;
+        // Initialization check for commands that require it
+        let requires_init = !matches!(command, Commands::Init | Commands::Config { .. });
+        if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
+            eprintln!("Error: Pebble is not initialized in this repository. Run 'pebble init' to get started.");
+            std::process::exit(1);
+        }
+
+        let config = if matches!(command, Commands::Init) {
+            // Init doesn't need to load config first
+            None
+        } else {
+            Some(load_config(cli.config.as_deref())?)
+        };
 
         match command {
-            Commands::Config { command } => match command {
-                ConfigCommands::Get { key } => {
-                    if key == "sync-branch"
-                        && let Some(val) = &config.sync_branch
-                    {
-                        println!("{}", val);
+            Commands::Init => {
+                println!("Initializing pebble...");
+                // TODO: Implementation for Phase 2
+            }
+            Commands::Config { command } => {
+                let config = config.unwrap();
+                match command {
+                    ConfigCommands::Get { key } => {
+                        if key == "sync-branch"
+                            && let Some(val) = &config.sync_branch
+                        {
+                            println!("{}", val);
+                        }
                     }
                 }
-            },
+            }
             Commands::Sync => {
+                let config = config.unwrap();
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -113,6 +135,7 @@ fn main() -> Result<()> {
                 println!("Sync complete.");
             }
             Commands::List { json } => {
+                let config = config.unwrap();
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -140,6 +163,7 @@ fn main() -> Result<()> {
                 }
             }
             Commands::Add { title, description } => {
+                let config = config.unwrap();
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -188,6 +212,7 @@ fn main() -> Result<()> {
                 println!("Added issue {}", id);
             }
             Commands::Show { id, json } => {
+                let config = config.unwrap();
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -234,6 +259,7 @@ fn main() -> Result<()> {
                 title,
                 description,
             } => {
+                let config = config.unwrap();
                 let sync_branch = config
                     .sync_branch
                     .as_deref()

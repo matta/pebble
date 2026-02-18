@@ -21,7 +21,7 @@ pub struct Config {
 
 impl Config {
     pub fn is_initialized(root: &Path) -> bool {
-        root.join(".pebble").is_dir()
+        root.join(".pebble").is_dir() || root.join(".beads").is_dir()
     }
 }
 

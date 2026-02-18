@@ -156,7 +156,7 @@ fn test_sync_fail_no_config() {
         .arg("sync")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Failed to read config file"));
+        .stderr(predicate::str::contains("Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."));
 }
 
 #[test]
