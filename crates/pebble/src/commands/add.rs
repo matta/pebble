@@ -16,7 +16,7 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
     loop {
         let suffix: String = rand::rng()
             .sample_iter(&rand::distr::Alphanumeric)
-            .take(6)
+            .take(12)
             .map(char::from)
             .collect::<String>()
             .to_lowercase();

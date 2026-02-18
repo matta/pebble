@@ -90,6 +90,6 @@ fn test_id_generation_length() {
     assert!(id.starts_with("issue-"));
     let parts: Vec<&str> = id.split('-').collect();
     assert_eq!(parts.len(), 2);
-    // New behavior is 6 chars
-    assert_eq!(parts[1].len(), 6, "ID suffix should be 6 chars");
+    // New behavior is 12 chars
+    assert_eq!(parts[1].len(), 12, "ID suffix should be 12 chars");
 }
