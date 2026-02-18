@@ -398,7 +398,21 @@ mod tests {
     #[test]
     fn test_read_issues_mixed_valid_and_invalid() {
         let mut file = NamedTempFile::new().unwrap();
-        let valid_json = r#"{"id":"1","title":"Valid","status":"open","priority":1,"issue_type":"task","owner":"me","created_at":"2023-01-01","updated_at":"2023-01-01","closed_at":null,"close_reason":null}"#;
+        let valid_issue = Issue {
+            id: "1".to_string(),
+            title: "Valid".to_string(),
+            description: String::new(),
+            status: "open".to_string(),
+            priority: 1,
+            issue_type: "task".to_string(),
+            owner: "me".to_string(),
+            created_at: "2023-01-01".to_string(),
+            created_by: String::new(),
+            updated_at: "2023-01-01".to_string(),
+            closed_at: None,
+            close_reason: None,
+        };
+        let valid_json = serde_json::to_string(&valid_issue).unwrap();
         writeln!(file, "{}", valid_json).unwrap();
         writeln!(file, "invalid json").unwrap();
 
