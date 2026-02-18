@@ -8,10 +8,6 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
 
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
 
-    let existing_issues = store.read_issues()?;
-    let existing_ids: std::collections::HashSet<&str> =
-        existing_issues.iter().map(|i| i.id.as_str()).collect();
-
     let mut id;
     loop {
         let suffix: String = rand::rng()
@@ -22,7 +18,8 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
             .to_lowercase();
         id = format!("{}-{}", prefix, suffix);
 
-        if !existing_ids.contains(id.as_str()) {
+        // Optimization: Use issue_exists to check for collision without loading all issues
+        if !store.issue_exists(&id)? {
             break;
         }
     }
