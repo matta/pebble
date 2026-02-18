@@ -47,22 +47,34 @@ impl WorktreeManager {
         let target_branch = if has_local {
             Some(self.sync_branch.clone())
         } else {
-            // Try to fetch origin to update remote refs
-            // We ignore errors here (e.g. offline) as we might still have it cached or create new
-            let _ = Command::new("git")
-                .args(["fetch", "origin"])
-                .current_dir(&self.repo_root)
-                .check_run();
-
-            // Check if origin/sync_branch exists
-            let remote_ref = format!("origin/{}", self.sync_branch);
-            let has_remote = Command::new("git")
-                .args(["rev-parse", "--verify", &remote_ref])
+            // Check if 'origin' remote exists
+            // TODO: Make 'origin' configurable
+            let has_origin = Command::new("git")
+                .args(["remote", "get-url", "origin"])
                 .current_dir(&self.repo_root)
                 .check_run()
                 .is_ok();
 
-            if has_remote { Some(remote_ref) } else { None }
+            if has_origin {
+                // Try to fetch origin to update remote refs
+                Command::new("git")
+                    .args(["fetch", "origin"])
+                    .current_dir(&self.repo_root)
+                    .check_run()
+                    .with_context(|| "Failed to fetch from origin")?;
+
+                // Check if origin/sync_branch exists
+                let remote_ref = format!("origin/{}", self.sync_branch);
+                let has_remote = Command::new("git")
+                    .args(["rev-parse", "--verify", &remote_ref])
+                    .current_dir(&self.repo_root)
+                    .check_run()
+                    .is_ok();
+
+                if has_remote { Some(remote_ref) } else { None }
+            } else {
+                None
+            }
         };
 
         if let Some(target) = target_branch {
@@ -73,7 +85,7 @@ impl WorktreeManager {
                 .arg(&path)
                 .arg(&target)
                 .current_dir(&self.repo_root)
-                .check_output()
+                .check_run()
                 .with_context(|| "Failed to execute git worktree add")?;
         } else {
             // Initialize as orphan branch
@@ -85,7 +97,7 @@ impl WorktreeManager {
                 .arg("--no-checkout") // Don't checkout HEAD files
                 .arg(&path)
                 .current_dir(&self.repo_root)
-                .check_output()
+                .check_run()
                 .with_context(|| "Failed to execute git worktree add (orphan)")?;
 
             // Create orphan branch inside worktree
