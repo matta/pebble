@@ -324,3 +324,4 @@ When building a tool intended for dual human/agent use:
 - [ ] Test exit codes for success, failure, and usage errors
 - [ ] Test idempotency (run the same command twice, same result)
 - [ ] Test `stderr` isolation (structured output never leaks to stderr)
+- [ ] Test `stdout` purity (diagnostics never leak to `stdout` in `--json` mode)
