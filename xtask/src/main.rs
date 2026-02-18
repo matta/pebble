@@ -21,7 +21,7 @@ enum Commands {
         #[arg(long)]
         all: bool,
     },
-    /// Check for forbidden words like "bead" or "beads"
+    /// Check for forbidden words
     CheckForbiddenWords {
         /// Scan all tracked files instead of just edited ones
         #[arg(long)]
@@ -171,11 +171,11 @@ fn check_forbidden_words(
         println!("Minimized whitelist at {:?}", whitelist_path);
     } else {
         if !violations.is_empty() {
-            println!("Found forbidden words 'bead' or 'beads' in the following locations:");
-            for (file, line, content) in violations {
-                println!("{}:{}: {}", file, line, content.trim());
+            println!("Found forbidden words in the following locations:");
+            for (file, line, _) in violations {
+                println!("{}:{}", file, line);
             }
-            bail!("Found forbidden words. Please remove them or add the line to .forbidden-word-whitelist if intended.");
+            bail!("Found forbidden words. Please remove them or add the line(s) to .forbidden-word-whitelist if intended.");
         }
 
         if scan_all && found_whitelisted.len() < whitelist.len() {
@@ -273,7 +273,7 @@ fn process_line(
     found_whitelisted: &mut HashSet<String>,
 ) -> bool {
     let lower_line = line.to_lowercase();
-    if lower_line.contains("bead") {
+    if lower_line.contains("baz") {
         let canonical = canonicalize(line);
         if generate_whitelist {
             new_whitelist.insert(canonical);
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn test_process_line() {
         let mut whitelist = HashSet::new();
-        let entry = "foo bead bar";
+        let entry = "foo baz bar";
         whitelist.insert(canonicalize(entry));
 
         let mut new_whitelist = HashSet::new();
@@ -304,7 +304,7 @@ mod tests {
 
         // Exact match
         assert!(!process_line(
-            "foo bead bar",
+            "foo baz bar",
             false,
             &whitelist,
             &mut new_whitelist,
@@ -313,7 +313,7 @@ mod tests {
 
         // Whitespace mismatch
         assert!(!process_line(
-            "  foo   bead   bar  ",
+            "  foo   baz   bar  ",
             false,
             &whitelist,
             &mut new_whitelist,
@@ -322,7 +322,7 @@ mod tests {
 
         // Case mismatch (should be whitelisted now)
         assert!(!process_line(
-            "FOO BEAD BAR",
+            "FOO BAZ BAR",
             false,
             &whitelist,
             &mut new_whitelist,
@@ -331,7 +331,7 @@ mod tests {
 
         // Violation
         assert!(process_line(
-            "other bead",
+            "other baz",
             false,
             &whitelist,
             &mut new_whitelist,
