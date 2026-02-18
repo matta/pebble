@@ -21,6 +21,7 @@ pub trait GitProvider {
     ) -> Result<std::process::ExitStatus>;
 }
 
+#[derive(Debug)]
 pub struct RealGit;
 
 impl RealGit {

@@ -25,13 +25,15 @@ pub fn load_config(path: Option<&Path>) -> Result<Config> {
     Ok(config)
 }
 
-pub fn get_worktree_manager(config: &Config) -> Result<pebble::worktree::WorktreeManager> {
+pub fn get_worktree_manager(
+    config: &Config,
+    repo_root: std::path::PathBuf,
+) -> Result<pebble::worktree::WorktreeManager> {
     let sync_branch = config
         .sync_branch
         .as_deref()
         .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
-    let repo_root = std::env::current_dir()?;
     Ok(pebble::worktree::WorktreeManager::new(
         repo_root,
         sync_branch.to_string(),
@@ -45,7 +47,7 @@ pub fn get_store(
     pebble::worktree::WorktreeManager,
     std::path::PathBuf,
 )> {
-    let manager = get_worktree_manager(config)?;
+    let manager = get_worktree_manager(config, std::env::current_dir()?)?;
     let jsonl_path = manager.get_absolute_jsonl_path()?;
     let store = pebble::store::JsonlStore::new(
         jsonl_path
@@ -61,4 +63,37 @@ pub fn get_git_config(key: &str) -> Result<String> {
         .check_output()
         .map(|s| s.trim().to_string())
         .map_err(Into::into)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_worktree_manager_success() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        let config = Config {
+            sync_branch: Some("my-sync-branch".to_string()),
+            ..Default::default()
+        };
+
+        // Use the explicit root function to avoid changing current directory
+        let result = get_worktree_manager(&config, temp_dir.path().to_path_buf());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_worktree_manager_missing_sync_branch() {
+        let config = Config {
+            sync_branch: None,
+            ..Default::default()
+        };
+        let result = get_worktree_manager(&config, std::path::PathBuf::from("."));
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "sync-branch not configured"
+        );
+    }
 }
