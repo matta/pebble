@@ -65,7 +65,7 @@ fn test_worktree_creation_from_remote_branch() {
 
     // Verify sync branch does NOT exist locally
     let output = Command::new("git")
-        .args(&["branch", "--list", sync_branch])
+        .args(["branch", "--list", sync_branch])
         .current_dir(local_path)
         .output()
         .unwrap();
@@ -85,7 +85,7 @@ fn test_worktree_creation_from_remote_branch() {
 
     // Check if we are on the correct branch in the worktree
     let output = Command::new("git")
-        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .current_dir(&worktree_path)
         .output()
         .unwrap();
@@ -125,7 +125,7 @@ fn test_worktree_creation_orphan_fallback() {
 
     // Check if we are on the correct branch
     let output = Command::new("git")
-        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .current_dir(&worktree_path)
         .output()
         .unwrap();
