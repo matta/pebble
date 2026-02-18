@@ -7,6 +7,8 @@ use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
+const TEST_SYNC_BRANCH: &str = "pebble-sync";
+
 struct TestEnv {
     _temp_dir: TempDir,
     root: PathBuf,
@@ -42,7 +44,7 @@ impl TestEnv {
         std::fs::create_dir(root.join(CONFIG_DIR)).unwrap();
         std::fs::write(
             Config::default_path(&root),
-            "sync-branch = \"pebble-sync\"\n",
+            format!("sync-branch = \"{}\"\n", TEST_SYNC_BRANCH),
         )
         .unwrap();
 
@@ -63,7 +65,7 @@ impl TestEnv {
         std::process::Command::new("git")
             .arg("checkout")
             .arg("-b")
-            .arg("pebble-sync")
+            .arg(TEST_SYNC_BRANCH)
             .current_dir(&root)
             .check_run()
             .unwrap();
@@ -96,7 +98,7 @@ impl TestEnv {
     }
 
     fn get_worktree_path(&self) -> PathBuf {
-        pebble::worktree::generate_worktree_path(&self.root, "pebble-sync")
+        pebble::worktree::generate_worktree_path(&self.root, TEST_SYNC_BRANCH)
     }
 
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {

@@ -25,7 +25,7 @@ enum Commands {
     /// Initialize a new Pebble repository
     Init {
         /// Name of the synchronization branch
-        #[arg(long, default_value = "pebble-data")]
+        #[arg(long, default_value = pebble::DEFAULT_SYNC_BRANCH)]
         sync_branch: String,
     },
     /// Import issues from a JSONL file
