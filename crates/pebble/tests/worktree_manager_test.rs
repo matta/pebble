@@ -146,7 +146,11 @@ fn test_sync_branch_argument_injection_prevention() {
     assert!(result.is_err());
     let debug_msg = format!("{:?}", result.unwrap_err());
 
+    // Check if error is usage error (129) or fatal error (128/1/etc)
+    // If 129 -> Vulnerable (git treated it as flag)
     if debug_msg.contains("129") {
-        panic!("VULNERABLE: Argument injection detected");
+        panic!(
+            "VULNERABLE: Git fetch failed with usage error (129). This indicates argument injection."
+        );
     }
 }
