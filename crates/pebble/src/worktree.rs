@@ -169,12 +169,10 @@ impl<G: GitProvider> WorktreeManager<G> {
         }
 
         // Ensure the parent directory exists
-        if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent).with_context(|| {
-                    format!("Failed to create worktree parent directory: {:?}", parent)
-                })?;
-            }
+        if let Some(parent) = path.parent().filter(|p| !p.exists()) {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create worktree parent directory: {:?}", parent)
+            })?;
         }
 
         // git worktree add <path> <branch>
