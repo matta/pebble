@@ -49,7 +49,8 @@ impl WorktreeManager {
             .arg("--detach") // use detach to avoid branch conflicts for now
             .arg(&path)
             .current_dir(&self.repo_root)
-            .check_output()
+            .stdout(std::process::Stdio::null())
+            .check_run()
             .with_context(|| "Failed to execute git worktree add")?;
 
         Ok(path)
