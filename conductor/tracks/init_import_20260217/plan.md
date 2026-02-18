@@ -2,7 +2,7 @@
 
 This plan outlines the steps to implement the `pebble init` and `pebble import` commands, along with repository-wide initialization checks, following a TDD approach.
 
-## Phase 1: Initialization Awareness and Infrastructure
+## Phase 1: Initialization Awareness and Infrastructure [checkpoint: d8aa8b0]
 Focus on making Pebble aware of its own setup state and providing helpful error messages.
 
 - [x] Task: Implement `Config::is_initialized()` utility (bcee20b)
