@@ -1,11 +1,14 @@
 ---
 name: gh-pr-fixer
-description: Fix GitHub Pull Request CI failures and resolve merge conflicts. Use when a PR is reported as failing CI or having conflicts, and an autonomous workflow is needed to checkout, diagnose, fix, and push the resolution.
+description: Fix GitHub Pull Request CI failures and resolve merge conflicts. Use when a PR is reported as failing CI or having conflicts. Strongly prefer the `gh` CLI tool over browser-based tools for speed and automation.
 ---
 
 # GH PR Fixer Workflow
 
-This skill provides a systematic approach to fixing issues in GitHub Pull Requests.
+## Tooling Preferences
+
+- **Mandatory Tool**: Use the `gh` (GitHub CLI) tool for all PR discovery, checkout, and status viewing.
+- **Avoid Browser Tools**: Do not use `browser_subagent` or `read_url_content` for PR tasks unless specifically instructed by the user or if `gh` is unavailable. The `gh` tool is faster, more precise, and better suited for automation.
 
 ## Phase 1: Preparation & Checkout
 
