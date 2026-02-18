@@ -298,13 +298,26 @@ fn main() -> Result<()> {
                 let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
 
                 let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
-                let suffix: String = rand::rng()
-                    .sample_iter(&rand::distr::Alphanumeric)
-                    .take(3)
-                    .map(char::from)
-                    .collect::<String>()
-                    .to_lowercase();
-                let id = format!("{}-{}", prefix, suffix);
+
+                // Check for collisions
+                let existing_issues = store.read_issues()?;
+                let existing_ids: std::collections::HashSet<&str> =
+                    existing_issues.iter().map(|i| i.id.as_str()).collect();
+
+                let mut id;
+                loop {
+                    let suffix: String = rand::rng()
+                        .sample_iter(&rand::distr::Alphanumeric)
+                        .take(6)
+                        .map(char::from)
+                        .collect::<String>()
+                        .to_lowercase();
+                    id = format!("{}-{}", prefix, suffix);
+
+                    if !existing_ids.contains(id.as_str()) {
+                        break;
+                    }
+                }
 
                 let now = chrono::Local::now().to_rfc3339();
                 let user_name =

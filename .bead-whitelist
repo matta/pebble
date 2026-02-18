@@ -52,3 +52,6 @@ std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap();
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
 std::path::PathBuf::from(DEFAULT_CONFIG_PATH_BEADS)
 } => check_beads(all, generate_whitelist, minimize_whitelist),
+let config_dir = path.join(".beads");
+// Create an initial commit including .beads
+
