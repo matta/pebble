@@ -2,7 +2,7 @@ use assert_cmd::Command;
 use assert_cmd::cargo_bin;
 use pebble::command::CommandExt;
 use pebble::config::Config;
-use pebble::{ISSUES_FILE, PEBBLE_DIR, WORKTREE_DIR};
+use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -39,7 +39,7 @@ impl TestEnv {
             .unwrap();
 
         // .pebble/config.toml
-        std::fs::create_dir(root.join(PEBBLE_DIR)).unwrap();
+        std::fs::create_dir(root.join(CONFIG_DIR)).unwrap();
         std::fs::write(
             Config::default_path(&root),
             "sync-branch = \"pebble-sync\"\n",

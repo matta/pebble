@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use pebble::worktree::{GitProvider, WorktreeManager};
-use pebble::{ISSUES_FILE, PEBBLE_DIR, WORKTREE_DIR};
+use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -38,8 +38,8 @@ fn test_get_absolute_jsonl_path() {
 
     setup_git_repo(&repo_root);
 
-    std::fs::create_dir(repo_root.join(PEBBLE_DIR)).unwrap();
-    std::fs::write(repo_root.join(PEBBLE_DIR).join("dummy"), "dummy").unwrap();
+    std::fs::create_dir(repo_root.join(CONFIG_DIR)).unwrap();
+    std::fs::write(repo_root.join(CONFIG_DIR).join("dummy"), "dummy").unwrap();
     execute_git(&["add", "."], &repo_root);
     execute_git(&["commit", "-m", "Initial"], &repo_root);
 

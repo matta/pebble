@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use pebble::{CONFIG_FILE, PEBBLE_DIR};
+use pebble::{CONFIG_FILE, CONFIG_DIR};
 #[allow(deprecated)]
 use assert_cmd::cargo::cargo_bin;
 use std::fs;
@@ -35,7 +35,7 @@ fn test_id_generation_length() {
     assert!(status.success());
 
     // Create config file and directory BEFORE commit
-    let config_dir = path.join(PEBBLE_DIR);
+    let config_dir = path.join(CONFIG_DIR);
     fs::create_dir(&config_dir).unwrap();
     fs::write(config_dir.join(CONFIG_FILE), "sync-branch = \"main\"\n").unwrap();
 

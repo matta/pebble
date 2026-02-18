@@ -15,11 +15,11 @@ pub struct Config {
 
 impl Config {
     pub fn default_path(root: &Path) -> PathBuf {
-        root.join(crate::PEBBLE_DIR).join(crate::CONFIG_FILE)
+        root.join(crate::CONFIG_DIR).join(crate::CONFIG_FILE)
     }
 
     pub fn is_initialized(root: &Path) -> bool {
-        root.join(crate::PEBBLE_DIR).is_dir()
+        root.join(crate::CONFIG_DIR).is_dir()
     }
 
     pub fn save(&self, path: &Path) -> color_eyre::Result<()> {

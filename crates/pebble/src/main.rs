@@ -67,7 +67,7 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-use pebble::PEBBLE_DIR;
+use pebble::CONFIG_DIR;
 
 fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     let config_path = match path {
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
                 println!("Initializing worktree at {}...", worktree_path.display());
                 manager.init_worktree(&worktree_path)?;
 
-                let pebble_dir = repo_root.join(PEBBLE_DIR);
+                let pebble_dir = repo_root.join(CONFIG_DIR);
                 if !pebble_dir.exists() {
                     std::fs::create_dir_all(&pebble_dir)?;
                 }
