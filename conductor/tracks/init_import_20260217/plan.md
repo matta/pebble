@@ -8,7 +8,7 @@ Focus on making Pebble aware of its own setup state and providing helpful error 
 - [x] Task: Implement `Config::is_initialized()` utility (bcee20b)
     - [ ] Write failing test to check initialization status in a non-git or non-pebble repo.
     - [ ] Implement logic to detect if a `.pebble` worktree/directory exists.
-- [ ] Task: Update CLI to enforce initialization for existing commands
+- [x] Task: Update CLI to enforce initialization for existing commands (5ef04e6)
     - [ ] Write failing tests for `list`, `show`, `add` in an uninitialized repo.
     - [ ] Implement a check in the command execution path that suggests `pebble init` on failure.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Initialization Awareness' (Protocol in workflow.md)
