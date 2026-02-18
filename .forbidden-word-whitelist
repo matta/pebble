@@ -1,8 +1,6 @@
 " foo bead bar ",
 "foo bead bar",
 "other bead",
-"sync-branch: beads-fallback-sync
-"sync-branch: beads-sync
 - **configuration parsing**: must parse `.beads/config.yaml` format. specifically handle `sync-branch`.
 - **no local copy**: the `issues.jsonl` file does **not** exist in the user's working directory (e.g., `.beads/issues.jsonl`).
 - **original beads users**: people looking for a more predictable, rust-powered alternative to the original go implementation.
@@ -10,47 +8,18 @@
 - [ ] `pebble import` correctly merges issues from a `beads`-style jsonl file using shared merging logic for field updates.
 - [ ] implement field-level 3-way merge algorithm (matching `beads` behavior)
 - [x] implement check-beads xtask command
-- [x] preserve `.bead-whitelist` and `xtask check-beads` as per project requirements
 - [x] rename `.beads` directory to `.pebble` (while maintaining fallback)
 - [x] rename `beads-sync` branch references to `pebble-sync`
 - [x] update all code, comments, and tests to use `pebble` instead of `beads` where appropriate
 - configuration: **strict**. the only supported format is 'sync-branch' configuration as found in `../mydoo/.beads/config.yaml`. other configurations are unsupported.
 - the repository `../beads` is synced to this release commit.
 - use `../mydoo` as a reference testbed where beads is set up correctly.
-.args(["add", ".beads/issues.jsonl"])
-.is_some_and(|name| name == ".bead-whitelist")
-.stdout(predicate::str::contains("beads-fallback-sync"));
-// .beads/config.yaml
-// create both .pebble and .beads
-// create only .beads
 /// check for forbidden words like "bead" or "beads"
-bail!("found forbidden words. please remove them or add the line to .bead-whitelist if intended.");
-bail!("whitelist contains unused entries. run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
-beads_path
-check_beads(all, false, false)?;
-checkbeads {
-commands::checkbeads {
-const default_config_path: &str = ".beads/config.yaml";
-fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> result<()> {
-fn test_default_config_discovery_beads_fallback() {
-fn test_default_config_discovery_pebble_over_beads() {
-fs::create_dir(root.join(".beads")).unwrap();
-if beads_path.exists() {
 if lower_line.contains("bead") {
-let beads_path = std::path::pathbuf::from(default_config_path);
 let entry = "foo bead bar";
-let whitelist_path = root.join(".bead-whitelist");
 pebble is a simplified rust re-implementation of the `beads` tool, focusing on a jsonl backend, strict git-based worktree synchronization, and a test-driven development (tdd) approach.
 pebble is a streamlined, "bare-bones" alternative to `beads`. it intentionally strips away peripheral features to focus on a minimal, high-performance core for developers who value simplicity and zero overhead.
 println!("found forbidden words 'bead' or 'beads' in the following locations:");
-println!("found {} unused lines in .bead-whitelist:", unused.len());
-root.join(".beads/config.yaml"),
-root.join(".pebble").is_dir() || root.join(".beads").is_dir()
-std::fs::create_dir(repo_root.join(".beads")).unwrap();
-std::fs::create_dir(root.join(".beads")).unwrap();
-std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap();
-std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
 this document outlines the step-by-step plan to implement `pebble`, a simplified rust version of `beads`.
 this project is a rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
 this track introduces the `pebble init` command to simplify project setup and a `pebble import` command to allow users to ingest or migrate data from jsonl files (such as those produced by `beads`). it also adds proactive initialization checks to other cli commands and formalizes the structure of the data synchronization branch.
-} => check_beads(all, generate_whitelist, minimize_whitelist),

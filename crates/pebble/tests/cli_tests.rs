@@ -36,10 +36,10 @@ impl TestEnv {
             .check_run()
             .unwrap();
 
-        // .beads/config.yaml
-        std::fs::create_dir(root.join(".beads")).unwrap();
+        // .pebble/config.yaml
+        std::fs::create_dir(root.join(".pebble")).unwrap();
         std::fs::write(
-            root.join(".beads/config.yaml"),
+            root.join(".pebble/config.yaml"),
             "sync-branch: pebble-sync\nissue-prefix: test\n",
         )
         .unwrap();
@@ -63,9 +63,9 @@ impl TestEnv {
             .current_dir(&root)
             .check_run()
             .unwrap();
-        std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
+        std::fs::write(root.join(".pebble/issues.jsonl"), "").unwrap();
         std::process::Command::new("git")
-            .args(["add", ".beads/issues.jsonl"])
+            .args(["add", ".pebble/issues.jsonl"])
             .current_dir(&root)
             .check_run()
             .unwrap();
@@ -152,9 +152,9 @@ fn test_config_get_unset_key() {
 fn test_config_daemon_unsupported() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
-    std::fs::create_dir(root.join(".beads")).unwrap();
+    std::fs::create_dir(root.join(".pebble")).unwrap();
     std::fs::write(
-        root.join(".beads/config.yaml"),
+        root.join(".pebble/config.yaml"),
         "sync-branch: pebble-sync\nauto-start-daemon: true\n",
     )
     .unwrap();
