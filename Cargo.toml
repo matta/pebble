@@ -4,3 +4,6 @@ members = [
     "crates/pebble",
     "xtask",
 ]
+
+[workspace.dependencies]
+tempfile = "=3.25.0"
