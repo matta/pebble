@@ -57,3 +57,5 @@ std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
 } => check_beads(all, generate_whitelist, minimize_whitelist),
+let config_dir = path.join(".beads");
+// Create an initial commit including .beads
