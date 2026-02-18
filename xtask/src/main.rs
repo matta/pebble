@@ -139,26 +139,27 @@ fn check_forbidden_words(
             Ok(f) => f,
             Err(_) => continue, // Skip if cannot open
         };
-                    let reader = BufReader::new(file);
-                let forbidden = format!("{}ad", "be");
-        
-                for (line_num, line) in reader.lines().enumerate() {
-                    let line = match line {
-                        Ok(l) => l,
-                        Err(_) => continue, // Skip binary or invalid utf8
-                    };
-        
-                    if process_line(
-                        &line,
-                        &forbidden,
-                        generate_whitelist,
-                        &whitelist,
-                        &mut new_whitelist,
-                        &mut found_whitelisted,
-                    ) {
-                        violations.push((file_path.clone(), line_num + 1, line.clone()));
-                    }
-                }    }
+        let reader = BufReader::new(file);
+        let forbidden = format!("{}ad", "be");
+
+        for (line_num, line) in reader.lines().enumerate() {
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => continue, // Skip binary or invalid utf8
+            };
+
+            if process_line(
+                &line,
+                &forbidden,
+                generate_whitelist,
+                &whitelist,
+                &mut new_whitelist,
+                &mut found_whitelisted,
+            ) {
+                violations.push((file_path.clone(), line_num + 1, line.clone()));
+            }
+        }
+    }
 
     if generate_whitelist {
         let mut sorted_whitelist: Vec<_> = new_whitelist.into_iter().collect();
