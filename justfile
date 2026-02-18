@@ -1,7 +1,7 @@
-check:
+check *args:
     cargo fmt -- --check
     cargo clippy --workspace --all-targets -- -D warnings
-    cargo xtask check
+    cargo xtask check {{args}}
 
 test:
     cargo test --workspace

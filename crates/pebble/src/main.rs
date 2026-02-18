@@ -1,9 +1,8 @@
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
-use color_eyre::eyre::{Context, eyre};
-use pebble::command::CommandExt;
 use pebble::config::Config;
-use rand::RngExt;
+
+mod commands;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -67,65 +66,12 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-use pebble::CONFIG_DIR;
-
-fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
-    let config_path = match path {
-        Some(p) => std::path::PathBuf::from(p),
-        None => Config::default_path(&std::env::current_dir()?),
-    };
-    let content = std::fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
-    let config: Config = toml::from_str(&content).context("Failed to parse config")?;
-    config.validate()?;
-    Ok(config)
-}
-
-fn get_worktree_manager(config: &Config) -> Result<pebble::worktree::WorktreeManager> {
-    let sync_branch = config
-        .sync_branch
-        .as_deref()
-        .ok_or_else(|| eyre!("sync-branch not configured"))?;
-
-    let repo_root = std::env::current_dir()?;
-    Ok(pebble::worktree::WorktreeManager::new(
-        repo_root,
-        sync_branch.to_string(),
-    ))
-}
-
-fn get_store(
-    config: &Config,
-) -> Result<(
-    pebble::store::JsonlStore,
-    pebble::worktree::WorktreeManager,
-    std::path::PathBuf,
-)> {
-    let manager = get_worktree_manager(config)?;
-    let jsonl_path = manager.get_absolute_jsonl_path()?;
-    let store = pebble::store::JsonlStore::new(
-        jsonl_path
-            .to_str()
-            .ok_or_else(|| eyre!("Path contains invalid UTF-8 characters"))?,
-    );
-    Ok((store, manager, jsonl_path))
-}
-
-fn get_git_config(key: &str) -> Result<String> {
-    std::process::Command::new("git")
-        .args(["config", key])
-        .check_output()
-        .map(|s| s.trim().to_string())
-        .map_err(Into::into)
-}
-
 fn main() -> Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();
 
     if let Some(ref dir) = cli.directory {
-        std::env::set_current_dir(dir)
-            .with_context(|| format!("Failed to change directory to {}", dir.display()))?;
+        std::env::set_current_dir(dir)?;
     }
 
     if let Some(command) = &cli.command {
@@ -142,252 +88,50 @@ fn main() -> Result<()> {
             // Init doesn't need to load config first
             None
         } else {
-            Some(load_config(cli.config.as_deref())?)
+            Some(commands::load_config(cli.config.as_deref())?)
         };
 
         match command {
             Commands::Init { sync_branch } => {
-                let repo_root = std::env::current_dir()?;
-
-                if !pebble::worktree::WorktreeManager::<pebble::worktree::RealGit>::is_inside_git_repo(
-                    &repo_root,
-                ) {
-                    eprintln!("Error: 'pebble init' must be run inside a Git repository.");
-                    std::process::exit(1);
-                }
-
-                let manager = pebble::worktree::WorktreeManager::new(
-                    repo_root.clone(),
-                    sync_branch.to_string(),
-                );
-
-                println!("Creating orphaned sync branch: {}...", sync_branch);
-                manager.create_orphaned_sync_branch()?;
-
-                let worktree_path = manager.get_worktree_path();
-                println!("Initializing worktree at {}...", worktree_path.display());
-                manager.init_worktree(&worktree_path)?;
-
-                let pebble_dir = repo_root.join(CONFIG_DIR);
-                if !pebble_dir.exists() {
-                    std::fs::create_dir_all(&pebble_dir)?;
-                }
-                let config_path = Config::default_path(&repo_root);
-                println!("Saving configuration to {}...", config_path.display());
-                let config = Config {
-                    sync_branch: Some(sync_branch.clone()),
-                    ..Default::default()
-                };
-                config.save(&config_path)?;
-
-                println!("Pebble initialized successfully!");
+                commands::init::run(sync_branch.clone())?;
             }
             Commands::Import { path } => {
-                let config = config.as_ref().unwrap();
-                let (store, manager, _jsonl_path) = get_store(config)?;
-
-                if manager.is_dirty()? {
-                    eprintln!(
-                        "Error: Pebble data worktree has uncommitted changes. Please commit or stash them before importing."
-                    );
-                    std::process::exit(1);
-                }
-
-                let mut issues = store.read_issues()?;
-
-                let external_store = pebble::store::JsonlStore::new(
-                    path.to_str().ok_or_else(|| eyre!("Invalid path"))?,
-                );
-                let external_issues = external_store.read_issues()?;
-
-                let mut updated_count = 0;
-                let mut added_count = 0;
-
-                for ext_issue in external_issues {
-                    if let Some(existing) = issues.iter_mut().find(|i| i.id == ext_issue.id) {
-                        let old_updated = existing.updated_at.clone();
-                        existing.merge(ext_issue);
-                        if existing.updated_at != old_updated {
-                            updated_count += 1;
-                        }
-                    } else {
-                        issues.push(ext_issue);
-                        added_count += 1;
-                    }
-                }
-
-                if updated_count > 0 || added_count > 0 {
-                    store.write_issues(&issues)?;
-                    manager.commit_all(&format!("Imported data from {}", path.display()))?;
-                    println!(
-                        "Import complete: {} added, {} updated.",
-                        added_count, updated_count
-                    );
-                } else {
-                    println!("Import complete: No changes.");
-                }
+                commands::import::run(config.as_ref().unwrap(), path.clone())?;
             }
             Commands::Config { command } => {
                 let config = config.as_ref().unwrap();
                 match command {
                     ConfigCommands::Get { key } => {
-                        let val = match key.as_str() {
-                            "sync-branch" => config.sync_branch.clone(),
-                            "issue-prefix" => config.issue_prefix.clone(),
-                            _ => return Err(eyre!("Unknown config key '{}'", key)),
-                        };
-
-                        if let Some(v) = val {
-                            println!("{}", v);
-                        } else {
-                            return Err(eyre!("Config key '{}' not set", key));
-                        }
+                        commands::config_cmd::run(
+                            config,
+                            commands::config_cmd::ConfigCommand::Get { key: key.clone() },
+                        )?;
                     }
                 }
             }
-
             Commands::Sync => {
-                let config = config.as_ref().unwrap();
-                let manager = get_worktree_manager(config)?;
-
-                println!("Syncing...");
-                manager.sync()?;
-                println!("Sync complete.");
+                commands::sync::run(config.as_ref().unwrap())?;
             }
             Commands::List { json } => {
-                let config = config.as_ref().unwrap();
-                let (store, _, jsonl_path) = get_store(config)?;
-
-                if !*json {
-                    println!("Using database: {}", jsonl_path.display());
-                }
-                let issues = store.read_issues()?;
-
-                if *json {
-                    println!("{}", serde_json::to_string_pretty(&issues)?);
-                } else if issues.is_empty() {
-                    println!("No issues found.");
-                } else {
-                    for issue in issues {
-                        println!("{} [{}] {}", issue.id, issue.status, issue.title);
-                    }
-                }
+                commands::list::run(config.as_ref().unwrap(), *json)?;
             }
             Commands::Add { title, description } => {
-                let config = config.as_ref().unwrap();
-                let (store, manager, _) = get_store(config)?;
-
-                let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
-
-                let existing_issues = store.read_issues()?;
-                let existing_ids: std::collections::HashSet<&str> =
-                    existing_issues.iter().map(|i| i.id.as_str()).collect();
-
-                let mut id;
-                loop {
-                    let suffix: String = rand::rng()
-                        .sample_iter(&rand::distr::Alphanumeric)
-                        .take(6)
-                        .map(char::from)
-                        .collect::<String>()
-                        .to_lowercase();
-                    id = format!("{}-{}", prefix, suffix);
-
-                    if !existing_ids.contains(id.as_str()) {
-                        break;
-                    }
-                }
-
-                let now = chrono::Local::now().to_rfc3339();
-                let user_name =
-                    get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());
-                let user_email =
-                    get_git_config("user.email").unwrap_or_else(|_| "unknown".to_string());
-
-                let issue = pebble::store::Issue {
-                    id: id.clone(),
-                    title: title.clone(),
-                    description: description.clone().unwrap_or_default(),
-                    status: "open".to_string(),
-                    priority: 0,
-                    issue_type: "task".to_string(),
-                    owner: user_email,
-                    created_at: now.clone(),
-                    created_by: user_name,
-                    updated_at: now,
-                    closed_at: None,
-                    close_reason: None,
-                };
-
-                store.append_issue(&issue)?;
-                manager.commit_all(&format!("Add issue {}", id))?;
-                println!("Added issue {}", id);
+                commands::add::run(config.as_ref().unwrap(), title.clone(), description.clone())?;
             }
             Commands::Show { id, json } => {
-                let config = config.as_ref().unwrap();
-                let (store, _, _) = get_store(config)?;
-                let issues = store.read_issues()?;
-
-                let issue = issues
-                    .into_iter()
-                    .find(|i| i.id == *id)
-                    .ok_or_else(|| eyre!("Issue {} not found", id))?;
-
-                if *json {
-                    println!("{}", serde_json::to_string_pretty(&issue)?);
-                } else {
-                    println!("ID:          {}", issue.id);
-                    println!("Status:      {}", issue.status);
-                    println!("Title:       {}", issue.title);
-                    println!("Type:        {}", issue.issue_type);
-                    println!("Priority:    {}", issue.priority);
-                    println!("Owner:       {}", issue.owner);
-                    println!("Created At:  {}", issue.created_at);
-                    println!("Created By:  {}", issue.created_by);
-                    println!("Updated At:  {}", issue.updated_at);
-                    if let Some(closed_at) = issue.closed_at {
-                        println!("Closed At:   {}", closed_at);
-                    }
-                    if let Some(reason) = issue.close_reason {
-                        println!("Close Reason: {}", reason);
-                    }
-                    if !issue.description.is_empty() {
-                        println!("\nDescription:\n{}", issue.description);
-                    }
-                }
+                commands::show::run(config.as_ref().unwrap(), id.clone(), *json)?;
             }
             Commands::Edit {
                 id,
                 title,
                 description,
             } => {
-                let config = config.as_ref().unwrap();
-                let (store, manager, _) = get_store(config)?;
-                let mut issues = store.read_issues()?;
-
-                let issue = issues
-                    .iter_mut()
-                    .find(|i| i.id == *id)
-                    .ok_or_else(|| eyre!("Issue {} not found", id))?;
-
-                let mut changed = false;
-                if let Some(t) = title {
-                    issue.title = t.clone();
-                    changed = true;
-                }
-                if let Some(d) = description {
-                    issue.description = d.clone();
-                    changed = true;
-                }
-
-                if changed {
-                    issue.updated_at = chrono::Local::now().to_rfc3339();
-                    store.write_issues(&issues)?;
-                    manager.commit_all(&format!("Edit issue {}", id))?;
-                    println!("Updated issue {}", id);
-                } else {
-                    println!("No changes provided for issue {}", id);
-                }
+                commands::edit::run(
+                    config.as_ref().unwrap(),
+                    id.clone(),
+                    title.clone(),
+                    description.clone(),
+                )?;
             }
         }
     }

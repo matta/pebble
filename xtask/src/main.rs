@@ -11,7 +11,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::Command;
 
-const DEFAULT_TOKEN_LIMIT: usize = 2668;
+const DEFAULT_TOKEN_LIMIT: usize = 2500;
 
 #[derive(Parser)]
 struct Cli {
