@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Config {
@@ -16,6 +17,12 @@ pub struct Config {
 
     #[serde(rename = "auto-start-daemon")]
     pub auto_start_daemon: Option<bool>,
+}
+
+impl Config {
+    pub fn is_initialized(root: &Path) -> bool {
+        root.join(".pebble").is_dir()
+    }
 }
 
 #[cfg(test)]
