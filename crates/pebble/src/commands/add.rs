@@ -3,6 +3,9 @@ use color_eyre::Result;
 use pebble::config::Config;
 use rand::RngExt;
 
+// 12 characters provide ~4.7e18 combinations (36^12), making collisions virtually impossible.
+const ID_SUFFIX_LENGTH: usize = 12;
+
 pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
 
@@ -16,7 +19,7 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
     loop {
         let suffix: String = rand::rng()
             .sample_iter(&rand::distr::Alphanumeric)
-            .take(12)
+            .take(ID_SUFFIX_LENGTH)
             .map(char::from)
             .collect::<String>()
             .to_lowercase();
