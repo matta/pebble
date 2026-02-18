@@ -164,7 +164,9 @@ fn test_config_daemon_unsupported() {
         .arg("list")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Daemon mode is not supported"));
+        .stderr(predicate::str::contains(
+            "Configuration 'auto-start-daemon: true' is invalid as daemon mode is not supported.",
+        ));
 }
 
 #[test]

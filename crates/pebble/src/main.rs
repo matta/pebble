@@ -90,6 +90,7 @@ fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     let content = std::fs::read_to_string(&config_path)
         .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
     let config: Config = serde_yaml::from_str(&content).context("Failed to parse config")?;
+    config.validate()?;
     Ok(config)
 }
 
@@ -156,12 +157,6 @@ fn main() -> Result<()> {
         } else {
             Some(load_config(cli.config.as_deref())?)
         };
-
-        if let Some(ref config) = config
-            && (config.no_daemon == Some(false) || config.auto_start_daemon == Some(true))
-        {
-            return Err(eyre!("Daemon mode is not supported"));
-        }
 
         match command {
             Commands::Init { sync_branch } => {
