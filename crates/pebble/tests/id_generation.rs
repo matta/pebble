@@ -90,22 +90,9 @@ fn test_id_generation_length() {
     assert!(id.starts_with("issue-"));
     let parts: Vec<&str> = id.split('-').collect();
     assert_eq!(parts.len(), 2);
-    // With N=1 issue (including this one), the dynamic length calculation:
-    // P=1.0e-12, k=1.0
-    // required_pool_size = 1.0 / 2.0e-12 = 5.0e11
-    // length = log36(5.0e11) = log10(5.0e11)/log10(36) = 11.69/1.55 ~= 7.5
-    // ceil(7.5) = 8
-    // wait, population is BEFORE adding the new one.
-    // In test:
-    // 1. `add "Test Issue"` -> issues.len() is 0. suffix_len = 8.
-    //
-    // Let's re-verify the logic in `add.rs`:
-    // let existing_issues = store.read_issues()?;
-    // let suffix_length = recommended_id_length(existing_issues.len());
-    //
-    // When adding the FIRST issue, len is 0.
-    // recommended_id_length(0) returns 8 (calculated).
-    // So the suffix should be 8 chars long.
+
+    // When adding the first issue, population is 0.
+    // recommended_id_length(0) calculates 8 characters.
     assert_eq!(
         parts[1].len(),
         8,
