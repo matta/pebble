@@ -48,6 +48,7 @@ impl WorktreeManager {
             .arg("add")
             .arg("--detach") // use detach to avoid branch conflicts for now
             .arg(&path)
+            .arg("--quiet") // suppress "Preparing worktree" output
             .current_dir(&self.repo_root)
             .stdout(std::process::Stdio::null())
             .check_run()
