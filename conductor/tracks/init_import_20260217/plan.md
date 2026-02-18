@@ -25,7 +25,7 @@ Implement the core setup logic for creating orphaned sync branches and worktrees
 - [x] Task: Implement worktree initialization (de22f24)
     - [ ] Write failing test to verify the `.pebble` directory is a valid Git worktree after `init`.
     - [ ] Implement `git worktree add` logic pointing to the orphaned branch.
-- [ ] Task: Implement configuration persistence
+- [x] Task: Implement configuration persistence (671a134)
     - [ ] Write failing test to verify `sync-branch` is correctly stored in local config.
     - [ ] Implement writing defaults to the Pebble configuration file.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: pebble init' (Protocol in workflow.md)
