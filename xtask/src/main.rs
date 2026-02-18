@@ -22,7 +22,7 @@ enum Commands {
         all: bool,
     },
     /// Check for forbidden words like "bead" or "beads"
-    CheckPebble {
+    CheckBeads {
         /// Scan all tracked files instead of just edited ones
         #[arg(long)]
         all: bool,
@@ -46,15 +46,15 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Check { all } => {
-            check_pebble(all, false, false)?;
+            check_beads(all, false, false)?;
             check_file_length(all)?;
             Ok(())
         }
-        Commands::CheckPebble {
+        Commands::CheckBeads {
             all,
             generate_whitelist,
             minimize_whitelist,
-        } => check_pebble(all, generate_whitelist, minimize_whitelist),
+        } => check_beads(all, generate_whitelist, minimize_whitelist),
         Commands::CheckFileLength { all } => check_file_length(all),
     }
 }
@@ -86,7 +86,7 @@ fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
     Ok(files)
 }
 
-fn check_pebble(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
+fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
     let root = std::env::current_dir()?;
     let whitelist_path = root.join(".bead-whitelist");
 
@@ -180,7 +180,7 @@ fn check_pebble(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -
             for line in unused {
                 println!("  {}", line);
             }
-            bail!("Whitelist contains unused entries. Run 'cargo xtask check-pebble --minimize-whitelist' to clean it up.");
+            bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
         }
 
         println!("No forbidden words found.");

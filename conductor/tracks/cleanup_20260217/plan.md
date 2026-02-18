@@ -1,21 +1,20 @@
 # Implementation Plan: Renaming and Cleanup
 
-## Phase 1: Environment & Directory Renaming
+## Phase 1: Environment & Directory Renaming [checkpoint: cd3b841]
 This phase focuses on the structural changes required to rename the project's local configuration and tooling references.
 
-- [~] **Task: Rename .beads to .pebble**
-    - [ ] Write a test in `crates/pebble/tests/config_test.rs` to verify that `pebble` looks for a directory named `.pebble` by default.
-    - [ ] Implement the change in `crates/pebble/src/config.rs` to prioritize `.pebble` over `.beads`.
-- [ ] **Task: Update xtask and justfile**
-    - [ ] Rename `xtask check-beads` to `xtask check-pebble` in `xtask/src/main.rs`.
-    - [ ] Update `justfile` to use `just check-pebble`.
-    - [ ] Ensure the xtask still correctly reads `.bead-whitelist`.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Environment & Directory Renaming' (Protocol in workflow.md)**
+- [x] **Task: Rename .beads to .pebble** cd3b841
+    - [x] Write a test in `crates/pebble/tests/config_test.rs` to verify that `pebble` looks for a directory named `.pebble` by default.
+    - [x] Implement the change in `crates/pebble/src/config.rs` to prioritize `.pebble` over `.beads`.
+- [x] **Task: Update xtask and justfile** cd3b841
+    - [x] Preserve `xtask check-beads` as it verifies forbidden words.
+    - [x] Ensure the xtask still correctly reads `.bead-whitelist`.
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Environment & Directory Renaming' (Protocol in workflow.md)** cd3b841
 
 ## Phase 2: Code & Internal Reference Updates
 This phase updates internal strings, error messages, and project documentation.
 
-- [ ] **Task: Update internal string references**
+- [~] **Task: Update internal string references**
     - [ ] Write unit tests for CLI help output and error messages that contain "beads".
     - [ ] Update string literals in `crates/pebble/src` from "beads" to "pebble" (where appropriate).
 - [ ] **Task: Update project documentation**
