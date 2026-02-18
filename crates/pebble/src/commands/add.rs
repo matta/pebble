@@ -12,7 +12,7 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
     let existing_ids: std::collections::HashSet<&str> =
         existing_issues.iter().map(|i| i.id.as_str()).collect();
 
-    let suffix_length = pebble::recommended_id_length(existing_issues.len() as u64);
+    let suffix_length = pebble::recommended_id_length(existing_issues.len());
 
     let mut id;
     loop {

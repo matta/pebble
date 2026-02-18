@@ -13,7 +13,7 @@ pub const WORKTREE_DIR: &str = ".git/x-pebble";
 ///
 /// This assumes the Birthday Paradox applies: P ≈ k^2 / (2 * N)
 /// where k = current_population, N = alphabet_size^length.
-pub fn recommended_id_length(current_population: u64) -> usize {
+pub fn recommended_id_length(current_population: usize) -> usize {
     // If there is 0 or 1 item, a collision is impossible.
     // However, to maintain the safety margin for the *next* item
     // or simply to establish a baseline, we return 1.
