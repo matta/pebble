@@ -44,11 +44,11 @@ Create a reusable merge module and implement the import functionality.
     - [ ] Implement checks for uncommitted changes in the `.pebble` worktree before proceeding.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: pebble import' (Protocol in workflow.md)
 
-## Phase 4: Quality Gate and Final Verification
+## Phase 4: Quality Gate and Final Verification [checkpoint: feb526b]
 Ensure high code quality and consistency across all new features.
 
-- [ ] Task: Verify 80% Code Coverage
-    - [ ] Run coverage tools and address gaps in the new commands and modules.
-- [ ] Task: Final Documentation and Style Audit
-    - [ ] Ensure all public functions are documented and the orphaned branch nature is clearly explained in code comments.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Final Integration' (Protocol in workflow.md)
+- [x] Task: Verify 80% Code Coverage
+    - [x] Implemented `Config::validate()` and added `coverage_gap_test.rs` to cover all CLI branches (44 tests total).
+- [x] Task: Final Documentation and Style Audit
+    - [x] Verified doc comments and examples for all public APIs.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Final Integration' (Protocol in workflow.md)
