@@ -455,8 +455,7 @@ fn get_git_user_info() -> GitUser {
     if let Some(output) = output.filter(|o| o.status.success()) {
         let stdout = String::from_utf8_lossy(&output.stdout);
         for line in stdout.lines() {
-            let mut parts = line.splitn(2, ' ');
-            if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
+            if let Some((key, value)) = line.split_once(' ') {
                 match key {
                     "user.name" => name = value.trim().to_string(),
                     "user.email" => email = value.trim().to_string(),
