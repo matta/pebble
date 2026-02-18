@@ -7,6 +7,11 @@ use std::path::{Path, PathBuf};
 
 use std::process::Command;
 
+/// Generates the path for a worktree given the repository root and sync branch name.
+pub fn generate_worktree_path(repo_root: &Path, sync_branch: &str) -> PathBuf {
+    repo_root.join(WORKTREE_DIR).join(sync_branch)
+}
+
 pub trait GitProvider {
     fn run(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()>;
     fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String>;
@@ -221,7 +226,7 @@ impl<G: GitProvider> WorktreeManager<G> {
     }
 
     pub fn get_worktree_path(&self) -> PathBuf {
-        self.repo_root.join(WORKTREE_DIR).join(&self.sync_branch)
+        generate_worktree_path(&self.repo_root, &self.sync_branch)
     }
 
     pub fn ensure_worktree(&self) -> Result<PathBuf> {

@@ -96,7 +96,7 @@ impl TestEnv {
     }
 
     fn get_worktree_path(&self) -> PathBuf {
-        self.root.join(WORKTREE_DIR).join("pebble-sync")
+        pebble::worktree::generate_worktree_path(&self.root, "pebble-sync")
     }
 
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {

@@ -51,7 +51,7 @@ fn test_init_creates_worktree() {
         .success();
 
     // 1. Verify worktree exists
-    let pebble_dir = root.join(WORKTREE_DIR).join(sync_branch);
+    let pebble_dir = pebble::worktree::generate_worktree_path(root, sync_branch);
     assert!(pebble_dir.exists(), "Worktree directory should be created");
 
     // 2. Verify it's a worktree and on the correct branch

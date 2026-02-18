@@ -60,7 +60,7 @@ fn test_import_no_changes() {
         .success();
 
     // 3. Get the JSONL content and write to an external file
-    let issues_path = root.join(".git/x-pebble/pebble-data/issues.jsonl");
+    let issues_path = pebble::worktree::generate_worktree_path(root, "pebble-data").join("issues.jsonl");
     let content = std::fs::read_to_string(issues_path).unwrap();
     let ext_path = root.join("ext.jsonl");
     std::fs::write(&ext_path, content).unwrap();
