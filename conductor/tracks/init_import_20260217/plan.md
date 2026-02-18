@@ -36,7 +36,7 @@ Create a reusable merge module and implement the import functionality.
 - [x] Task: Refactor and extract shared merging logic (739c94b)
     - [ ] Write failing tests for merging two issue objects (field-level updates, ID collisions).
     - [ ] Extract existing merge logic (if any) or implement new logic in `store.rs` or a new `merge.rs`.
-- [ ] Task: Implement `pebble import` CLI command
+- [x] Task: Implement `pebble import` CLI command (2983e44)
     - [ ] Write failing test for `pebble import <file>` reading a sample JSONL file.
     - [ ] Implement command entry point and file path validation.
 - [ ] Task: Implement Git safety and idempotency
