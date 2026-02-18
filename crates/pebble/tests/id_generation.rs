@@ -34,11 +34,11 @@ fn test_id_generation_length() {
     assert!(status.success());
 
     // Create config file and directory BEFORE commit
-    let config_dir = path.join(".beads");
+    let config_dir = path.join(".pebble");
     fs::create_dir(&config_dir).unwrap();
     fs::write(config_dir.join("config.yaml"), "sync-branch: main\n").unwrap();
 
-    // Create an initial commit including .beads
+    // Create an initial commit including .pebble
     fs::write(path.join("README.md"), "# Test Repo").unwrap();
     let status = std::process::Command::new("git")
         .current_dir(path)
