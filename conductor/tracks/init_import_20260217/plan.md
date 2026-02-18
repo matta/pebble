@@ -22,7 +22,7 @@ Implement the core setup logic for creating orphaned sync branches and worktrees
 - [x] Task: Implement orphaned branch creation (01506f0)
     - [ ] Write failing test that verifies a new branch created by `init` has no ancestors.
     - [ ] Implement `git checkout --orphan` logic via `run_shell_command` or a git library equivalent.
-- [ ] Task: Implement worktree initialization
+- [x] Task: Implement worktree initialization (de22f24)
     - [ ] Write failing test to verify the `.pebble` directory is a valid Git worktree after `init`.
     - [ ] Implement `git worktree add` logic pointing to the orphaned branch.
 - [ ] Task: Implement configuration persistence
