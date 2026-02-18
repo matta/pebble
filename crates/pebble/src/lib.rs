@@ -1,6 +1,5 @@
 pub mod command;
 pub mod config;
-pub mod git_provider;
 pub mod store;
 pub mod worktree;
 

@@ -1,6 +1,5 @@
 use color_eyre::Result;
-use pebble::git_provider::GitProvider;
-use pebble::worktree::WorktreeManager;
+use pebble::worktree::{GitProvider, WorktreeManager};
 use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
