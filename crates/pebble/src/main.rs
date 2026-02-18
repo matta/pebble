@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use color_eyre::eyre::{Context, eyre};
-use pebble::command::CommandExt;
 use pebble::config::Config;
 use rand::RngExt;
 
@@ -167,10 +166,9 @@ fn main() -> Result<()> {
                 let id = format!("{}-{}", prefix, suffix);
 
                 let now = chrono::Local::now().to_rfc3339();
-                let user_name =
-                    get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());
-                let user_email =
-                    get_git_config("user.email").unwrap_or_else(|_| "unknown".to_string());
+                let git_user = get_git_user_info();
+                let user_name = git_user.name;
+                let user_email = git_user.email;
 
                 let issue = pebble::store::Issue {
                     id: id.clone(),
@@ -281,10 +279,32 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_git_config(key: &str) -> Result<String> {
-    std::process::Command::new("git")
-        .args(["config", key])
-        .check_output()
-        .map(|s| s.trim().to_string())
-        .map_err(Into::into)
+struct GitUser {
+    name: String,
+    email: String,
+}
+
+fn get_git_user_info() -> GitUser {
+    let output = std::process::Command::new("git")
+        .args(["config", "--get-regexp", "^user\\.(name|email)$"])
+        .output()
+        .ok();
+
+    let mut name = "unknown".to_string();
+    let mut email = "unknown".to_string();
+
+    if let Some(output) = output.filter(|o| o.status.success()) {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            if let Some((key, value)) = line.split_once(' ') {
+                match key {
+                    "user.name" => name = value.trim().to_string(),
+                    "user.email" => email = value.trim().to_string(),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    GitUser { name, email }
 }
