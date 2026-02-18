@@ -43,18 +43,30 @@ impl WorktreeManager {
         // but if the branch doesn't exist locally, we might need to fetch it first.
         // For phase 1, let's assume we can just add the worktree.
 
-        Command::new("git")
+        // Optimization: Run git worktree add silently to avoid allocation.
+        // If it fails, re-run with capture to get the error message.
+        let status = Command::new("git")
             .arg("worktree")
             .arg("add")
             .arg("--detach") // use detach to avoid branch conflicts for now
             .arg(&path)
-            .arg("--quiet") // suppress "Preparing worktree" output
             .current_dir(&self.repo_root)
             .stdout(std::process::Stdio::null())
-            .check_run()
-            .with_context(|| "Failed to execute git worktree add")?;
+            .stderr(std::process::Stdio::null())
+            .status();
 
-        Ok(path)
+        match status {
+            Ok(s) if s.success() => Ok(path),
+            _ => Command::new("git")
+                .arg("worktree")
+                .arg("add")
+                .arg("--detach")
+                .arg(&path)
+                .current_dir(&self.repo_root)
+                .check_output()
+                .with_context(|| "Failed to execute git worktree add")
+                .map(|_| path),
+        }
     }
 
     pub fn get_absolute_jsonl_path(&self) -> Result<PathBuf> {
