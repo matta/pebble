@@ -21,6 +21,7 @@
 .is_some_and(|name| name == ".bead-whitelist")
 .stdout(predicate::str::contains("beads-fallback-sync"));
 // .beads/config.yaml
+// Create an initial commit including .beads
 // Create both .pebble and .beads
 // Create only .beads
 /// Check for forbidden words like "bead" or "beads"
@@ -40,18 +41,29 @@ fn test_default_config_discovery_beads_fallback() {
 fn test_default_config_discovery_pebble_over_beads() {
 fs::create_dir(root.join(".beads")).unwrap();
 if lower_line.contains("bead") {
+let config_dir = path.join(".beads");
+let content = std::fs::read_to_string(verify_path.join(".beads/issues.jsonl")).unwrap();
 let entry = "foo bead bar";
+let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "beads-sync".to_string());
 let whitelist_path = root.join(".bead-whitelist");
 println!("Found forbidden words 'bead' or 'beads' in the following locations:");
 println!("Found {} unused lines in .bead-whitelist:", unused.len());
 root.join(".beads/config.yaml"),
 root.join(".pebble").is_dir() || root.join(".beads").is_dir()
+run_git(&["add", "."], user_a_path); // add .beads dir
+run_git(&["add", ".beads/issues.jsonl"], user_a_path);
+run_git(&["checkout", "-b", "beads-sync"], user_a_path);
+run_git(&["checkout", "beads-sync"], verify_path);
+run_git(&["push", "-u", "origin", "beads-sync"], user_a_path);
+run_git(&["push", "origin", "beads-sync"], user_a_path);
 std::fs::create_dir(repo_root.join(".beads")).unwrap();
 std::fs::create_dir(root.join(".beads")).unwrap();
+std::fs::create_dir_all(user_a_path.join(".beads")).unwrap();
+std::fs::create_dir_all(worktree_path.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap();
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
+std::fs::write(user_a_path.join(".beads/dummy"), "init").unwrap(); // ensure dir exists
 std::path::PathBuf::from(DEFAULT_CONFIG_PATH_BEADS)
+user_a_path.join(".beads/issues.jsonl"),
+worktree_path.join(".beads/issues.jsonl"),
 } => check_beads(all, generate_whitelist, minimize_whitelist),
-let config_dir = path.join(".beads");
-// Create an initial commit including .beads
-

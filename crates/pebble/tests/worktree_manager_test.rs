@@ -189,8 +189,16 @@ impl GitProvider for MockGit {
     fn output(&self, _args: &[&str], _current_dir: &Path) -> Result<String> {
         Ok(String::new())
     }
-}
 
+    fn status(&self, args: &[&str], _current_dir: &Path) -> Result<std::process::ExitStatus> {
+        if args.contains(&"merge") && self.fail_merge {
+            // Return a non-zero exit status (code 1 for conflict)
+            // We use "false" command to get a status with code 1.
+            return Ok(std::process::Command::new("false").status().unwrap());
+        }
+        Ok(std::process::Command::new("true").status().unwrap())
+    }
+}
 #[test]
 fn test_sync_failure_fetch() {
     let temp_dir = TempDir::new().unwrap();
