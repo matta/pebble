@@ -19,7 +19,7 @@ Implement the core setup logic for creating orphaned sync branches and worktrees
 - [x] Task: Implement `pebble init` CLI command structure (9febe64)
     - [ ] Write failing test for the `init` command availability and basic help.
     - [ ] Implement the command entry point in `command.rs`.
-- [ ] Task: Implement orphaned branch creation
+- [x] Task: Implement orphaned branch creation (01506f0)
     - [ ] Write failing test that verifies a new branch created by `init` has no ancestors.
     - [ ] Implement `git checkout --orphan` logic via `run_shell_command` or a git library equivalent.
 - [ ] Task: Implement worktree initialization
