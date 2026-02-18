@@ -3,8 +3,41 @@ use color_eyre::Result;
 use pebble::config::Config;
 use rand::RngExt;
 
-// 12 characters provide ~4.7e18 combinations (36^12), making collisions virtually impossible.
-const ID_SUFFIX_LENGTH: usize = 12;
+/// Computes the required random ID length to maintain a collision probability
+/// of less than 1 in 1 trillion (10^-12) for a given population size.
+///
+/// This assumes the Birthday Paradox applies: P ≈ k^2 / (2 * N)
+/// where k = current_population, N = alphabet_size^length.
+fn recommended_id_length(current_population: u64) -> usize {
+    // If there is 0 or 1 item, a collision is impossible.
+    // However, to maintain the safety margin for the *next* item
+    // or simply to establish a baseline, we return 1.
+    if current_population <= 1 {
+        return 1;
+    }
+
+    // Alphabet: a-z (26) + 0-9 (10) = 36
+    const ALPHABET_SIZE: f64 = 36.0;
+
+    // Target safety: 1 in 1,000,000,000,000
+    const TARGET_PROBABILITY: f64 = 1.0e-12;
+
+    let k = current_population as f64;
+
+    // Derived from the Birthday Paradox approximation:
+    // P ≈ k^2 / (2 * N)
+    //
+    // Solving for N (Required Pool Size):
+    // N ≈ k^2 / (2 * P)
+    let required_pool_size = (k * k) / (2.0 * TARGET_PROBABILITY);
+
+    // Solving for Length (L):
+    // ALPHABET_SIZE^L = N
+    // L = log_alphabet(N)
+    let length = required_pool_size.log(ALPHABET_SIZE);
+
+    length.ceil() as usize
+}
 
 pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
@@ -15,11 +48,14 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
     let existing_ids: std::collections::HashSet<&str> =
         existing_issues.iter().map(|i| i.id.as_str()).collect();
 
+    let suffix_length = recommended_id_length(existing_issues.len() as u64);
+
     let mut id;
     loop {
+        // rand::rng() returns ThreadRng which is cryptographically secure (ChaCha12)
         let suffix: String = rand::rng()
             .sample_iter(&rand::distr::Alphanumeric)
-            .take(ID_SUFFIX_LENGTH)
+            .take(suffix_length)
             .map(char::from)
             .collect::<String>()
             .to_lowercase();
