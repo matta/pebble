@@ -11,24 +11,24 @@ This phase focuses on the structural changes required to rename the project's lo
     - [x] Ensure the xtask still correctly reads `.bead-whitelist`.
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Environment & Directory Renaming' (Protocol in workflow.md)** cd3b841
 
-## Phase 2: Code & Internal Reference Updates
+## Phase 2: Code & Internal Reference Updates [checkpoint: 897b10c]
 This phase updates internal strings, error messages, and project documentation.
 
-- [~] **Task: Update internal string references**
-    - [ ] Write unit tests for CLI help output and error messages that contain "beads".
-    - [ ] Update string literals in `crates/pebble/src` from "beads" to "pebble" (where appropriate).
-- [ ] **Task: Update project documentation**
-    - [ ] Update `AGENTS.md` and `implementation_plan.md` (root version) to reflect the new naming conventions.
-    - [ ] Ensure all mentions of the original tool as "beads" are preserved as per user instructions.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: Code & Internal Reference Updates' (Protocol in workflow.md)**
+- [x] **Task: Update internal string references** 897b10c
+    - [x] Write unit tests for CLI help output and error messages that contain "beads".
+    - [x] Update string literals in `crates/pebble/src` from "beads" to "pebble" (where appropriate).
+- [x] **Task: Update project documentation** 897b10c
+    - [x] Update `AGENTS.md` and `implementation_plan.md` (root version) to reflect the new naming conventions.
+    - [x] Ensure all mentions of the original tool as "beads" are preserved as per user instructions.
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: Code & Internal Reference Updates' (Protocol in workflow.md)** 897b10c
 
-## Phase 3: Branch & Worktree Manager Updates
+## Phase 3: Branch & Worktree Manager Updates [checkpoint: 897b10c]
 This phase updates the synchronization logic to use the new branch and worktree directory names.
 
-- [ ] **Task: Update WorktreeManager**
-    - [ ] Write tests in `crates/pebble/src/worktree.rs` to verify that worktrees are created in `.git/pebble-worktrees`.
-    - [ ] Update `WorktreeManager` to use the new directory and the branch name `pebble-sync` as default.
-- [ ] **Task: Update sync command**
-    - [ ] Write an integration test in `crates/pebble/tests/cli_tests.rs` for `pebble sync` that verifies the use of `pebble-sync`.
-    - [ ] Update the `sync` command implementation in `crates/pebble/src/command.rs`.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: Branch & Worktree Manager Updates' (Protocol in workflow.md)**
+- [x] **Task: Update WorktreeManager** 897b10c
+    - [x] Write tests in `crates/pebble/src/worktree.rs` to verify that worktrees are created in `.git/pebble-worktrees`.
+    - [x] Update `WorktreeManager` to use the new directory and the branch name `pebble-sync` as default.
+- [x] **Task: Update sync command** 897b10c
+    - [x] Write an integration test in `crates/pebble/tests/cli_tests.rs` for `pebble sync` that verifies the use of `pebble-sync`.
+    - [x] Update the `sync` command implementation in `crates/pebble/src/command.rs`.
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: Branch & Worktree Manager Updates' (Protocol in workflow.md)** 897b10c
