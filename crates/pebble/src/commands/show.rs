@@ -6,7 +6,6 @@ use pebble::config::Config;
 pub fn run(config: &Config, id: String, json: bool) -> Result<()> {
     let (store, _, _) = get_store(config)?;
 
-    // Optimization: Use find_issue to avoid loading all issues into memory
     let issue = store
         .find_issue(&id)?
         .ok_or_else(|| eyre!("Issue {} not found", id))?;

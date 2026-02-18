@@ -18,7 +18,6 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
             .to_lowercase();
         id = format!("{}-{}", prefix, suffix);
 
-        // Optimization: Use issue_exists to check for collision without loading all issues
         if !store.issue_exists(&id)? {
             break;
         }
