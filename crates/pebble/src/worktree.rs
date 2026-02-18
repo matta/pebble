@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use std::process::Command;
 
+#[derive(Debug)]
 pub struct WorktreeManager<G: GitProvider = RealGit> {
     repo_root: PathBuf,
     sync_branch: String,
