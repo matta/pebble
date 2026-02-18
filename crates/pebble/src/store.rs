@@ -325,4 +325,68 @@ mod tests {
         assert_eq!(issues[0], issue1);
         assert_eq!(issues[1], issue2);
     }
+
+    #[test]
+    fn test_append_issue_newline_handling() {
+        let file = NamedTempFile::new().unwrap();
+        let store = JsonlStore::new(file.path());
+
+        let issue = Issue {
+            id: "test-1".to_string(),
+            title: "Title 1".to_string(),
+            description: "Desc 1".to_string(),
+            status: "open".to_string(),
+            priority: 1,
+            issue_type: "task".to_string(),
+            owner: "me".to_string(),
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            created_by: "Me".to_string(),
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+            closed_at: None,
+            close_reason: None,
+            dependencies: vec![],
+            extra: Default::default(),
+        };
+
+        // Case 1: File exists but doesn't end with newline
+        {
+            let mut f = std::fs::File::create(file.path()).unwrap();
+            write!(f, r#"{"id":"0","title":"Existing"}"#).unwrap();
+            f.flush().unwrap();
+            // No trailing newline
+        }
+
+        store.append_issue(&issue).expect("Failed to append");
+
+        let content = std::fs::read_to_string(file.path()).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(
+            lines.len(),
+            2,
+            "Should have exactly two lines when missing newline was fixed"
+        );
+        assert_eq!(lines[0], r#"{"id":"0","title":"Existing"}"#);
+        assert!(lines[1].contains(r#""id":"test-1""#));
+        assert!(content.ends_with('\n'));
+
+        // Case 2: File already ends with newline
+        {
+            let mut f = std::fs::File::create(file.path()).unwrap();
+            writeln!(f, r#"{"id":"0","title":"Existing"}"#).unwrap();
+            f.flush().unwrap();
+        }
+
+        store.append_issue(&issue).expect("Failed to append");
+
+        let content = std::fs::read_to_string(file.path()).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 2, "Should NOT have added an extra blank line");
+        assert_eq!(lines[0], r#"{"id":"0","title":"Existing"}"#);
+        assert!(lines[1].contains(r#""id":"test-1""#));
+        assert!(content.ends_with('\n'));
+        assert!(
+            !content.contains("\n\n"),
+            "Should not contain double newlines"
+        );
+    }
 }
