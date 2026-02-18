@@ -643,6 +643,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
+name = "ra-ap-rustc_lexer"
+version = "0.150.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "798846b5bb9cf4e514e5edc27fa897d5f1c839716fe216bd6c2ca172d678c4d0"
+dependencies = [
+ "memchr",
+ "unicode-ident",
+ "unicode-properties",
+]
+
+[[package]]
 name = "rand"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -918,6 +929,12 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+
+[[package]]
+name = "unicode-properties"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7df058c713841ad818f1dc5d3fd88063241cc61f49f5fbea4b951e8cf5a8d71d"
 
 [[package]]
 name = "unicode-xid"
@@ -1212,8 +1229,14 @@ dependencies = [
 name = "xtask"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "color-eyre",
+ "ra-ap-rustc_lexer",
+ "regex",
+ "serde",
+ "tempfile",
+ "toml",
 ]
 
 [[package]]

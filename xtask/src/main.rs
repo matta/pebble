@@ -1,11 +1,17 @@
+use anyhow::Result as AnyhowResult;
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::bail;
 use color_eyre::Result;
+use ra_ap_rustc_lexer::{FrontmatterAllowed, TokenKind};
+use regex::Regex;
+use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::Command;
+
+const DEFAULT_TOKEN_LIMIT: usize = 2668;
 
 #[derive(Parser)]
 struct Cli {
@@ -33,11 +39,19 @@ enum Commands {
         #[arg(long)]
         minimize_whitelist: bool,
     },
-    /// Check for files that are too long
-    CheckFileLength {
+    /// Check for Rust files that are too large (token count)
+    CheckRustTokenCount {
         /// Scan all tracked files instead of just edited ones
         #[arg(long)]
         all: bool,
+
+        /// Set the maximum number of non-comment, non-whitespace tokens allowed
+        #[arg(long, default_value_t = DEFAULT_TOKEN_LIMIT)]
+        limit: usize,
+
+        /// Just print the token counts for all files and exit
+        #[arg(long)]
+        print_counts: bool,
     },
 }
 
@@ -47,7 +61,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Check { all } => {
             check_forbidden_words(all, false, false)?;
-            check_file_length(all)?;
+            check_rust_token_count(all, DEFAULT_TOKEN_LIMIT, false)?;
             Ok(())
         }
         Commands::CheckForbiddenWords {
@@ -55,7 +69,11 @@ fn main() -> Result<()> {
             generate_whitelist,
             minimize_whitelist,
         } => check_forbidden_words(all, generate_whitelist, minimize_whitelist),
-        Commands::CheckFileLength { all } => check_file_length(all),
+        Commands::CheckRustTokenCount {
+            all,
+            limit,
+            print_counts,
+        } => check_rust_token_count(all, limit, print_counts),
     }
 }
 
@@ -182,11 +200,37 @@ fn check_forbidden_words(
     Ok(())
 }
 
-fn check_file_length(all: bool) -> Result<()> {
+#[derive(Deserialize, Default)]
+struct ExceptionsConfig {
+    #[serde(default)]
+    exceptions: Vec<String>,
+}
+
+fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result<()> {
     let root = std::env::current_dir()?;
+    let config_path = root.join(".rust-line-count-exceptions.toml");
+
+    let exceptions = if config_path.exists() {
+        let content = fs::read_to_string(&config_path)?;
+        let config: ExceptionsConfig = toml::from_str(&content).map_err(|e| {
+            color_eyre::eyre::eyre!("Failed to parse .rust-line-count-exceptions.toml: {}", e)
+        })?;
+        config
+            .exceptions
+            .into_iter()
+            .map(|pattern| {
+                Regex::new(&pattern)
+                    .map_err(|e| color_eyre::eyre::eyre!("Invalid regex {}: {}", pattern, e))
+            })
+            .collect::<Result<Vec<_>>>()?
+    } else {
+        Vec::new()
+    };
+
     let files = get_files_to_check(&root, all)?;
     let mut violations = Vec::new();
-    const MAX_LINES: usize = 500;
+    let mut max_count = 0;
+    let mut max_file = String::new();
 
     for file_path in files {
         let path = root.join(&file_path);
@@ -195,26 +239,41 @@ fn check_file_length(all: bool) -> Result<()> {
         }
 
         // Only check Rust files
-        if path.extension().is_none_or(|ext| ext != "rs") {
+        if path.extension().and_then(|s| s.to_str()) != Some("rs") {
             continue;
         }
 
-        let file = match fs::File::open(&path) {
-            Ok(f) => f,
-            Err(_) => continue,
-        };
-        let reader = BufReader::new(file);
-        let line_count = reader.lines().count();
+        if exceptions.iter().any(|re| re.is_match(&file_path)) {
+            continue;
+        }
 
-        if line_count > MAX_LINES {
-            violations.push((file_path, line_count));
+        let count = count_tokens(&path).map_err(|e| {
+            color_eyre::eyre::eyre!("Failed to count tokens in {}: {}", file_path, e)
+        })?;
+        if count > max_count {
+            max_count = count;
+            max_file = file_path.clone();
+        }
+
+        if print_counts {
+            println!("{}: {}", file_path, count);
+        }
+
+        if count > limit {
+            violations.push((file_path, count));
         }
     }
 
+    if print_counts {
+        println!("Max token count: {} (in {})", max_count, max_file);
+        return Ok(());
+    }
+
     if !violations.is_empty() {
-        println!("The following Rust files exceed {} lines:", MAX_LINES);
-        for (file, lines) in violations {
-            println!("{}: {} lines", file, lines);
+        violations.sort_by(|a, b| b.1.cmp(&a.1));
+        println!("The following Rust files exceed {} tokens:", limit);
+        for (file, count) in violations {
+            println!("{}: {} tokens", file, count);
         }
         println!("\nSuggestions for corrective action:");
         println!(
@@ -222,15 +281,29 @@ fn check_file_length(all: bool) -> Result<()> {
         );
         println!("- Improve modularization by extracting large components into new modules.");
         println!("- Refactor long functions into smaller, more manageable pieces.");
-        bail!("Files too long. Please refactor or split them.");
-    } else {
-        println!(
-            "All Rust files are within the line limit ({} lines).",
-            MAX_LINES
-        );
+        bail!("Files too large. Please refactor or split them.");
     }
 
+    println!(
+        "All Rust files are within the token limit ({} tokens).",
+        limit
+    );
     Ok(())
+}
+
+fn count_tokens(path: &Path) -> AnyhowResult<usize> {
+    let content = fs::read_to_string(path)?;
+    let count = ra_ap_rustc_lexer::tokenize(&content, FrontmatterAllowed::Yes)
+        .filter(|token| {
+            !matches!(
+                token.kind,
+                TokenKind::LineComment { .. }
+                    | TokenKind::BlockComment { .. }
+                    | TokenKind::Whitespace
+            )
+        })
+        .count();
+    Ok(count)
 }
 
 fn get_git_files(root: &Path, args: &[&str]) -> Result<Vec<String>> {
@@ -340,5 +413,40 @@ mod tests {
             &mut new_whitelist,
             &mut found_whitelisted
         ));
+    }
+
+    #[test]
+    fn test_count_tokens() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("test.rs");
+
+        let code = r##"
+            fn main() {
+                // This is a comment
+                let x = 1; /* This is also a comment */
+                let s = "This is a string // with a comment inside";
+            }
+        "##;
+        fs::write(&path, code).unwrap();
+
+        let count = count_tokens(&path).unwrap();
+        // Tokens:
+        // 1: fn
+        // 2: main
+        // 3: (
+        // 4: )
+        // 5: {
+        // 6: let
+        // 7: x
+        // 8: =
+        // 9: 1
+        // 10: ;
+        // 11: let
+        // 12: s
+        // 13: =
+        // 14: "This is a string // with a comment inside"
+        // 15: ;
+        // 16: }
+        assert_eq!(count, 16);
     }
 }
