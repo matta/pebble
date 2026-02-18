@@ -131,18 +131,22 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn run_git(args: &[&str], dir: &std::path::Path) {
-        Command::new("git")
-            .args(args)
-            .current_dir(dir)
-            .check_run()
-            .unwrap_or_else(|e| panic!("Failed to execute git {}: {}", args.join(" "), e));
-    }
-
     fn setup_git_repo(path: &std::path::Path) {
-        run_git(&["init", "-b", "main"], path);
-        run_git(&["config", "user.email", "test@example.com"], path);
-        run_git(&["config", "user.name", "Test User"], path);
+        Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(path)
+            .check_run()
+            .expect("Failed to init git repo");
+        Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(path)
+            .check_run()
+            .expect("Failed to set user.email");
+        Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(path)
+            .check_run()
+            .expect("Failed to set user.name");
     }
 
     #[test]
@@ -164,8 +168,16 @@ mod tests {
 
         std::fs::create_dir(repo_root.join(".beads")).unwrap();
         std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
-        run_git(&["add", "."], &repo_root);
-        run_git(&["commit", "-m", "Initial"], &repo_root);
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(&repo_root)
+            .check_run()
+            .expect("Failed to add files");
+        Command::new("git")
+            .args(["commit", "-m", "Initial"])
+            .current_dir(&repo_root)
+            .check_run()
+            .expect("Failed to commit");
 
         let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
         let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
@@ -188,8 +200,16 @@ mod tests {
         // Create initial commit so we have a valid HEAD
         // Worktree creation often requires a valid HEAD or existing branch
         std::fs::write(repo_root.join("README.md"), "Initial commit").unwrap();
-        run_git(&["add", "."], &repo_root);
-        run_git(&["commit", "-m", "Initial commit"], &repo_root);
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(&repo_root)
+            .check_run()
+            .expect("Failed to add files");
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(&repo_root)
+            .check_run()
+            .expect("Failed to commit");
 
         let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
 
@@ -220,7 +240,11 @@ mod tests {
         let remote_dir = TempDir::new().unwrap();
         let remote_root = remote_dir.path().to_path_buf();
 
-        run_git(&["init", "--bare"], &remote_root);
+        Command::new("git")
+            .args(["init", "--bare"])
+            .current_dir(&remote_root)
+            .check_run()
+            .expect("Failed to init bare repo");
 
         // Setup the "local" repo
         let local_dir = TempDir::new().unwrap();
@@ -230,22 +254,43 @@ mod tests {
 
         // Create initial content to push to "remote" so we have something to fetch
         std::fs::write(local_root.join("README.md"), "Initial content").unwrap();
-        run_git(&["add", "."], &local_root);
-        run_git(&["commit", "-m", "Initial"], &local_root);
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(&local_root)
+            .check_run()
+            .expect("Failed to add files");
+        Command::new("git")
+            .args(["commit", "-m", "Initial"])
+            .current_dir(&local_root)
+            .check_run()
+            .expect("Failed to commit");
 
         // Add remote and push master (which we'll use as sync branch base for this test)
         // Actually, we need to push a branch named 'beads-sync' to the remote
-        run_git(
-            &["remote", "add", "origin", remote_root.to_str().unwrap()],
-            &local_root,
-        );
+        Command::new("git")
+            .args(["remote", "add", "origin", remote_root.to_str().unwrap()])
+            .current_dir(&local_root)
+            .check_run()
+            .expect("Failed to add remote origin");
 
-        run_git(&["checkout", "-b", "beads-sync"], &local_root);
+        Command::new("git")
+            .args(["checkout", "-b", "beads-sync"])
+            .current_dir(&local_root)
+            .check_run()
+            .expect("Failed to checkout beads-sync");
 
-        run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
+        Command::new("git")
+            .args(["push", "-u", "origin", "beads-sync"])
+            .current_dir(&local_root)
+            .check_run()
+            .expect("Failed to push beads-sync");
 
         // Now switch back to main to simulate user state
-        run_git(&["checkout", "main"], &local_root);
+        Command::new("git")
+            .args(["checkout", "main"])
+            .current_dir(&local_root)
+            .check_run()
+            .expect("Failed to checkout main");
 
         // Now test the WorktreeManager
         let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
