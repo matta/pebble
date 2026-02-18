@@ -191,6 +191,14 @@ impl GitProvider for MockGit {
         Ok(())
     }
 
+    fn run_quiet(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        self.run(args, current_dir)
+    }
+
+    fn run_silent(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        self.run(args, current_dir)
+    }
+
     fn output(&self, _args: &[&dyn AsRef<OsStr>], _current_dir: &Path) -> Result<String> {
         Ok(String::new())
     }
@@ -208,6 +216,14 @@ impl GitProvider for MockGit {
             return Ok(std::process::Command::new("false").status().unwrap());
         }
         Ok(std::process::Command::new("true").status().unwrap())
+    }
+
+    fn status_silent(
+        &self,
+        args: &[&dyn AsRef<OsStr>],
+        current_dir: &Path,
+    ) -> Result<std::process::ExitStatus> {
+        self.status(args, current_dir)
     }
 }
 #[test]

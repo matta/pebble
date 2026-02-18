@@ -42,12 +42,8 @@ impl<G: GitProvider> WorktreeManager<G> {
 
     /// Checks if the current directory is inside a Git repository.
     pub fn is_inside_git_repo(path: &std::path::Path) -> bool {
-        Command::new("git")
-            .args(["rev-parse", "--is-inside-work-tree"])
-            .current_dir(path)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
+        RealGit
+            .status_silent(&[&"rev-parse", &"--is-inside-work-tree"], path)
             .map(|s| s.success())
             .unwrap_or(false)
     }
@@ -64,12 +60,10 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // Let's use the current repository to create the branch
         // We first need to check if the branch already exists.
-        let status = Command::new("git")
-            .args(["rev-parse", "--verify", &self.sync_branch])
-            .current_dir(&self.repo_root)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()?;
+        let status = self.git.status_silent(
+            &[&"rev-parse", &"--verify", &self.sync_branch],
+            &self.repo_root,
+        )?;
 
         if status.success() {
             // Branch already exists, nothing to do for "create"
@@ -95,26 +89,21 @@ impl<G: GitProvider> WorktreeManager<G> {
         let empty_tree_hash = empty_tree_hash.trim();
 
         // 2. Create a commit from that tree (with no parents)
-        let commit_hash = Command::new("git")
-            .args([
-                "commit-tree",
-                empty_tree_hash,
-                "-m",
-                "Pebble database tracking branch initial commit",
-            ])
-            .current_dir(&self.repo_root)
-            .check_output()?;
+        let commit_hash = self.git.output(
+            &[
+                &"commit-tree",
+                &empty_tree_hash,
+                &"-m",
+                &"Pebble database tracking branch initial commit",
+            ],
+            &self.repo_root,
+        )?;
         let commit_hash = commit_hash.trim();
 
         // 3. Update the reference to point to this commit
-        Command::new("git")
-            .args([
-                "update-ref",
-                &format!("refs/heads/{}", self.sync_branch),
-                commit_hash,
-            ])
-            .current_dir(&self.repo_root)
-            .check_run()?;
+        let ref_path = format!("refs/heads/{}", self.sync_branch);
+        self.git
+            .run(&[&"update-ref", &ref_path, &commit_hash], &self.repo_root)?;
 
         Ok(())
     }
@@ -129,16 +118,11 @@ impl<G: GitProvider> WorktreeManager<G> {
         }
 
         // git worktree add <path> <branch>
-        Command::new("git")
-            .arg("worktree")
-            .arg("add")
-            .arg(path)
-            .arg("--")
-            .arg(&self.sync_branch)
-            .current_dir(&self.repo_root)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .check_run()
+        self.git
+            .run_silent(
+                &[&"worktree", &"add", &path, &"--", &self.sync_branch],
+                &self.repo_root,
+            )
             .with_context(|| format!("Failed to add git worktree at {:?}", path))?;
 
         Ok(())
@@ -151,10 +135,7 @@ impl<G: GitProvider> WorktreeManager<G> {
             return Ok(false);
         }
 
-        let output = Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(&path)
-            .check_output()?;
+        let output = self.git.output(&[&"status", &"--porcelain"], &path)?;
 
         Ok(!output.trim().is_empty())
     }
@@ -163,15 +144,9 @@ impl<G: GitProvider> WorktreeManager<G> {
     pub fn commit_all(&self, message: &str) -> Result<()> {
         let path = self.get_worktree_path();
 
-        Command::new("git")
-            .args(["add", "-A"])
-            .current_dir(&path)
-            .check_run()?;
+        self.git.run(&[&"add", &"-A"], &path)?;
 
-        Command::new("git")
-            .args(["commit", "-m", message])
-            .current_dir(&path)
-            .check_run()?;
+        self.git.run(&[&"commit", &"-m", &message], &path)?;
 
         Ok(())
     }
@@ -195,12 +170,12 @@ impl<G: GitProvider> WorktreeManager<G> {
         }
 
         // Check if sync_branch exists locally
-        let has_local = Command::new("git")
-            .args(["rev-parse", "--verify", &self.sync_branch])
-            .current_dir(&self.repo_root)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .check_run()
+        let has_local = self
+            .git
+            .run_silent(
+                &[&"rev-parse", &"--verify", &self.sync_branch],
+                &self.repo_root,
+            )
             .is_ok();
 
         let target_branch = if has_local {
@@ -208,30 +183,22 @@ impl<G: GitProvider> WorktreeManager<G> {
         } else {
             // Check if 'origin' remote exists
             // TODO: Make 'origin' configurable
-            let has_origin = Command::new("git")
-                .args(["remote", "get-url", "origin"])
-                .current_dir(&self.repo_root)
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .check_run()
+            let has_origin = self
+                .git
+                .run_silent(&[&"remote", &"get-url", &"origin"], &self.repo_root)
                 .is_ok();
 
             if has_origin {
                 // Try to fetch origin to update remote refs
-                Command::new("git")
-                    .args(["fetch", "origin"])
-                    .current_dir(&self.repo_root)
-                    .check_run()
+                self.git
+                    .run(&[&"fetch", &"origin"], &self.repo_root)
                     .with_context(|| "Failed to fetch from origin")?;
 
                 // Check if origin/sync_branch exists
                 let remote_ref = format!("origin/{}", self.sync_branch);
-                let has_remote = Command::new("git")
-                    .args(["rev-parse", "--verify", &remote_ref])
-                    .current_dir(&self.repo_root)
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .check_run()
+                let has_remote = self
+                    .git
+                    .run_silent(&[&"rev-parse", &"--verify", &remote_ref], &self.repo_root)
                     .is_ok();
 
                 if has_remote { Some(remote_ref) } else { None }
