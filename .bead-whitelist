@@ -67,7 +67,7 @@ run_git(&["push", "-u", "origin", "beads-sync"], user_a_path);
 user_a_path.join(".beads/issues.jsonl"),
 run_git(&["add", ".beads/issues.jsonl"], user_a_path);
 run_git(&["push", "origin", "beads-sync"], user_a_path);
-let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "beads-sync".to_string());
+let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "beads-sync".to_string())
 std::fs::create_dir_all(worktree_path.join(".beads")).unwrap();
 worktree_path.join(".beads/issues.jsonl"),
 run_git(&["checkout", "beads-sync"], verify_path);
