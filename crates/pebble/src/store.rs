@@ -55,8 +55,50 @@ pub struct Issue {
 impl Issue {
     /// Merges another issue into this one.
     ///
-    /// Updates all fields if the other issue has a more recent `updated_at` timestamp.
-    /// This is used for syncing and importing data.
+    /// This method updates mutable fields of the current issue if the `other` issue has
+    /// a more recent `updated_at` timestamp. This is primarily used for syncing
+    /// and importing data to resolve conflicts by taking the latest version.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::Issue;
+    ///
+    /// let mut issue1 = Issue {
+    ///     id: "1".to_string(),
+    ///     title: "Old Title".to_string(),
+    ///     description: "Old Desc".to_string(),
+    ///     status: "open".to_string(),
+    ///     priority: 1,
+    ///     issue_type: "bug".to_string(),
+    ///     owner: "me".to_string(),
+    ///     created_at: "2023-01-01T00:00:00Z".to_string(),
+    ///     created_by: "me".to_string(),
+    ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
+    ///     closed_at: None,
+    ///     close_reason: None,
+    /// };
+    ///
+    /// let issue2 = Issue {
+    ///     id: "1".to_string(),
+    ///     title: "New Title".to_string(),
+    ///     description: "New Desc".to_string(),
+    ///     status: "in_progress".to_string(),
+    ///     priority: 2,
+    ///     issue_type: "bug".to_string(),
+    ///     owner: "you".to_string(),
+    ///     created_at: "2023-01-01T00:00:00Z".to_string(),
+    ///     created_by: "me".to_string(),
+    ///     updated_at: "2023-01-02T00:00:00Z".to_string(), // Newer
+    ///     closed_at: None,
+    ///     close_reason: None,
+    /// };
+    ///
+    /// issue1.merge(issue2);
+    ///
+    /// assert_eq!(issue1.title, "New Title");
+    /// assert_eq!(issue1.status, "in_progress");
+    /// ```
     pub fn merge(&mut self, other: Issue) {
         if other.updated_at > self.updated_at {
             self.title = other.title;
@@ -81,6 +123,19 @@ pub struct JsonlStore {
 }
 
 impl JsonlStore {
+    /// Creates a new `JsonlStore` instance.
+    ///
+    /// The store will use the specified file path for reading and writing issues.
+    /// The file does not need to exist when the store is created, but the parent
+    /// directory should be writable if new issues are to be added.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::JsonlStore;
+    ///
+    /// let store = JsonlStore::new("issues.jsonl");
+    /// ```
     pub fn new(path: &str) -> Self {
         Self {
             path: path.to_string(),
@@ -143,6 +198,50 @@ impl JsonlStore {
         Ok(issues)
     }
 
+    /// Overwrites the store file with the provided list of issues.
+    ///
+    /// This method replaces the entire content of the file with the serialized JSON
+    /// representation of the given issues. If the file or its parent directories
+    /// do not exist, they will be created.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, write failure)
+    /// or if serialization of any issue fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::{JsonlStore, Issue};
+    /// use tempfile::NamedTempFile;
+    ///
+    /// # fn main() -> color_eyre::Result<()> {
+    /// let file = NamedTempFile::new()?;
+    /// let store = JsonlStore::new(file.path().to_str().unwrap());
+    ///
+    /// let issue = Issue {
+    ///     id: "1".to_string(),
+    ///     title: "Test".to_string(),
+    ///     description: "Desc".to_string(),
+    ///     status: "open".to_string(),
+    ///     priority: 1,
+    ///     issue_type: "task".to_string(),
+    ///     owner: "me".to_string(),
+    ///     created_at: "2023-01-01T00:00:00Z".to_string(),
+    ///     created_by: "me".to_string(),
+    ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
+    ///     closed_at: None,
+    ///     close_reason: None,
+    /// };
+    ///
+    /// store.write_issues(&[issue])?;
+    ///
+    /// let read_back = store.read_issues()?;
+    /// assert_eq!(read_back.len(), 1);
+    /// assert_eq!(read_back[0].title, "Test");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write_issues(&self, issues: &[Issue]) -> Result<()> {
         self.write_issues_inner(issues)
             .with_context(|| format!("Failed to write issues to {}", self.path))
