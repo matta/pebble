@@ -29,8 +29,6 @@ use std::path::Path;
 ///     updated_at: "2023-10-27T10:00:00Z".to_string(),
 ///     closed_at: None,
 ///     close_reason: None,
-///     dependencies: vec![],
-///     extra: std::collections::HashMap::new(),
 /// };
 ///
 /// assert_eq!(issue.status, "open");
@@ -52,10 +50,6 @@ pub struct Issue {
     pub updated_at: String,
     pub closed_at: Option<String>,
     pub close_reason: Option<String>,
-    #[serde(default)]
-    pub dependencies: Vec<serde_json::Value>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// A persistent store for managing issues in a JSON Lines (JSONL) file.
@@ -180,8 +174,6 @@ impl JsonlStore {
     ///     updated_at: "2023-01-01".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
-    ///     dependencies: vec![],
-    ///     extra: Default::default(),
     /// };
     ///
     /// store.append_issue(&issue)?;
@@ -271,8 +263,6 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_string(),
             closed_at: None,
             close_reason: None,
-            dependencies: vec![],
-            extra: Default::default(),
         }];
 
         store.write_issues(&issues).expect("Failed to write issues");
@@ -300,8 +290,6 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_string(),
             closed_at: None,
             close_reason: None,
-            dependencies: vec![],
-            extra: Default::default(),
         };
 
         let issue2 = Issue {
@@ -317,8 +305,6 @@ mod tests {
             updated_at: "2026-01-01T00:00:00Z".to_string(),
             closed_at: None,
             close_reason: None,
-            dependencies: vec![],
-            extra: Default::default(),
         };
 
         store

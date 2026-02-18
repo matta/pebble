@@ -183,8 +183,6 @@ fn main() -> Result<()> {
                     updated_at: now,
                     closed_at: None,
                     close_reason: None,
-                    dependencies: vec![],
-                    extra: std::collections::HashMap::new(),
                 };
 
                 store.append_issue(&issue)?;
