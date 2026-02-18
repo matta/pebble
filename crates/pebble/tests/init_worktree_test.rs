@@ -41,9 +41,9 @@ fn test_init_creates_worktree() {
         .assert()
         .success();
         
-    // 1. Verify .pebble exists
-    let pebble_dir = root.join(".pebble");
-    assert!(pebble_dir.exists(), ".pebble directory should be created");
+    // 1. Verify worktree exists at .git/x-pebble
+    let pebble_dir = root.join(".git/x-pebble");
+    assert!(pebble_dir.exists(), "Worktree directory .git/x-pebble should be created");
     
     // 2. Verify it's a worktree and on the correct branch
     let output = std_command::new("git")
@@ -61,5 +61,5 @@ fn test_init_creates_worktree() {
         .output()
         .expect("Failed to run git worktree list");
     let worktree_list = String::from_utf8_lossy(&output.stdout).to_string();
-    assert!(worktree_list.contains(".pebble"), "Worktree should be listed by git");
+    assert!(worktree_list.contains("x-pebble"), "Worktree should be listed by git");
 }
