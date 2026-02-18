@@ -37,27 +37,103 @@ impl WorktreeManager {
             })?;
         }
 
-        // Run git worktree add
-        // We use --detach because we don't need a local branch, just the checked output
-        // actually, we probably want to check out the specific branch
-        // but if the branch doesn't exist locally, we might need to fetch it first.
-        // For phase 1, let's assume we can just add the worktree.
-
-        Command::new("git")
-            .arg("worktree")
-            .arg("add")
-            .arg("--detach") // use detach to avoid branch conflicts for now
-            .arg(&path)
+        // Check if sync_branch exists locally
+        let has_local = Command::new("git")
+            .args(["rev-parse", "--verify", &self.sync_branch])
             .current_dir(&self.repo_root)
-            .check_output()
-            .with_context(|| "Failed to execute git worktree add")?;
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .check_run()
+            .is_ok();
+
+        let target_branch = if has_local {
+            Some(self.sync_branch.clone())
+        } else {
+            // Check if 'origin' remote exists
+            // TODO: Make 'origin' configurable
+            let has_origin = Command::new("git")
+                .args(["remote", "get-url", "origin"])
+                .current_dir(&self.repo_root)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .check_run()
+                .is_ok();
+
+            if has_origin {
+                // Try to fetch origin to update remote refs
+                Command::new("git")
+                    .args(["fetch", "origin"])
+                    .current_dir(&self.repo_root)
+                    .check_run()
+                    .with_context(|| "Failed to fetch from origin")?;
+
+                // Check if origin/sync_branch exists
+                let remote_ref = format!("origin/{}", self.sync_branch);
+                let has_remote = Command::new("git")
+                    .args(["rev-parse", "--verify", &remote_ref])
+                    .current_dir(&self.repo_root)
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .check_run()
+                    .is_ok();
+
+                if has_remote { Some(remote_ref) } else { None }
+            } else {
+                None
+            }
+        };
+
+        if let Some(target) = target_branch {
+            Command::new("git")
+                .arg("worktree")
+                .arg("add")
+                .arg("--detach")
+                .arg(&path)
+                .arg(&target)
+                .current_dir(&self.repo_root)
+                .check_run()
+                .with_context(|| "Failed to execute git worktree add")?;
+        } else {
+            // Initialize as orphan branch
+            // First create worktree without checking out anything (to avoid huge checkout)
+            Command::new("git")
+                .arg("worktree")
+                .arg("add")
+                .arg("--detach")
+                .arg("--no-checkout") // Don't checkout HEAD files
+                .arg(&path)
+                .current_dir(&self.repo_root)
+                .check_run()
+                .with_context(|| "Failed to execute git worktree add (orphan)")?;
+
+            // Create orphan branch inside worktree
+            Command::new("git")
+                .args(["checkout", "--orphan", &self.sync_branch])
+                .current_dir(&path)
+                .check_run()
+                .with_context(|| "Failed to create orphan branch")?;
+
+            // Ensure index is empty
+            Command::new("git")
+                .args(["rm", "-rf", "."])
+                .current_dir(&path)
+                .check_run()
+                .ok(); // Ignore if empty
+        }
 
         Ok(path)
     }
 
     pub fn get_absolute_jsonl_path(&self) -> Result<PathBuf> {
         let worktree_path = self.ensure_worktree()?;
-        Ok(worktree_path.join(".beads/issues.jsonl"))
+        let jsonl_path = worktree_path.join(".beads/issues.jsonl");
+
+        if let Some(parent) = jsonl_path.parent().filter(|p| !p.exists()) {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory: {:?}", parent))?;
+        }
+
+        Ok(jsonl_path)
     }
 
     /// Synchronizes the local worktree with the remote repository.
@@ -148,8 +224,8 @@ mod tests {
     #[test]
     fn test_worktree_path_generation() {
         let repo_root = PathBuf::from("/tmp/repo");
-        let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
-        let expected = repo_root.join(".git/beads-worktrees/beads-sync");
+        let manager = WorktreeManager::new(repo_root.clone(), "my-sync-branch".to_string());
+        let expected = repo_root.join(".git/beads-worktrees/my-sync-branch");
         assert_eq!(manager.get_worktree_path(), expected);
     }
 
@@ -167,8 +243,8 @@ mod tests {
         run_git(&["add", "."], &repo_root);
         run_git(&["commit", "-m", "Initial"], &repo_root);
 
-        let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
-        let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
+        let manager = WorktreeManager::new(repo_root.clone(), "my-sync-branch".to_string());
+        let expected = repo_root.join(".git/beads-worktrees/my-sync-branch/.beads/issues.jsonl");
 
         let path = manager
             .get_absolute_jsonl_path()
@@ -191,7 +267,7 @@ mod tests {
         run_git(&["add", "."], &repo_root);
         run_git(&["commit", "-m", "Initial commit"], &repo_root);
 
-        let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
+        let manager = WorktreeManager::new(repo_root.clone(), "my-sync-branch".to_string());
 
         // This should trigger worktree creation logic
         let worktree_path = manager
@@ -234,21 +310,21 @@ mod tests {
         run_git(&["commit", "-m", "Initial"], &local_root);
 
         // Add remote and push master (which we'll use as sync branch base for this test)
-        // Actually, we need to push a branch named 'beads-sync' to the remote
+        // Actually, we need to push a branch named 'my-sync-branch' to the remote
         run_git(
             &["remote", "add", "origin", remote_root.to_str().unwrap()],
             &local_root,
         );
 
-        run_git(&["checkout", "-b", "beads-sync"], &local_root);
+        run_git(&["checkout", "-b", "my-sync-branch"], &local_root);
 
-        run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
+        run_git(&["push", "-u", "origin", "my-sync-branch"], &local_root);
 
         // Now switch back to main to simulate user state
         run_git(&["checkout", "main"], &local_root);
 
         // Now test the WorktreeManager
-        let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
+        let manager = WorktreeManager::new(local_root.clone(), "my-sync-branch".to_string());
 
         // This should create worktree, fetch, merge, and push
         // Note: push might be a no-op if nothing changed, but command should succeed
@@ -266,6 +342,8 @@ mod tests {
 
         // Since we use --detach, it might be "HEAD"
         let branch = output.trim().to_string();
-        assert!(branch == "HEAD" || branch == "beads-sync");
+        // With the fix, we expect HEAD to resolve to the commit of my-sync-branch
+        // Since it's detached, it will return "HEAD"
+        assert!(branch == "HEAD" || branch == "my-sync-branch");
     }
 }
