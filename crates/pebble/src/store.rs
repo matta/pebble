@@ -157,7 +157,11 @@ impl JsonlStore {
     }
 
     fn write_issues_inner(&self, issues: &[Issue]) -> Result<()> {
-        let file = File::create(&self.path)?;
+        let path = Path::new(&self.path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let file = File::create(path)?;
         let mut writer = std::io::BufWriter::new(file);
 
         for issue in issues {

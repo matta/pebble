@@ -29,6 +29,11 @@ enum Commands {
         #[arg(long, default_value = "pebble-data")]
         sync_branch: String,
     },
+    /// Import issues from a JSONL file
+    Import {
+        /// Path to the JSONL file to import
+        path: std::path::PathBuf,
+    },
     Config {
         #[command(subcommand)]
         command: ConfigCommands,
@@ -110,6 +115,12 @@ fn main() -> Result<()> {
             Commands::Init { sync_branch } => {
                 let repo_root = std::env::current_dir()?;
                 
+                // BUG 1 FIX: Check if inside a git repo
+                if !pebble::worktree::WorktreeManager::is_inside_git_repo(&repo_root) {
+                    eprintln!("Error: 'pebble init' must be run inside a Git repository.");
+                    std::process::exit(1);
+                }
+
                 // 1. Create orphaned branch
                 let manager =
                     pebble::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());
@@ -117,13 +128,18 @@ fn main() -> Result<()> {
                 println!("Creating orphaned sync branch: {}...", sync_branch);
                 manager.create_orphaned_sync_branch()?;
                 
-                // 2. Initialize worktree at .pebble
-                let pebble_dir = repo_root.join(".pebble");
-                println!("Initializing worktree at {}...", pebble_dir.display());
-                manager.init_worktree(&pebble_dir)?;
+                // 2. Initialize worktree
+                // BUG 2 FIX: Use the path from manager (now .git/x-pebble)
+                let worktree_path = manager.get_worktree_path();
+                println!("Initializing worktree at {}...", worktree_path.display());
+                manager.init_worktree(&worktree_path)?;
                 
-                // 3. Save config
-                println!("Saving configuration...");
+                // 3. Save config in .pebble/config.yaml
+                let pebble_dir = repo_root.join(".pebble");
+                if !pebble_dir.exists() {
+                    std::fs::create_dir_all(&pebble_dir)?;
+                }
+                println!("Saving configuration to {}...", pebble_dir.join("config.yaml").display());
                 let config = pebble::config::Config {
                     sync_branch: Some(sync_branch.clone()),
                     ..Default::default()
@@ -131,6 +147,48 @@ fn main() -> Result<()> {
                 config.save(&pebble_dir.join("config.yaml"))?;
                 
                 println!("Pebble initialized successfully!");
+            }
+            Commands::Import { path } => {
+                let config = config.unwrap();
+                let sync_branch = config
+                    .sync_branch
+                    .as_deref()
+                    .ok_or_else(|| eyre!("sync-branch not configured"))?;
+
+                let repo_root = std::env::current_dir()?;
+                let manager =
+                    pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
+
+                let jsonl_path = manager.get_absolute_jsonl_path()?;
+                let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
+                let mut issues = store.read_issues()?;
+
+                // Read external issues
+                let external_store = pebble::store::JsonlStore::new(path.to_str().ok_or_else(|| eyre!("Invalid path"))?);
+                let external_issues = external_store.read_issues()?;
+
+                let mut updated_count = 0;
+                let mut added_count = 0;
+
+                for ext_issue in external_issues {
+                    if let Some(existing) = issues.iter_mut().find(|i| i.id == ext_issue.id) {
+                        let old_updated = existing.updated_at.clone();
+                        existing.merge(ext_issue);
+                        if existing.updated_at != old_updated {
+                            updated_count += 1;
+                        }
+                    } else {
+                        issues.push(ext_issue);
+                        added_count += 1;
+                    }
+                }
+
+                if updated_count > 0 || added_count > 0 {
+                    store.write_issues(&issues)?;
+                    println!("Import complete: {} added, {} updated.", added_count, updated_count);
+                } else {
+                    println!("Import complete: No changes.");
+                }
             }
             Commands::Config { command } => {
                 let config = config.unwrap();
