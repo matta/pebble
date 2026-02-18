@@ -146,8 +146,7 @@ mod tests {
                 .expect("Failed to run cmd")
         } else {
             Command::new("sh")
-                .arg("-c")
-                .arg("echo stdout output; echo stderr output >&2")
+                .args(["-c", "echo stdout output; echo stderr output >&2"])
                 .check_output()
                 .expect("Failed to run sh")
         };
