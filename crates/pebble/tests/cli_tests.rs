@@ -7,7 +7,8 @@ use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-const TEST_SYNC_BRANCH: &str = "pebble-sync";
+mod common;
+use common::TEST_SYNC_BRANCH;
 
 struct TestEnv {
     _temp_dir: TempDir,
@@ -179,7 +180,7 @@ fn test_config_get_sync_branch() {
         .args(["config", "get", "sync-branch"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("pebble-sync"));
+        .stdout(predicate::str::contains(TEST_SYNC_BRANCH));
 }
 
 #[test]

@@ -35,15 +35,18 @@ fn setup_git_repo(path: &std::path::Path) {
         .unwrap();
 }
 
+mod common;
+use common::TEST_SYNC_BRANCH;
+
 #[test]
 fn test_init_creates_worktree() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
     setup_git_repo(root);
 
-    let sync_branch = "pebble-sync-test";
+    let sync_branch = TEST_SYNC_BRANCH;
 
-    // Run 'pebble init --sync-branch pebble-sync-test'
+    // Run 'pebble init --sync-branch ...'
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
         .args(["init", "--sync-branch", sync_branch])

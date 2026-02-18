@@ -23,8 +23,8 @@ fn setup_git_repo(path: &std::path::Path) {
     execute_git(&["config", "user.name", "Test User"], path);
 }
 
-#[test]
-const TEST_SYNC_BRANCH: &str = "pebble-sync";
+mod common;
+use common::TEST_SYNC_BRANCH;
 
 #[test]
 fn test_worktree_path_generation() {
