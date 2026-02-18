@@ -40,7 +40,7 @@ impl TestEnv {
         std::fs::create_dir(root.join(".pebble")).unwrap();
         std::fs::write(
             root.join(".pebble/config.toml"),
-            "sync-branch = \"pebble-sync\"\nissue-prefix = \"test\"\n",
+            "sync-branch = \"pebble-sync\"\n",
         )
         .unwrap();
 
@@ -142,31 +142,10 @@ fn test_config_get_unknown_key() {
 fn test_config_get_unset_key() {
     let env = TestEnv::setup();
     env.pebble()
-        .args(["config", "get", "no-db"])
+        .args(["config", "get", "issue-prefix"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Config key 'no-db' not set"));
-}
-
-#[test]
-fn test_config_daemon_unsupported() {
-    let temp_dir = TempDir::new().unwrap();
-    let root = temp_dir.path();
-    std::fs::create_dir(root.join(".pebble")).unwrap();
-    std::fs::write(
-        root.join(".pebble/config.toml"),
-        "sync-branch = \"pebble-sync\"\nauto-start-daemon = true\n",
-    )
-    .unwrap();
-
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(root)
-        .arg("list")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains(
-            "Configuration 'auto-start-daemon = true' is invalid as daemon mode is not supported.",
-        ));
+        .stderr(predicate::str::contains("Config key 'issue-prefix' not set"));
 }
 
 #[test]
@@ -231,7 +210,7 @@ fn test_add_issue() {
         .args(["add", "New Test Issue", "--description", "This is a test"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Added issue test-"));
+        .stdout(predicate::str::contains("Added issue issue-"));
 }
 
 #[test]

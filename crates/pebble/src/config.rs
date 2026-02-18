@@ -1,4 +1,4 @@
-use color_eyre::eyre::{Result, eyre};
+use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -11,15 +11,6 @@ pub struct Config {
     /// Used in `main.rs` to generate issue IDs (e.g., `issue-123`).
     #[serde(rename = "issue-prefix", skip_serializing_if = "Option::is_none")]
     pub issue_prefix: Option<String>,
-
-    #[serde(rename = "no-db", skip_serializing_if = "Option::is_none")]
-    pub no_db: Option<bool>,
-
-    #[serde(rename = "no-daemon", skip_serializing_if = "Option::is_none")]
-    pub no_daemon: Option<bool>,
-
-    #[serde(rename = "auto-start-daemon", skip_serializing_if = "Option::is_none")]
-    pub auto_start_daemon: Option<bool>,
 }
 
 impl Config {
@@ -34,21 +25,6 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
-        if self.no_daemon == Some(false) {
-            return Err(eyre!(
-                "Configuration 'no-daemon = false' is invalid as daemon mode is not supported."
-            ));
-        }
-        if self.auto_start_daemon == Some(true) {
-            return Err(eyre!(
-                "Configuration 'auto-start-daemon = true' is invalid as daemon mode is not supported."
-            ));
-        }
-        if self.no_db == Some(false) {
-            return Err(eyre!(
-                "Configuration 'no-db = false' is invalid as database mode is not supported."
-            ));
-        }
         Ok(())
     }
 }
@@ -72,18 +48,12 @@ mod tests {
         let content = r#"
 sync-branch = "pebble-sync"
 issue-prefix = "pebble"
-no-db = true
-no-daemon = true
-auto-start-daemon = false
 "#;
         let config: Config = toml::from_str(content).expect("Failed to parse config");
         config.validate().expect("Validation failed");
 
         assert_eq!(config.sync_branch, Some("pebble-sync".to_string()));
         assert_eq!(config.issue_prefix, Some("pebble".to_string()));
-        assert_eq!(config.no_db, Some(true));
-        assert_eq!(config.no_daemon, Some(true));
-        assert_eq!(config.auto_start_daemon, Some(false));
     }
 
     #[test]
@@ -94,9 +64,6 @@ auto-start-daemon = false
 
         assert_eq!(config.sync_branch, None);
         assert_eq!(config.issue_prefix, None);
-        assert_eq!(config.no_db, None);
-        assert_eq!(config.no_daemon, None);
-        assert_eq!(config.auto_start_daemon, None);
     }
 
     #[test]
@@ -108,7 +75,7 @@ auto-start-daemon = false
 
     #[test]
     fn test_config_invalid_types() {
-        let content = "no-db = \"not-a-boolean\"\n";
+        let content = "sync-branch = 123\n";
         let result: Result<Config, _> = toml::from_str(content);
         assert!(result.is_err());
     }
@@ -118,44 +85,5 @@ auto-start-daemon = false
         let content = "unknown-field = \"some-value\"\n";
         let result: Result<Config, _> = toml::from_str(content);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validation_no_daemon() {
-        let config = Config {
-            no_daemon: Some(false),
-            ..Default::default()
-        };
-        let err = config.validate().unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            "Configuration 'no-daemon = false' is invalid as daemon mode is not supported."
-        );
-    }
-
-    #[test]
-    fn test_validation_auto_start_daemon() {
-        let config = Config {
-            auto_start_daemon: Some(true),
-            ..Default::default()
-        };
-        let err = config.validate().unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            "Configuration 'auto-start-daemon = true' is invalid as daemon mode is not supported."
-        );
-    }
-
-    #[test]
-    fn test_validation_no_db() {
-        let config = Config {
-            no_db: Some(false),
-            ..Default::default()
-        };
-        let err = config.validate().unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            "Configuration 'no-db = false' is invalid as database mode is not supported."
-        );
     }
 }

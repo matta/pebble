@@ -237,9 +237,6 @@ fn main() -> Result<()> {
                         let val = match key.as_str() {
                             "sync-branch" => config.sync_branch.clone(),
                             "issue-prefix" => config.issue_prefix.clone(),
-                            "no-db" => config.no_db.map(|v| v.to_string()),
-                            "no-daemon" => config.no_daemon.map(|v| v.to_string()),
-                            "auto-start-daemon" => config.auto_start_daemon.map(|v| v.to_string()),
                             _ => return Err(eyre!("Unknown config key '{}'", key)),
                         };
 
