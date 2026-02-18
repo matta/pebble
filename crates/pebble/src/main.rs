@@ -124,7 +124,7 @@ fn main() -> Result<()> {
                 let repo_root = std::env::current_dir()?;
 
                 // BUG 1 FIX: Check if inside a git repo
-                if !pebble::worktree::WorktreeManager::is_inside_git_repo(&repo_root) {
+                if !pebble::worktree::WorktreeManager::<pebble::worktree::RealGit>::is_inside_git_repo(&repo_root) {
                     eprintln!("Error: 'pebble init' must be run inside a Git repository.");
                     std::process::exit(1);
                 }

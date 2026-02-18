@@ -1,5 +1,6 @@
-use pebble::worktree::WorktreeManager;
-use std::path::PathBuf;
+use color_eyre::Result;
+use pebble::worktree::{GitProvider, WorktreeManager};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::TempDir;
 
@@ -153,4 +154,87 @@ fn test_sync_branch_argument_injection_prevention() {
             "VULNERABLE: Git fetch failed with usage error (129). This indicates argument injection."
         );
     }
+}
+
+struct MockGit {
+    fail_fetch: bool,
+    fail_merge: bool,
+    fail_push: bool,
+}
+
+impl MockGit {
+    fn new() -> Self {
+        Self {
+            fail_fetch: false,
+            fail_merge: false,
+            fail_push: false,
+        }
+    }
+}
+
+impl GitProvider for MockGit {
+    fn run(&self, args: &[&str], _current_dir: &Path) -> Result<()> {
+        if args.contains(&"fetch") && self.fail_fetch {
+            return Err(color_eyre::eyre::eyre!("Simulated fetch failure"));
+        }
+        if args.contains(&"merge") && self.fail_merge {
+            return Err(color_eyre::eyre::eyre!("Simulated merge failure"));
+        }
+        if args.contains(&"push") && self.fail_push {
+            return Err(color_eyre::eyre::eyre!("Simulated push failure"));
+        }
+        Ok(())
+    }
+
+    fn output(&self, _args: &[&str], _current_dir: &Path) -> Result<String> {
+        Ok(String::new())
+    }
+}
+
+#[test]
+fn test_sync_failure_fetch() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_root = temp_dir.path().to_path_buf();
+
+    let mut mock_git = MockGit::new();
+    mock_git.fail_fetch = true;
+
+    let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
+
+    let result = manager.sync();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Failed to execute git fetch"));
+}
+
+#[test]
+fn test_sync_failure_merge() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_root = temp_dir.path().to_path_buf();
+
+    let mut mock_git = MockGit::new();
+    mock_git.fail_merge = true;
+
+    let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
+
+    let result = manager.sync();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Failed to execute git merge"));
+}
+
+#[test]
+fn test_sync_failure_push() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_root = temp_dir.path().to_path_buf();
+
+    let mut mock_git = MockGit::new();
+    mock_git.fail_push = true;
+
+    let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
+
+    let result = manager.sync();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Failed to execute git push"));
 }

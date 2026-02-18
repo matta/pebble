@@ -1,19 +1,56 @@
 use crate::command::CommandExt;
 use color_eyre::Result;
 use color_eyre::eyre::Context;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub struct WorktreeManager {
-    repo_root: PathBuf,
-    sync_branch: String,
+pub trait GitProvider {
+    fn run(&self, args: &[&str], current_dir: &Path) -> Result<()>;
+    fn output(&self, args: &[&str], current_dir: &Path) -> Result<String>;
 }
 
-impl WorktreeManager {
+pub struct RealGit;
+
+impl GitProvider for RealGit {
+    fn run(&self, args: &[&str], current_dir: &Path) -> Result<()> {
+        Command::new("git")
+            .args(args)
+            .current_dir(current_dir)
+            .check_run()
+            .map_err(Into::into)
+    }
+
+    fn output(&self, args: &[&str], current_dir: &Path) -> Result<String> {
+        Command::new("git")
+            .args(args)
+            .current_dir(current_dir)
+            .check_output()
+            .map_err(Into::into)
+    }
+}
+
+pub struct WorktreeManager<G: GitProvider = RealGit> {
+    repo_root: PathBuf,
+    sync_branch: String,
+    git: G,
+}
+
+impl WorktreeManager<RealGit> {
     pub fn new(repo_root: PathBuf, sync_branch: String) -> Self {
         Self {
             repo_root,
             sync_branch,
+            git: RealGit,
+        }
+    }
+}
+
+impl<G: GitProvider> WorktreeManager<G> {
+    pub fn new_with_git(repo_root: PathBuf, sync_branch: String, git: G) -> Self {
+        Self {
+            repo_root,
+            sync_branch,
+            git,
         }
     }
 
@@ -202,41 +239,41 @@ impl WorktreeManager {
         };
 
         if let Some(target) = target_branch {
-            Command::new("git")
-                .arg("worktree")
-                .arg("add")
-                .arg("--detach")
-                .arg(&path)
-                .arg(&target)
-                .current_dir(&self.repo_root)
-                .check_run()
+            self.git
+                .run(
+                    &[
+                        "worktree",
+                        "add",
+                        "--detach",
+                        path.to_str().unwrap(),
+                        &target,
+                    ],
+                    &self.repo_root,
+                )
                 .with_context(|| "Failed to execute git worktree add")?;
         } else {
             // Initialize as orphan branch
             // First create worktree without checking out anything (to avoid huge checkout)
-            Command::new("git")
-                .arg("worktree")
-                .arg("add")
-                .arg("--detach")
-                .arg("--no-checkout") // Don't checkout HEAD files
-                .arg(&path)
-                .current_dir(&self.repo_root)
-                .check_run()
+            self.git
+                .run(
+                    &[
+                        "worktree",
+                        "add",
+                        "--detach",
+                        "--no-checkout",
+                        path.to_str().unwrap(),
+                    ],
+                    &self.repo_root,
+                )
                 .with_context(|| "Failed to execute git worktree add (orphan)")?;
 
             // Create orphan branch inside worktree
-            Command::new("git")
-                .args(["checkout", "--orphan", &self.sync_branch])
-                .current_dir(&path)
-                .check_run()
+            self.git
+                .run(&["checkout", "--orphan", &self.sync_branch], &path)
                 .with_context(|| "Failed to create orphan branch")?;
 
             // Ensure index is empty
-            Command::new("git")
-                .args(["rm", "-rf", "."])
-                .current_dir(&path)
-                .check_run()
-                .ok(); // Ignore if empty
+            let _ = self.git.run(&["rm", "-rf", "."], &path);
         }
 
         Ok(path)
@@ -283,30 +320,30 @@ impl WorktreeManager {
         let worktree_path = self.ensure_worktree()?;
 
         // git fetch origin <sync_branch>
-        Command::new("git")
-            .args(["fetch", "origin", "--", &self.sync_branch])
-            .current_dir(&worktree_path)
-            .check_run()
+        self.git
+            .run(
+                &["fetch", "origin", "--", &self.sync_branch],
+                &worktree_path,
+            )
             .with_context(|| "Failed to execute git fetch")?;
 
         // git merge origin/<sync_branch>
         // We use --ff-only to fail if there are conflicts for now (Phase 1)
         // Ideally we would support 3-way merge but let's start simple
-        Command::new("git")
-            .args([
-                "merge",
-                "--ff-only",
-                &format!("origin/{}", self.sync_branch),
-            ])
-            .current_dir(&worktree_path)
-            .check_run()
+        self.git
+            .run(
+                &[
+                    "merge",
+                    "--ff-only",
+                    &format!("origin/{}", self.sync_branch),
+                ],
+                &worktree_path,
+            )
             .with_context(|| "Failed to execute git merge")?;
 
         // git push origin <sync_branch>
-        Command::new("git")
-            .args(["push", "origin", "--", &self.sync_branch])
-            .current_dir(&worktree_path)
-            .check_run()
+        self.git
+            .run(&["push", "origin", "--", &self.sync_branch], &worktree_path)
             .with_context(|| "Failed to execute git push")?;
 
         Ok(())
