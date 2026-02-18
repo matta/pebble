@@ -61,11 +61,8 @@ fn main() -> Result<()> {
 
 fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
     let mut files: HashSet<String> = get_git_files(root, &["ls-files"])?.into_iter().collect();
-    // Also get untracked files
-    files.extend(get_git_files(
-        root,
-        &["ls-files", "--others", "--exclude-standard"],
-    )?);
+    let untracked = get_git_files(root, &["ls-files", "--others", "--exclude-standard"])?;
+    files.extend(untracked.clone());
 
     if !all {
         // Get both staged and unstaged changes
@@ -73,10 +70,7 @@ fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
             .into_iter()
             .collect();
         // Also get untracked files
-        changed.extend(get_git_files(
-            root,
-            &["ls-files", "--others", "--exclude-standard"],
-        )?);
+        changed.extend(untracked);
 
         if !changed.is_empty() {
             return Ok(changed);
@@ -116,15 +110,11 @@ fn check_forbidden_words(
         }
 
         // Skip the whitelist file itself and binary files (basic check)
-        if path.extension().is_some_and(|ext| {
-            ext == "png"
-                || ext == "jpg"
-                || ext == "jpeg"
-                || ext == "gif"
-                || ext == "ico"
-                || ext == "pdf"
-                || ext == "bin"
-        }) {
+        const BINARY_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "ico", "pdf", "bin"];
+        if path
+            .extension()
+            .is_some_and(|ext| BINARY_EXTENSIONS.iter().any(|&b| ext == b))
+        {
             continue;
         }
 
@@ -162,15 +152,9 @@ fn check_forbidden_words(
     }
 
     if generate_whitelist {
-        let mut sorted_whitelist: Vec<_> = new_whitelist.into_iter().collect();
-        sorted_whitelist.sort();
-        fs::write(&whitelist_path, sorted_whitelist.join("\n"))?;
-        println!("Generated whitelist at {:?}", whitelist_path);
+        write_whitelist(&whitelist_path, new_whitelist, "Generated")?;
     } else if minimize_whitelist {
-        let mut sorted_whitelist: Vec<_> = found_whitelisted.into_iter().collect();
-        sorted_whitelist.sort();
-        fs::write(&whitelist_path, sorted_whitelist.join("\n"))?;
-        println!("Minimized whitelist at {:?}", whitelist_path);
+        write_whitelist(&whitelist_path, found_whitelisted, "Minimized")?;
     } else {
         if !violations.is_empty() {
             println!("Found forbidden words in the following locations:");
@@ -265,6 +249,18 @@ fn canonicalize(s: &str) -> String {
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn write_whitelist(path: &Path, whitelist: HashSet<String>, label: &str) -> Result<()> {
+    let mut sorted_whitelist: Vec<_> = whitelist.into_iter().collect();
+    sorted_whitelist.sort();
+    let mut content = sorted_whitelist.join("\n");
+    if !content.is_empty() {
+        content.push('\n');
+    }
+    fs::write(path, content)?;
+    println!("{} whitelist at {:?}", label, path);
+    Ok(())
 }
 
 fn process_line(
