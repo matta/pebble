@@ -252,7 +252,10 @@ fn get_git_files(root: &Path, args: &[&str]) -> Result<Vec<String>> {
 }
 
 fn canonicalize(s: &str) -> String {
-    s.split_whitespace().collect::<Vec<_>>().join(" ")
+    s.to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn process_line(
@@ -304,6 +307,15 @@ mod tests {
         // Whitespace mismatch
         assert!(!process_line(
             "  foo   bead   bar  ",
+            false,
+            &whitelist,
+            &mut new_whitelist,
+            &mut found_whitelisted
+        ));
+
+        // Case mismatch (should be whitelisted now)
+        assert!(!process_line(
+            "FOO BEAD BAR",
             false,
             &whitelist,
             &mut new_whitelist,
