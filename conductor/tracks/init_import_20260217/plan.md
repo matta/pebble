@@ -16,7 +16,7 @@ Focus on making Pebble aware of its own setup state and providing helpful error 
 ## Phase 2: `pebble init` Implementation
 Implement the core setup logic for creating orphaned sync branches and worktrees.
 
-- [ ] Task: Implement `pebble init` CLI command structure
+- [x] Task: Implement `pebble init` CLI command structure (9febe64)
     - [ ] Write failing test for the `init` command availability and basic help.
     - [ ] Implement the command entry point in `command.rs`.
 - [ ] Task: Implement orphaned branch creation
