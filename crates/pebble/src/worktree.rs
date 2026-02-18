@@ -1,19 +1,56 @@
 use crate::command::CommandExt;
 use color_eyre::Result;
 use color_eyre::eyre::Context;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub struct WorktreeManager {
-    repo_root: PathBuf,
-    sync_branch: String,
+pub trait GitProvider {
+    fn run(&self, args: &[&str], current_dir: &Path) -> Result<()>;
+    fn output(&self, args: &[&str], current_dir: &Path) -> Result<String>;
 }
 
-impl WorktreeManager {
+pub struct RealGit;
+
+impl GitProvider for RealGit {
+    fn run(&self, args: &[&str], current_dir: &Path) -> Result<()> {
+        Command::new("git")
+            .args(args)
+            .current_dir(current_dir)
+            .check_run()
+            .map_err(Into::into)
+    }
+
+    fn output(&self, args: &[&str], current_dir: &Path) -> Result<String> {
+        Command::new("git")
+            .args(args)
+            .current_dir(current_dir)
+            .check_output()
+            .map_err(Into::into)
+    }
+}
+
+pub struct WorktreeManager<G: GitProvider = RealGit> {
+    repo_root: PathBuf,
+    sync_branch: String,
+    git: G,
+}
+
+impl WorktreeManager<RealGit> {
     pub fn new(repo_root: PathBuf, sync_branch: String) -> Self {
         Self {
             repo_root,
             sync_branch,
+            git: RealGit,
+        }
+    }
+}
+
+impl<G: GitProvider> WorktreeManager<G> {
+    pub fn new_with_git(repo_root: PathBuf, sync_branch: String, git: G) -> Self {
+        Self {
+            repo_root,
+            sync_branch,
+            git,
         }
     }
 
@@ -43,13 +80,16 @@ impl WorktreeManager {
         // but if the branch doesn't exist locally, we might need to fetch it first.
         // For phase 1, let's assume we can just add the worktree.
 
-        Command::new("git")
-            .arg("worktree")
-            .arg("add")
-            .arg("--detach") // use detach to avoid branch conflicts for now
-            .arg(&path)
-            .current_dir(&self.repo_root)
-            .check_output()
+        self.git
+            .output(
+                &[
+                    "worktree",
+                    "add",
+                    "--detach", // use detach to avoid branch conflicts for now
+                    path.to_str().unwrap(),
+                ],
+                &self.repo_root,
+            )
             .with_context(|| "Failed to execute git worktree add")?;
 
         Ok(path)
@@ -96,30 +136,33 @@ impl WorktreeManager {
         let worktree_path = self.ensure_worktree()?;
 
         // git fetch origin <sync_branch>
-        Command::new("git")
-            .args(["fetch", "origin", &self.sync_branch])
-            .current_dir(&worktree_path)
-            .check_run()
+        self.git
+            .run(
+                &["fetch", "origin", &self.sync_branch],
+                &worktree_path,
+            )
             .with_context(|| "Failed to execute git fetch")?;
 
         // git merge origin/<sync_branch>
         // We use --ff-only to fail if there are conflicts for now (Phase 1)
         // Ideally we would support 3-way merge but let's start simple
-        Command::new("git")
-            .args([
-                "merge",
-                "--ff-only",
-                &format!("origin/{}", self.sync_branch),
-            ])
-            .current_dir(&worktree_path)
-            .check_run()
+        self.git
+            .run(
+                &[
+                    "merge",
+                    "--ff-only",
+                    &format!("origin/{}", self.sync_branch),
+                ],
+                &worktree_path,
+            )
             .with_context(|| "Failed to execute git merge")?;
 
         // git push origin <sync_branch>
-        Command::new("git")
-            .args(["push", "origin", &self.sync_branch])
-            .current_dir(&worktree_path)
-            .check_run()
+        self.git
+            .run(
+                &["push", "origin", &self.sync_branch],
+                &worktree_path,
+            )
             .with_context(|| "Failed to execute git push")?;
 
         Ok(())
@@ -267,5 +310,88 @@ mod tests {
         // Since we use --detach, it might be "HEAD"
         let branch = output.trim().to_string();
         assert!(branch == "HEAD" || branch == "beads-sync");
+    }
+
+    struct MockGit {
+        fail_fetch: bool,
+        fail_merge: bool,
+        fail_push: bool,
+    }
+
+    impl MockGit {
+        fn new() -> Self {
+            Self {
+                fail_fetch: false,
+                fail_merge: false,
+                fail_push: false,
+            }
+        }
+    }
+
+    impl GitProvider for MockGit {
+        fn run(&self, args: &[&str], _current_dir: &Path) -> Result<()> {
+            if args.contains(&"fetch") && self.fail_fetch {
+                return Err(color_eyre::eyre::eyre!("Simulated fetch failure"));
+            }
+            if args.contains(&"merge") && self.fail_merge {
+                return Err(color_eyre::eyre::eyre!("Simulated merge failure"));
+            }
+            if args.contains(&"push") && self.fail_push {
+                return Err(color_eyre::eyre::eyre!("Simulated push failure"));
+            }
+            Ok(())
+        }
+
+        fn output(&self, _args: &[&str], _current_dir: &Path) -> Result<String> {
+            Ok(String::new())
+        }
+    }
+
+    #[test]
+    fn test_sync_failure_fetch() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_root = temp_dir.path().to_path_buf();
+
+        let mut mock_git = MockGit::new();
+        mock_git.fail_fetch = true;
+
+        let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
+
+        let result = manager.sync();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Failed to execute git fetch"));
+    }
+
+    #[test]
+    fn test_sync_failure_merge() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_root = temp_dir.path().to_path_buf();
+
+        let mut mock_git = MockGit::new();
+        mock_git.fail_merge = true;
+
+        let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
+
+        let result = manager.sync();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Failed to execute git merge"));
+    }
+
+    #[test]
+    fn test_sync_failure_push() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_root = temp_dir.path().to_path_buf();
+
+        let mut mock_git = MockGit::new();
+        mock_git.fail_push = true;
+
+        let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
+
+        let result = manager.sync();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Failed to execute git push"));
     }
 }
