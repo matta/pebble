@@ -139,25 +139,26 @@ fn check_forbidden_words(
             Ok(f) => f,
             Err(_) => continue, // Skip if cannot open
         };
-        let reader = BufReader::new(file);
-
-        for (line_num, line) in reader.lines().enumerate() {
-            let line = match line {
-                Ok(l) => l,
-                Err(_) => continue, // Skip binary or invalid utf8
-            };
-
-            if process_line(
-                &line,
-                generate_whitelist,
-                &whitelist,
-                &mut new_whitelist,
-                &mut found_whitelisted,
-            ) {
-                violations.push((file_path.clone(), line_num + 1, line.clone()));
-            }
-        }
-    }
+                    let reader = BufReader::new(file);
+                let forbidden = format!("{}ad", "be");
+        
+                for (line_num, line) in reader.lines().enumerate() {
+                    let line = match line {
+                        Ok(l) => l,
+                        Err(_) => continue, // Skip binary or invalid utf8
+                    };
+        
+                    if process_line(
+                        &line,
+                        &forbidden,
+                        generate_whitelist,
+                        &whitelist,
+                        &mut new_whitelist,
+                        &mut found_whitelisted,
+                    ) {
+                        violations.push((file_path.clone(), line_num + 1, line.clone()));
+                    }
+                }    }
 
     if generate_whitelist {
         let mut sorted_whitelist: Vec<_> = new_whitelist.into_iter().collect();
@@ -267,13 +268,14 @@ fn canonicalize(s: &str) -> String {
 
 fn process_line(
     line: &str,
+    forbidden: &str,
     generate_whitelist: bool,
     whitelist: &HashSet<String>,
     new_whitelist: &mut HashSet<String>,
     found_whitelisted: &mut HashSet<String>,
 ) -> bool {
     let lower_line = line.to_lowercase();
-    if lower_line.contains("baz") {
+    if lower_line.contains(forbidden) {
         let canonical = canonicalize(line);
         if generate_whitelist {
             new_whitelist.insert(canonical);
@@ -305,6 +307,7 @@ mod tests {
         // Exact match
         assert!(!process_line(
             "foo baz bar",
+            "baz",
             false,
             &whitelist,
             &mut new_whitelist,
@@ -314,6 +317,7 @@ mod tests {
         // Whitespace mismatch
         assert!(!process_line(
             "  foo   baz   bar  ",
+            "baz",
             false,
             &whitelist,
             &mut new_whitelist,
@@ -323,6 +327,7 @@ mod tests {
         // Case mismatch (should be whitelisted now)
         assert!(!process_line(
             "FOO BAZ BAR",
+            "baz",
             false,
             &whitelist,
             &mut new_whitelist,
@@ -332,6 +337,7 @@ mod tests {
         // Violation
         assert!(process_line(
             "other baz",
+            "baz",
             false,
             &whitelist,
             &mut new_whitelist,

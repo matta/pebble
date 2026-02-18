@@ -1,5 +1,0 @@
-" foo baz bar ",
-"foo baz bar",
-"other baz",
-if lower_line.contains("baz") {
-let entry = "foo baz bar";
