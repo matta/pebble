@@ -1,7 +1,7 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
-use pebble::config::Config;
 use pebble::CONFIG_DIR;
+use pebble::config::Config;
 use predicates::prelude::*;
 use tempfile::TempDir;
 

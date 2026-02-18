@@ -32,7 +32,11 @@ fn test_custom_config_path_env() {
     let root = temp_dir.path();
     let custom_config = root.join("env-config.toml");
 
-    fs::write(&custom_config, "sync-branch = \"env-sync\"\nissue-prefix = \"env\"\n").unwrap();
+    fs::write(
+        &custom_config,
+        "sync-branch = \"env-sync\"\nissue-prefix = \"env\"\n",
+    )
+    .unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -49,7 +53,11 @@ fn test_custom_config_path_relative() {
     let root = temp_dir.path();
     let custom_config = root.join("rel-config.toml");
 
-    fs::write(&custom_config, "sync-branch = \"rel-sync\"\nissue-prefix = \"rel\"\n").unwrap();
+    fs::write(
+        &custom_config,
+        "sync-branch = \"rel-sync\"\nissue-prefix = \"rel\"\n",
+    )
+    .unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)

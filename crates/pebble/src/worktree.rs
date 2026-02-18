@@ -10,7 +10,11 @@ use std::process::Command;
 pub trait GitProvider {
     fn run(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()>;
     fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String>;
-    fn status(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<std::process::ExitStatus>;
+    fn status(
+        &self,
+        args: &[&dyn AsRef<OsStr>],
+        current_dir: &Path,
+    ) -> Result<std::process::ExitStatus>;
 }
 
 pub struct RealGit;
@@ -21,9 +25,7 @@ impl GitProvider for RealGit {
         for arg in args {
             cmd.arg(arg);
         }
-        cmd.current_dir(current_dir)
-            .check_run()
-            .map_err(Into::into)
+        cmd.current_dir(current_dir).check_run().map_err(Into::into)
     }
 
     fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String> {
@@ -36,14 +38,16 @@ impl GitProvider for RealGit {
             .map_err(Into::into)
     }
 
-    fn status(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<std::process::ExitStatus> {
+    fn status(
+        &self,
+        args: &[&dyn AsRef<OsStr>],
+        current_dir: &Path,
+    ) -> Result<std::process::ExitStatus> {
         let mut cmd = Command::new("git");
         for arg in args {
             cmd.arg(arg);
         }
-        cmd.current_dir(current_dir)
-            .status()
-            .map_err(Into::into)
+        cmd.current_dir(current_dir).status().map_err(Into::into)
     }
 }
 
@@ -270,13 +274,7 @@ impl<G: GitProvider> WorktreeManager<G> {
         if let Some(target) = target_branch {
             self.git
                 .run(
-                    &[
-                        &"worktree",
-                        &"add",
-                        &"--detach",
-                        &path,
-                        &target,
-                    ],
+                    &[&"worktree", &"add", &"--detach", &path, &target],
                     &self.repo_root,
                 )
                 .with_context(|| "Failed to execute git worktree add")?;
@@ -285,13 +283,7 @@ impl<G: GitProvider> WorktreeManager<G> {
             // First create worktree without checking out anything (to avoid huge checkout)
             self.git
                 .run(
-                    &[
-                        &"worktree",
-                        &"add",
-                        &"--detach",
-                        &"--no-checkout",
-                        &path,
-                    ],
+                    &[&"worktree", &"add", &"--detach", &"--no-checkout", &path],
                     &self.repo_root,
                 )
                 .with_context(|| "Failed to execute git worktree add (orphan)")?;
@@ -327,7 +319,10 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         if !status.trim().is_empty() {
             self.git
-                .run(&[&"commit", &"--no-verify", &"-m", &"Auto-sync"], worktree_path)
+                .run(
+                    &[&"commit", &"--no-verify", &"-m", &"Auto-sync"],
+                    worktree_path,
+                )
                 .with_context(|| "Failed to commit changes")?;
         }
         Ok(())
@@ -339,7 +334,10 @@ impl<G: GitProvider> WorktreeManager<G> {
         // specific diff-filter=U for unmerged (conflicted) files
         let output = self
             .git
-            .output(&[&"diff", &"--name-only", &"--diff-filter=U"], worktree_path)
+            .output(
+                &[&"diff", &"--name-only", &"--diff-filter=U"],
+                worktree_path,
+            )
             .with_context(|| "Failed to list conflicted files")?;
 
         if output.trim().is_empty() {
@@ -437,10 +435,7 @@ impl<G: GitProvider> WorktreeManager<G> {
         let merge_ref = format!("origin/{}", self.sync_branch);
         let merge_status = self
             .git
-            .status(
-                &[&"merge", &merge_ref],
-                &worktree_path,
-            )
+            .status(&[&"merge", &merge_ref], &worktree_path)
             .with_context(|| "Failed to execute git merge command")?;
 
         if !merge_status.success() {
@@ -458,15 +453,7 @@ impl<G: GitProvider> WorktreeManager<G> {
         // 4. git push origin HEAD:<sync_branch>
         let push_ref = format!("HEAD:{}", self.sync_branch);
         self.git
-            .run(
-                &[
-                    &"push",
-                    &"origin",
-                    &"--",
-                    &push_ref,
-                ],
-                &worktree_path,
-            )
+            .run(&[&"push", &"origin", &"--", &push_ref], &worktree_path)
             .with_context(|| "Failed to execute git push")?;
 
         Ok(())

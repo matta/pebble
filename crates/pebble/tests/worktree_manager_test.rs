@@ -194,7 +194,11 @@ impl GitProvider for MockGit {
         Ok(String::new())
     }
 
-    fn status(&self, args: &[&dyn AsRef<OsStr>], _current_dir: &Path) -> Result<std::process::ExitStatus> {
+    fn status(
+        &self,
+        args: &[&dyn AsRef<OsStr>],
+        _current_dir: &Path,
+    ) -> Result<std::process::ExitStatus> {
         let has_arg = |target: &str| args.iter().any(|a| a.as_ref() == target);
 
         if has_arg("merge") && self.fail_merge {

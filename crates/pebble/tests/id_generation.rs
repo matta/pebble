@@ -1,7 +1,7 @@
 use assert_cmd::Command;
-use pebble::{CONFIG_FILE, CONFIG_DIR};
 #[allow(deprecated)]
 use assert_cmd::cargo::cargo_bin;
+use pebble::{CONFIG_DIR, CONFIG_FILE};
 use std::fs;
 use tempfile::TempDir;
 

@@ -152,7 +152,9 @@ fn test_config_get_unset_key() {
         .args(["config", "get", "issue-prefix"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Config key 'issue-prefix' not set"));
+        .stderr(predicate::str::contains(
+            "Config key 'issue-prefix' not set",
+        ));
 }
 
 #[test]

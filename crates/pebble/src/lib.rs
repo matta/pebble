@@ -1,5 +1,5 @@
-pub mod config;
 pub mod command;
+pub mod config;
 pub mod store;
 pub mod worktree;
 

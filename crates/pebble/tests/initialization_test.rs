@@ -1,5 +1,5 @@
-use pebble::config::Config;
 use pebble::CONFIG_DIR;
+use pebble::config::Config;
 use std::fs;
 use tempfile::TempDir;
 

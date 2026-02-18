@@ -173,10 +173,7 @@ fn main() -> Result<()> {
                     std::fs::create_dir_all(&pebble_dir)?;
                 }
                 let config_path = Config::default_path(&repo_root);
-                println!(
-                    "Saving configuration to {}...",
-                    config_path.display()
-                );
+                println!("Saving configuration to {}...", config_path.display());
                 let config = Config {
                     sync_branch: Some(sync_branch.clone()),
                     ..Default::default()
