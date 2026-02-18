@@ -37,27 +37,89 @@ impl WorktreeManager {
             })?;
         }
 
-        // Run git worktree add
-        // We use --detach because we don't need a local branch, just the checked output
-        // actually, we probably want to check out the specific branch
-        // but if the branch doesn't exist locally, we might need to fetch it first.
-        // For phase 1, let's assume we can just add the worktree.
+        // Check if branch exists locally
+        let branch_exists = Command::new("git")
+            .args(["rev-parse", "--verify", &self.sync_branch])
+            .current_dir(&self.repo_root)
+            .check_run()
+            .is_ok();
 
-        Command::new("git")
+        if !branch_exists {
+            // Try fetching from origin (ignore errors as it might be a new branch)
+            // Use explicit refspec to ensure remote tracking branch is updated
+            let _ = Command::new("git")
+                .args([
+                    "fetch",
+                    "origin",
+                    &format!(
+                        "refs/heads/{}:refs/remotes/origin/{}",
+                        self.sync_branch, self.sync_branch
+                    ),
+                ])
+                .current_dir(&self.repo_root)
+                .check_run();
+        }
+
+        // Try to add worktree checking out the branch
+        // This handles:
+        // 1. Branch exists locally.
+        // 2. Branch exists remotely (was fetched) -> git creates local tracking branch.
+        let result = Command::new("git")
             .arg("worktree")
             .arg("add")
-            .arg("--detach") // use detach to avoid branch conflicts for now
             .arg(&path)
+            .arg(&self.sync_branch)
             .current_dir(&self.repo_root)
-            .check_output()
-            .with_context(|| "Failed to execute git worktree add")?;
+            .check_output();
+
+        if result.is_err() {
+            // Fallback: Branch doesn't exist anywhere. Create a new orphan branch.
+            // 1. Create worktree detached
+            Command::new("git")
+                .arg("worktree")
+                .arg("add")
+                .arg("--detach")
+                .arg(&path)
+                .current_dir(&self.repo_root)
+                .check_output()
+                .with_context(|| "Failed to create detached worktree")?;
+
+            // 2. Checkout orphan branch in the worktree
+            Command::new("git")
+                .args(["checkout", "--orphan", &self.sync_branch])
+                .current_dir(&path)
+                .check_run()
+                .with_context(|| "Failed to checkout orphan sync branch")?;
+
+            // 3. Clean up worktree (remove files from HEAD)
+            Command::new("git")
+                .args(["rm", "-rf", "."])
+                .current_dir(&path)
+                .check_run()
+                .with_context(|| "Failed to clean orphan branch")?;
+
+            // 4. Create empty commit so the branch is valid
+            Command::new("git")
+                .args(["commit", "--allow-empty", "-m", "Initial sync state"])
+                .current_dir(&path)
+                .check_run()
+                .with_context(|| "Failed to create initial commit")?;
+        }
 
         Ok(path)
     }
 
     pub fn get_absolute_jsonl_path(&self) -> Result<PathBuf> {
         let worktree_path = self.ensure_worktree()?;
-        Ok(worktree_path.join(".beads/issues.jsonl"))
+        let jsonl_path = worktree_path.join(".beads/issues.jsonl");
+
+        if let Some(parent) = jsonl_path.parent() {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create .beads directory in worktree: {:?}", parent)
+            })?;
+        }
+
+        Ok(jsonl_path)
     }
 
     /// Synchronizes the local worktree with the remote repository.
