@@ -89,10 +89,9 @@ impl TestEnv {
     }
 
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
-        let worktree_path = self.root.join(".git/pebble-worktrees/pebble-sync");
-        let issues_dir = worktree_path.join(".beads");
-        std::fs::create_dir_all(&issues_dir).unwrap();
-        let issues_path = issues_dir.join("issues.jsonl");
+        let worktree_path = self.root.join(".git/x-pebble");
+        std::fs::create_dir_all(&worktree_path).unwrap();
+        let issues_path = worktree_path.join("issues.jsonl");
 
         let mut file = std::fs::OpenOptions::new()
             .create(true)

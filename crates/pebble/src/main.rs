@@ -300,6 +300,8 @@ fn main() -> Result<()> {
                 };
 
                 store.append_issue(&issue)?;
+                // Automatically commit
+                manager.commit_all(&format!("Add issue {}", id))?;
                 println!("Added issue {}", id);
             }
             Commands::Show { id, json } => {
@@ -382,6 +384,8 @@ fn main() -> Result<()> {
                 if changed {
                     issue.updated_at = chrono::Local::now().to_rfc3339();
                     store.write_issues(&issues)?;
+                    // Automatically commit
+                    manager.commit_all(&format!("Edit issue {}", id))?;
                     println!("Updated issue {}", id);
                 } else {
                     println!("No changes provided for issue {}", id);

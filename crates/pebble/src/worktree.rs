@@ -169,7 +169,7 @@ impl WorktreeManager {
 
     pub fn get_absolute_jsonl_path(&self) -> Result<PathBuf> {
         let worktree_path = self.ensure_worktree()?;
-        Ok(worktree_path.join(".beads/issues.jsonl"))
+        Ok(worktree_path.join("issues.jsonl"))
     }
 
     /// Synchronizes the local worktree with the remote repository.
@@ -280,13 +280,13 @@ mod tests {
         run_git(&["commit", "-m", "Initial"], &repo_root);
 
         let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-        let expected = repo_root.join(".git/x-pebble/.beads/issues.jsonl");
+        let expected = repo_root.join(".git/x-pebble/issues.jsonl");
 
         let path = manager
             .get_absolute_jsonl_path()
             .expect("Failed to get jsonl path");
         assert_eq!(path, expected);
-        assert!(path.parent().unwrap().exists()); // Worktree should be created and contain .beads
+        assert!(path.parent().unwrap().exists()); // Worktree root should exist
     }
 
     #[test]
