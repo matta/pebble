@@ -17,6 +17,62 @@ impl WorktreeManager {
         }
     }
 
+    /// Creates an orphaned branch for synchronization with no shared history.
+    pub fn create_orphaned_sync_branch(&self) -> Result<()> {
+        // git checkout --orphan <sync_branch>
+        // We do this by creating a temp directory to avoid messing with the current worktree
+        // Actually, we can use a more efficient approach with plumbing commands or just work with current worktree if it's clean enough
+        // But the safest way in a script is often to create a new index or use a temporary worktree.
+        // For simplicity and matching requirements:
+        // 1. Create an orphan branch (without switching to it in the main repo)
+        // 2. We can use a lower-level git command or just do it in the main repo if we are careful.
+        
+        // Let's use the current repository to create the branch
+        // We first need to check if the branch already exists.
+        let output = Command::new("git")
+            .args(["rev-parse", "--verify", &self.sync_branch])
+            .current_dir(&self.repo_root)
+            .output()?;
+            
+        if output.status.success() {
+            // Branch already exists, nothing to do for "create"
+            return Ok(());
+        }
+
+        // To create a truly orphaned branch with NO history:
+        // git checkout --orphan <branch>
+        // git rm -rf .
+        // git commit --allow-empty -m "Initial orphaned branch"
+        // git checkout <original_branch>
+
+        // But we don't want to disrupt the user's current worktree.
+        // Alternative: Use a temporary directory as a git repository to create the commit and push it to the main repo.
+        // Or even better: Use `git hash-object` and `git update-ref` to create a commit with no parent.
+
+        // 1. Create an empty tree
+        let empty_tree_hash = Command::new("git")
+            .args(["mktree"])
+            .stdin(std::process::Stdio::null())
+            .current_dir(&self.repo_root)
+            .check_output()?;
+        let empty_tree_hash = empty_tree_hash.trim();
+
+        // 2. Create a commit from that tree (with no parents)
+        let commit_hash = Command::new("git")
+            .args(["commit-tree", empty_tree_hash, "-m", "Initial orphaned branch"])
+            .current_dir(&self.repo_root)
+            .check_output()?;
+        let commit_hash = commit_hash.trim();
+
+        // 3. Update the reference to point to this commit
+        Command::new("git")
+            .args(["update-ref", &format!("refs/heads/{}", self.sync_branch), commit_hash])
+            .current_dir(&self.repo_root)
+            .check_run()?;
+
+        Ok(())
+    }
+
     pub fn get_worktree_path(&self) -> PathBuf {
         self.repo_root
             .join(".git/pebble-worktrees")
