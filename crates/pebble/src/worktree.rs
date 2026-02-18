@@ -115,7 +115,10 @@ impl WorktreeManager {
 
         if let Some(parent) = jsonl_path.parent() {
             std::fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create .beads directory in worktree: {:?}", parent)
+                format!(
+                    "Failed to create .beads directory in worktree: {:?}",
+                    parent
+                )
             })?;
         }
 
