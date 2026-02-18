@@ -97,18 +97,18 @@ fn test_id_generation_length() {
     // ceil(7.5) = 8
     // wait, population is BEFORE adding the new one.
     // In test:
-    // 1. `add "Test Issue"` -> issues.len() is 0. suffix_len = 1.
+    // 1. `add "Test Issue"` -> issues.len() is 0. suffix_len = 8.
     //
     // Let's re-verify the logic in `add.rs`:
     // let existing_issues = store.read_issues()?;
-    // let suffix_length = recommended_id_length(existing_issues.len() as u64);
+    // let suffix_length = recommended_id_length(existing_issues.len());
     //
     // When adding the FIRST issue, len is 0.
-    // recommended_id_length(0) returns 1.
-    // So the suffix should be 1 char long.
+    // recommended_id_length(0) returns 8 (calculated).
+    // So the suffix should be 8 chars long.
     assert_eq!(
         parts[1].len(),
-        1,
-        "ID suffix should be 1 char for the first issue"
+        8,
+        "ID suffix should be 8 chars for the first issue"
     );
 }

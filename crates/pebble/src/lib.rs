@@ -14,20 +14,19 @@ pub const WORKTREE_DIR: &str = ".git/x-pebble";
 /// This assumes the Birthday Paradox applies: P ≈ k^2 / (2 * N)
 /// where k = current_population, N = alphabet_size^length.
 pub fn recommended_id_length(current_population: usize) -> usize {
-    // If there is 0 or 1 item, a collision is impossible.
-    // However, to maintain the safety margin for the *next* item
-    // or simply to establish a baseline, we return 1.
-    if current_population <= 1 {
-        return 1;
-    }
-
     // Alphabet: a-z (26) + 0-9 (10) = 36
     const ALPHABET_SIZE: f64 = 36.0;
 
     // Target safety: 1 in 1,000,000,000,000
     const TARGET_PROBABILITY: f64 = 1.0e-12;
 
-    let k = current_population as f64;
+    // Even with 0 or 1 item, we want to maintain the safety margin for the *next* item
+    // so we calculate based on at least 1 item.
+    let k = if current_population == 0 {
+        1.0
+    } else {
+        current_population as f64
+    };
 
     // Derived from the Birthday Paradox approximation:
     // P ≈ k^2 / (2 * N)

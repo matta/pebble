@@ -7,8 +7,8 @@ fn test_id_length_breakpoints() {
     // We test the exact boundary `N` where the length becomes `L`, and `N-1` where it was `L-1`.
     // The calculation aims to keep collision probability < 10^-12 based on the Birthday Paradox.
     let breakpoints = [
-        (0, 1),
-        (1, 1),
+        (0, 8),
+        (1, 8),
         (2, 8),
         (3, 9),
         (14, 9),
