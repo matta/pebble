@@ -19,7 +19,7 @@ impl WorktreeManager {
 
     pub fn get_worktree_path(&self) -> PathBuf {
         self.repo_root
-            .join(".git/beads-worktrees")
+            .join(".git/pebble-worktrees")
             .join(&self.sync_branch)
     }
 
@@ -148,8 +148,8 @@ mod tests {
     #[test]
     fn test_worktree_path_generation() {
         let repo_root = PathBuf::from("/tmp/repo");
-        let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
-        let expected = repo_root.join(".git/beads-worktrees/beads-sync");
+        let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
+        let expected = repo_root.join(".git/pebble-worktrees/pebble-sync");
         assert_eq!(manager.get_worktree_path(), expected);
     }
 
@@ -167,8 +167,8 @@ mod tests {
         run_git(&["add", "."], &repo_root);
         run_git(&["commit", "-m", "Initial"], &repo_root);
 
-        let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
-        let expected = repo_root.join(".git/beads-worktrees/beads-sync/.beads/issues.jsonl");
+        let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
+        let expected = repo_root.join(".git/pebble-worktrees/pebble-sync/.beads/issues.jsonl");
 
         let path = manager
             .get_absolute_jsonl_path()
@@ -191,7 +191,7 @@ mod tests {
         run_git(&["add", "."], &repo_root);
         run_git(&["commit", "-m", "Initial commit"], &repo_root);
 
-        let manager = WorktreeManager::new(repo_root.clone(), "beads-sync".to_string());
+        let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
 
         // This should trigger worktree creation logic
         let worktree_path = manager
@@ -234,21 +234,21 @@ mod tests {
         run_git(&["commit", "-m", "Initial"], &local_root);
 
         // Add remote and push master (which we'll use as sync branch base for this test)
-        // Actually, we need to push a branch named 'beads-sync' to the remote
+        // Actually, we need to push a branch named 'pebble-sync' to the remote
         run_git(
             &["remote", "add", "origin", remote_root.to_str().unwrap()],
             &local_root,
         );
 
-        run_git(&["checkout", "-b", "beads-sync"], &local_root);
+        run_git(&["checkout", "-b", "pebble-sync"], &local_root);
 
-        run_git(&["push", "-u", "origin", "beads-sync"], &local_root);
+        run_git(&["push", "-u", "origin", "pebble-sync"], &local_root);
 
         // Now switch back to main to simulate user state
         run_git(&["checkout", "main"], &local_root);
 
         // Now test the WorktreeManager
-        let manager = WorktreeManager::new(local_root.clone(), "beads-sync".to_string());
+        let manager = WorktreeManager::new(local_root.clone(), "pebble-sync".to_string());
 
         // This should create worktree, fetch, merge, and push
         // Note: push might be a no-op if nothing changed, but command should succeed
@@ -266,6 +266,6 @@ mod tests {
 
         // Since we use --detach, it might be "HEAD"
         let branch = output.trim().to_string();
-        assert!(branch == "HEAD" || branch == "beads-sync");
+        assert!(branch == "HEAD" || branch == "pebble-sync");
     }
 }

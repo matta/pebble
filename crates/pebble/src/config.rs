@@ -24,10 +24,10 @@ mod tests {
 
     #[test]
     fn test_config_parsing() {
-        let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
+        let content = "sync-branch: pebble-sync\nissue-prefix: pebble\n";
         let config: Config = serde_yaml::from_str(content).expect("Failed to parse config");
 
-        assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
+        assert_eq!(config.sync_branch, Some("pebble-sync".to_string()));
         assert_eq!(config.issue_prefix, Some("pebble".to_string()));
     }
 }

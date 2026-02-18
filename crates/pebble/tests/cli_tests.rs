@@ -40,7 +40,7 @@ impl TestEnv {
         std::fs::create_dir(root.join(".beads")).unwrap();
         std::fs::write(
             root.join(".beads/config.yaml"),
-            "sync-branch: beads-sync\nissue-prefix: test\n",
+            "sync-branch: pebble-sync\nissue-prefix: test\n",
         )
         .unwrap();
 
@@ -59,7 +59,7 @@ impl TestEnv {
 
         // Create sync branch with issues.jsonl
         std::process::Command::new("git")
-            .args(["checkout", "-b", "beads-sync"])
+            .args(["checkout", "-b", "pebble-sync"])
             .current_dir(&root)
             .check_run()
             .unwrap();
@@ -89,7 +89,7 @@ impl TestEnv {
     }
 
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
-        let worktree_path = self.root.join(".git/beads-worktrees/beads-sync");
+        let worktree_path = self.root.join(".git/pebble-worktrees/pebble-sync");
         let issues_dir = worktree_path.join(".beads");
         std::fs::create_dir_all(&issues_dir).unwrap();
         let issues_path = issues_dir.join("issues.jsonl");
@@ -145,7 +145,7 @@ fn test_config_get_sync_branch() {
         .args(["config", "get", "sync-branch"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("beads-sync"));
+        .stdout(predicate::str::contains("pebble-sync"));
 }
 
 #[test]
