@@ -33,7 +33,7 @@ Implement the core setup logic for creating orphaned sync branches and worktrees
 ## Phase 3: Shared Merging Logic & `pebble import`
 Create a reusable merge module and implement the import functionality.
 
-- [ ] Task: Refactor and extract shared merging logic
+- [x] Task: Refactor and extract shared merging logic (739c94b)
     - [ ] Write failing tests for merging two issue objects (field-level updates, ID collisions).
     - [ ] Extract existing merge logic (if any) or implement new logic in `store.rs` or a new `merge.rs`.
 - [ ] Task: Implement `pebble import` CLI command
