@@ -52,6 +52,26 @@ pub struct Issue {
     pub close_reason: Option<String>,
 }
 
+impl Issue {
+    /// Merges another issue into this one.
+    ///
+    /// Updates all fields if the other issue has a more recent `updated_at` timestamp.
+    /// This is used for syncing and importing data.
+    pub fn merge(&mut self, other: Issue) {
+        if other.updated_at > self.updated_at {
+            self.title = other.title;
+            self.description = other.description;
+            self.status = other.status;
+            self.priority = other.priority;
+            self.issue_type = other.issue_type;
+            self.owner = other.owner;
+            self.updated_at = other.updated_at;
+            self.closed_at = other.closed_at;
+            self.close_reason = other.close_reason;
+        }
+    }
+}
+
 /// A persistent store for managing issues in a JSON Lines (JSONL) file.
 ///
 /// This struct handles reading and writing [`Issue`] records to a file at a specified path.
@@ -129,7 +149,11 @@ impl JsonlStore {
     }
 
     fn write_issues_inner(&self, issues: &[Issue]) -> Result<()> {
-        let file = File::create(&self.path)?;
+        let path = Path::new(&self.path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let file = File::create(path)?;
         let mut writer = std::io::BufWriter::new(file);
 
         for issue in issues {
@@ -272,52 +296,82 @@ mod tests {
     }
 
     #[test]
-    fn test_append_issue() {
-        let file = NamedTempFile::new().unwrap();
-        let path = file.path().to_str().unwrap().to_string();
-        let store = JsonlStore::new(&path);
-
-        let issue1 = Issue {
+    fn test_issue_merge() {
+        let mut base = Issue {
             id: "test-1".to_string(),
-            title: "Title 1".to_string(),
-            description: "Desc 1".to_string(),
+            title: "Original Title".to_string(),
+            description: "Original Desc".to_string(),
             status: "open".to_string(),
             priority: 1,
             issue_type: "task".to_string(),
             owner: "me".to_string(),
-            created_at: "2026-01-01T00:00:00Z".to_string(),
+            created_at: "2026-01-01T10:00:00Z".to_string(),
             created_by: "Me".to_string(),
-            updated_at: "2026-01-01T00:00:00Z".to_string(),
+            updated_at: "2026-01-01T10:00:00Z".to_string(),
             closed_at: None,
             close_reason: None,
         };
 
-        let issue2 = Issue {
-            id: "test-2".to_string(),
-            title: "Title 2".to_string(),
-            description: "Desc 2".to_string(),
-            status: "open".to_string(),
+        let incoming = Issue {
+            id: "test-1".to_string(),
+            title: "New Title".to_string(),
+            description: "New Desc".to_string(),
+            status: "closed".to_string(),
             priority: 2,
+            issue_type: "bug".to_string(),
+            owner: "you".to_string(),
+            created_at: "2026-01-01T10:00:00Z".to_string(),
+            created_by: "Me".to_string(),
+            updated_at: "2026-01-01T11:00:00Z".to_string(), // Newer
+            closed_at: Some("2026-01-01T11:00:00Z".to_string()),
+            close_reason: Some("fixed".to_string()),
+        };
+
+        base.merge(incoming);
+
+        assert_eq!(base.title, "New Title");
+        assert_eq!(base.status, "closed");
+        assert_eq!(base.updated_at, "2026-01-01T11:00:00Z");
+        assert_eq!(base.closed_at, Some("2026-01-01T11:00:00Z".to_string()));
+    }
+
+    #[test]
+    fn test_issue_merge_older_ignored() {
+        let mut base = Issue {
+            id: "test-1".to_string(),
+            title: "Newer Title".to_string(),
+            description: "Newer Desc".to_string(),
+            status: "open".to_string(),
+            priority: 1,
             issue_type: "task".to_string(),
             owner: "me".to_string(),
-            created_at: "2026-01-01T00:00:00Z".to_string(),
+            created_at: "2026-01-01T10:00:00Z".to_string(),
             created_by: "Me".to_string(),
-            updated_at: "2026-01-01T00:00:00Z".to_string(),
+            updated_at: "2026-01-01T12:00:00Z".to_string(), // Newer
             closed_at: None,
             close_reason: None,
         };
 
-        store
-            .append_issue(&issue1)
-            .expect("Failed to append issue 1");
-        store
-            .append_issue(&issue2)
-            .expect("Failed to append issue 2");
+        let incoming = Issue {
+            id: "test-1".to_string(),
+            title: "Older Title".to_string(),
+            description: "Older Desc".to_string(),
+            status: "closed".to_string(),
+            priority: 2,
+            issue_type: "bug".to_string(),
+            owner: "you".to_string(),
+            created_at: "2026-01-01T10:00:00Z".to_string(),
+            created_by: "Me".to_string(),
+            updated_at: "2026-01-01T11:00:00Z".to_string(), // Older
+            closed_at: Some("2026-01-01T11:00:00Z".to_string()),
+            close_reason: Some("fixed".to_string()),
+        };
 
-        let issues = store.read_issues().expect("Failed to read issues");
-        assert_eq!(issues.len(), 2);
-        assert_eq!(issues[0], issue1);
-        assert_eq!(issues[1], issue2);
+        base.merge(incoming);
+
+        assert_eq!(base.title, "Newer Title");
+        assert_eq!(base.status, "open");
+        assert_eq!(base.updated_at, "2026-01-01T12:00:00Z");
     }
 
     #[test]
@@ -357,8 +411,6 @@ mod tests {
             updated_at: "2023-01-01".to_string(),
             closed_at: None,
             close_reason: None,
-            dependencies: vec![],
-            extra: std::collections::HashMap::new(),
         };
         let valid_json = serde_json::to_string(&valid_issue).unwrap();
         writeln!(file, "{}", valid_json).unwrap();

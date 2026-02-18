@@ -60,26 +60,30 @@ fn main() -> Result<()> {
 }
 
 fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
-    if all {
-        Ok(get_git_files(root, &["ls-files"])?.into_iter().collect())
-    } else {
+    let mut files: HashSet<String> = get_git_files(root, &["ls-files"])?.into_iter().collect();
+    // Also get untracked files
+    files.extend(get_git_files(
+        root,
+        &["ls-files", "--others", "--exclude-standard"],
+    )?);
+
+    if !all {
         // Get both staged and unstaged changes
-        let mut files: HashSet<String> = get_git_files(root, &["diff", "--name-only", "HEAD"])?
+        let mut changed: HashSet<String> = get_git_files(root, &["diff", "--name-only", "HEAD"])?
             .into_iter()
             .collect();
         // Also get untracked files
-        files.extend(get_git_files(
+        changed.extend(get_git_files(
             root,
             &["ls-files", "--others", "--exclude-standard"],
         )?);
 
-        if files.is_empty() {
-            // If the repo is clean, default to checking all tracked files
-            Ok(get_git_files(root, &["ls-files"])?.into_iter().collect())
-        } else {
-            Ok(files)
+        if !changed.is_empty() {
+            return Ok(changed);
         }
     }
+
+    Ok(files)
 }
 
 fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {

@@ -26,8 +26,8 @@ This project is a Rust re-implementation of the existing `beads` tool, with a dr
 - **Database**: **JSONL**. The `issues.jsonl` file is the single source of truth.
 - **Architecture: Worktree-Only Data Storage**: 
     - **No Local Copy**: The `issues.jsonl` file does **NOT** exist in the user's working directory (e.g., `.beads/issues.jsonl`).
-    - **Sync-Branch Location**: The data resides **exclusively** in a Git worktree checked out to the configured `sync-branch`.
-    - **Operations**: All `pebble` commands (read/write) must locate this worktree and operate directly on the file within it.
+    - **Sync-Branch Location**: The data resides **exclusively** in a Git worktree checked out to the configured `sync-branch` (default `pebble-sync`).
+    - **Operations**: All `pebble` commands (read/write) must locate this worktree (default `.git/pebble-worktrees/<branch>`) and operate directly on the file within it.
     - **Sync Command**: `pebble sync` is strictly a wrapper for Git operations (`fetch`, `merge`, `push`) **within the worktree**. It does **not** copy files between the worktree and the main working directory.
 
 ## Data Model
