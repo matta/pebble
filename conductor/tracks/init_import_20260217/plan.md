@@ -5,7 +5,7 @@ This plan outlines the steps to implement the `pebble init` and `pebble import` 
 ## Phase 1: Initialization Awareness and Infrastructure
 Focus on making Pebble aware of its own setup state and providing helpful error messages.
 
-- [ ] Task: Implement `Config::is_initialized()` utility
+- [x] Task: Implement `Config::is_initialized()` utility (bcee20b)
     - [ ] Write failing test to check initialization status in a non-git or non-pebble repo.
     - [ ] Implement logic to detect if a `.pebble` worktree/directory exists.
 - [ ] Task: Update CLI to enforce initialization for existing commands
