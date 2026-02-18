@@ -17,6 +17,7 @@ pub trait GitProvider {
     ) -> Result<std::process::ExitStatus>;
 }
 
+#[derive(Debug)]
 pub struct RealGit;
 
 impl GitProvider for RealGit {
@@ -51,6 +52,7 @@ impl GitProvider for RealGit {
     }
 }
 
+#[derive(Debug)]
 pub struct WorktreeManager<G: GitProvider = RealGit> {
     repo_root: PathBuf,
     sync_branch: String,

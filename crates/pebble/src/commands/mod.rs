@@ -62,3 +62,36 @@ pub fn get_git_config(key: &str) -> Result<String> {
         .map(|s| s.trim().to_string())
         .map_err(Into::into)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_worktree_manager_success() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+
+        let config = Config {
+            sync_branch: Some("my-sync-branch".to_string()),
+            ..Default::default()
+        };
+
+        let result = get_worktree_manager(&config);
+        assert!(result.is_ok());
+
+        std::env::set_current_dir(original_dir).unwrap();
+    }
+
+    #[test]
+    fn test_get_worktree_manager_missing_sync_branch() {
+        let config = Config {
+            sync_branch: None,
+            ..Default::default()
+        };
+        let result = get_worktree_manager(&config);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "sync-branch not configured");
+    }
+}
