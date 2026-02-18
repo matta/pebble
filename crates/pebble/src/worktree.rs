@@ -97,7 +97,7 @@ impl WorktreeManager {
 
         // git fetch origin <sync_branch>
         Command::new("git")
-            .args(["fetch", "origin", &self.sync_branch])
+            .args(["fetch", "origin", "--", &self.sync_branch])
             .current_dir(&worktree_path)
             .check_run()
             .with_context(|| "Failed to execute git fetch")?;
@@ -117,7 +117,7 @@ impl WorktreeManager {
 
         // git push origin <sync_branch>
         Command::new("git")
-            .args(["push", "origin", &self.sync_branch])
+            .args(["push", "origin", "--", &self.sync_branch])
             .current_dir(&worktree_path)
             .check_run()
             .with_context(|| "Failed to execute git push")?;
@@ -267,5 +267,53 @@ mod tests {
         // Since we use --detach, it might be "HEAD"
         let branch = output.trim().to_string();
         assert!(branch == "HEAD" || branch == "beads-sync");
+    }
+
+    #[test]
+    fn test_sync_branch_argument_injection_prevention() {
+        // Setup a dummy git repo
+        let temp_dir = TempDir::new().unwrap();
+        let repo_root = temp_dir.path().to_path_buf();
+
+        setup_git_repo(&repo_root);
+
+        // Create initial commit so we have a valid HEAD
+        std::fs::write(repo_root.join("README.md"), "Initial commit").unwrap();
+        run_git(&["add", "."], &repo_root);
+        run_git(&["commit", "-m", "Initial commit"], &repo_root);
+
+        // We need a remote to fetch from
+        let remote_dir = TempDir::new().unwrap();
+        let remote_root = remote_dir.path().to_path_buf();
+        run_git(&["init", "--bare"], &remote_root);
+        run_git(
+            &["remote", "add", "origin", remote_root.to_str().unwrap()],
+            &repo_root,
+        );
+
+        // Malicious branch name
+        let malicious_branch = "--unknown-option".to_string();
+        let manager = WorktreeManager::new(repo_root.clone(), malicious_branch);
+
+        // This should fail
+        let result = manager.sync();
+
+        assert!(result.is_err(), "Sync should fail for --unknown-option");
+        let err = result.unwrap_err();
+        let debug_msg = format!("{:?}", err);
+
+        // Check if error is usage error (129) or fatal error (128)
+        // If 129 -> Vulnerable (git treated it as flag)
+        // If 128 -> Fixed (git treated it as ref)
+        if debug_msg.contains("129") {
+            panic!(
+                "VULNERABLE: Git fetch failed with usage error (129). This indicates argument injection."
+            );
+        } else if debug_msg.contains("128") {
+            // Fixed!
+        } else {
+            // If we get here, it might be some other error.
+            panic!("Unknown error code or message: {}", debug_msg);
+        }
     }
 }
