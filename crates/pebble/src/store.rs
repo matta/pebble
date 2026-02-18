@@ -2,7 +2,7 @@ use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 /// Represents a single issue or task within the system.
@@ -342,5 +342,78 @@ impl JsonlStore {
         writer.flush()?;
 
         Ok(())
+    }
+
+    /// Finds a single issue by its ID without loading the entire file into memory.
+    ///
+    /// This method is optimized for performance by reading the file line-by-line and
+    /// partially deserializing only the `id` field first. It avoids full deserialization
+    /// and allocation for non-matching records.
+    pub fn find_issue(&self, id: &str) -> Result<Option<Issue>> {
+        self.find_issue_inner(id)
+            .with_context(|| format!("Failed to find issue {} in {}", id, self.path))
+    }
+
+    fn find_issue_inner(&self, id: &str) -> Result<Option<Issue>> {
+        let path = Path::new(&self.path);
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        #[derive(Deserialize)]
+        struct IdOnly {
+            id: String,
+        }
+
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            // Optimization: Parse only ID first to avoid full deserialization overhead
+            if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
+                // Found the issue, now deserialize strictly/fully
+                let issue: Issue = serde_json::from_str(&line)?;
+                return Ok(Some(issue));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Checks if an issue exists by its ID without loading the entire file into memory.
+    ///
+    /// This method is optimized for existence checks (e.g., during ID generation)
+    /// and avoids allocating full Issue structs.
+    pub fn issue_exists(&self, id: &str) -> Result<bool> {
+        let path = Path::new(&self.path);
+        if !path.exists() {
+            return Ok(false);
+        }
+
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        #[derive(Deserialize)]
+        struct IdOnly {
+            id: String,
+        }
+
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 }
