@@ -25,12 +25,7 @@ pub fn load_config(path: Option<&Path>) -> Result<Config> {
     Ok(config)
 }
 
-pub fn get_worktree_manager(config: &Config) -> Result<pebble::worktree::WorktreeManager> {
-    let repo_root = std::env::current_dir()?;
-    get_worktree_manager_with_root(config, repo_root)
-}
-
-pub fn get_worktree_manager_with_root(
+pub fn get_worktree_manager(
     config: &Config,
     repo_root: std::path::PathBuf,
 ) -> Result<pebble::worktree::WorktreeManager> {
@@ -52,7 +47,7 @@ pub fn get_store(
     pebble::worktree::WorktreeManager,
     std::path::PathBuf,
 )> {
-    let manager = get_worktree_manager(config)?;
+    let manager = get_worktree_manager(config, std::env::current_dir()?)?;
     let jsonl_path = manager.get_absolute_jsonl_path()?;
     let store = pebble::store::JsonlStore::new(
         jsonl_path
@@ -84,7 +79,7 @@ mod tests {
         };
 
         // Use the explicit root function to avoid changing current directory
-        let result = get_worktree_manager_with_root(&config, temp_dir.path().to_path_buf());
+        let result = get_worktree_manager(&config, temp_dir.path().to_path_buf());
         assert!(result.is_ok());
     }
 
@@ -94,7 +89,7 @@ mod tests {
             sync_branch: None,
             ..Default::default()
         };
-        let result = get_worktree_manager(&config);
+        let result = get_worktree_manager(&config, std::path::PathBuf::from("."));
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
