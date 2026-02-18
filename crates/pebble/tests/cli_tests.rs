@@ -95,8 +95,12 @@ impl TestEnv {
         }
     }
 
+    fn get_worktree_path(&self) -> PathBuf {
+        self.root.join(WORKTREE_DIR).join("pebble-sync")
+    }
+
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
-        let worktree_path = self.root.join(WORKTREE_DIR).join("pebble-sync");
+        let worktree_path = self.get_worktree_path();
         std::fs::create_dir_all(&worktree_path).unwrap();
         let issues_path = worktree_path.join(ISSUES_FILE);
 
