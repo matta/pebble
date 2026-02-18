@@ -39,7 +39,7 @@ Create a reusable merge module and implement the import functionality.
 - [x] Task: Implement `pebble import` CLI command (2983e44)
     - [ ] Write failing test for `pebble import <file>` reading a sample JSONL file.
     - [ ] Implement command entry point and file path validation.
-- [ ] Task: Implement Git safety and idempotency
+- [x] Task: Implement Git safety and idempotency (b3d144d)
     - [ ] Write failing tests for importing into a "dirty" worktree and for re-importing the same file.
     - [ ] Implement checks for uncommitted changes in the `.pebble` worktree before proceeding.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: pebble import' (Protocol in workflow.md)
