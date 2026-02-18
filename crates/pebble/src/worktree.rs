@@ -73,6 +73,22 @@ impl WorktreeManager {
         Ok(())
     }
 
+    /// Initializes a worktree at the given path linked to the sync branch.
+    pub fn init_worktree(&self, path: &std::path::Path) -> Result<()> {
+        if path.exists() {
+            return Err(color_eyre::eyre::eyre!("Worktree path {:?} already exists", path));
+        }
+
+        // git worktree add <path> <branch>
+        Command::new("git")
+            .args(["worktree", "add", path.to_str().unwrap(), &self.sync_branch])
+            .current_dir(&self.repo_root)
+            .check_run()
+            .with_context(|| format!("Failed to add git worktree at {:?}", path))?;
+
+        Ok(())
+    }
+
     pub fn get_worktree_path(&self) -> PathBuf {
         self.repo_root
             .join(".git/pebble-worktrees")

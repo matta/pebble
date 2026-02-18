@@ -24,7 +24,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Initialize a new Pebble repository
-    Init,
+    Init {
+        /// Name of the synchronization branch
+        #[arg(long, default_value = "pebble-data")]
+        sync_branch: String,
+    },
     Config {
         #[command(subcommand)]
         command: ConfigCommands,
@@ -89,13 +93,13 @@ fn main() -> Result<()> {
 
     if let Some(command) = &cli.command {
         // Initialization check for commands that require it
-        let requires_init = !matches!(command, Commands::Init | Commands::Config { .. });
+        let requires_init = !matches!(command, Commands::Init { .. } | Commands::Config { .. });
         if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
             eprintln!("Error: Pebble is not initialized in this repository. Run 'pebble init' to get started.");
             std::process::exit(1);
         }
 
-        let config = if matches!(command, Commands::Init) {
+        let config = if matches!(command, Commands::Init { .. }) {
             // Init doesn't need to load config first
             None
         } else {
@@ -103,9 +107,22 @@ fn main() -> Result<()> {
         };
 
         match command {
-            Commands::Init => {
-                println!("Initializing pebble...");
-                // TODO: Implementation for Phase 2
+            Commands::Init { sync_branch } => {
+                let repo_root = std::env::current_dir()?;
+                
+                // 1. Create orphaned branch
+                let manager =
+                    pebble::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());
+                
+                println!("Creating orphaned sync branch: {}...", sync_branch);
+                manager.create_orphaned_sync_branch()?;
+                
+                // 2. Initialize worktree at .pebble
+                let pebble_dir = repo_root.join(".pebble");
+                println!("Initializing worktree at {}...", pebble_dir.display());
+                manager.init_worktree(&pebble_dir)?;
+                
+                println!("Pebble initialized successfully!");
             }
             Commands::Config { command } => {
                 let config = config.unwrap();
