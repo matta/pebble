@@ -57,3 +57,18 @@ std::fs::create_dir(root.join(".beads")).unwrap();
 std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap(); // git needs a file to track dir
 std::fs::write(root.join(".beads/issues.jsonl"), "").unwrap();
 } => check_beads(all, generate_whitelist, minimize_whitelist),
+run_git(&["checkout", "-b", "beads-sync"], user_a_path);
+std::fs::create_dir_all(user_a_path.join(".beads")).unwrap();
+std::fs::write(user_a_path.join(".beads/dummy"), "init").unwrap(); // ensure dir exists
+run_git(&["add", "."], user_a_path); // add .beads dir
+user_a_path.join(".beads/issues.jsonl"),
+run_git(&["add", ".beads/issues.jsonl"], user_a_path);
+run_git(&["push", "-u", "origin", "beads-sync"], user_a_path);
+user_a_path.join(".beads/issues.jsonl"),
+run_git(&["add", ".beads/issues.jsonl"], user_a_path);
+run_git(&["push", "origin", "beads-sync"], user_a_path);
+let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "beads-sync".to_string());
+std::fs::create_dir_all(worktree_path.join(".beads")).unwrap();
+worktree_path.join(".beads/issues.jsonl"),
+run_git(&["checkout", "beads-sync"], verify_path);
+let content = std::fs::read_to_string(verify_path.join(".beads/issues.jsonl")).unwrap();
