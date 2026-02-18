@@ -86,7 +86,11 @@ fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
     Ok(files)
 }
 
-fn check_forbidden_words(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
+fn check_forbidden_words(
+    all: bool,
+    generate_whitelist: bool,
+    minimize_whitelist: bool,
+) -> Result<()> {
     let root = std::env::current_dir()?;
     let whitelist_path = root.join(".forbidden-word-whitelist");
 
@@ -176,7 +180,10 @@ fn check_forbidden_words(all: bool, generate_whitelist: bool, minimize_whitelist
 
         if scan_all && found_whitelisted.len() < whitelist.len() {
             let unused: Vec<_> = whitelist.difference(&found_whitelisted).collect();
-            println!("Found {} unused lines in .forbidden-word-whitelist:", unused.len());
+            println!(
+                "Found {} unused lines in .forbidden-word-whitelist:",
+                unused.len()
+            );
             for line in unused {
                 println!("  {}", line);
             }
