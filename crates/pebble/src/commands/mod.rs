@@ -26,12 +26,19 @@ pub fn load_config(path: Option<&Path>) -> Result<Config> {
 }
 
 pub fn get_worktree_manager(config: &Config) -> Result<pebble::worktree::WorktreeManager> {
+    let repo_root = std::env::current_dir()?;
+    get_worktree_manager_with_root(config, repo_root)
+}
+
+pub fn get_worktree_manager_with_root(
+    config: &Config,
+    repo_root: std::path::PathBuf,
+) -> Result<pebble::worktree::WorktreeManager> {
     let sync_branch = config
         .sync_branch
         .as_deref()
         .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
-    let repo_root = std::env::current_dir()?;
     Ok(pebble::worktree::WorktreeManager::new(
         repo_root,
         sync_branch.to_string(),
@@ -70,18 +77,15 @@ mod tests {
     #[test]
     fn test_get_worktree_manager_success() {
         let temp_dir = tempfile::tempdir().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
 
         let config = Config {
             sync_branch: Some("my-sync-branch".to_string()),
             ..Default::default()
         };
 
-        let result = get_worktree_manager(&config);
+        // Use the explicit root function to avoid changing current directory
+        let result = get_worktree_manager_with_root(&config, temp_dir.path().to_path_buf());
         assert!(result.is_ok());
-
-        std::env::set_current_dir(original_dir).unwrap();
     }
 
     #[test]
