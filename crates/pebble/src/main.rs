@@ -67,7 +67,7 @@ enum ConfigCommands {
 }
 
 const DEFAULT_CONFIG_PATH_PEBBLE: &str = ".pebble/config.yaml";
-const DEFAULT_CONFIG_PATH_BEADS: &str = ".beads/config.yaml";
+const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 
 fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     let config_path = if let Some(p) = path {
@@ -77,7 +77,7 @@ fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
         if pebble_path.exists() {
             pebble_path
         } else {
-            std::path::PathBuf::from(DEFAULT_CONFIG_PATH_BEADS)
+            std::path::PathBuf::from(DEFAULT_CONFIG_PATH)
         }
     };
     let content = std::fs::read_to_string(&config_path)

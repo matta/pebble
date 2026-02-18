@@ -24,6 +24,7 @@
 // Create an initial commit including .beads
 // Create both .pebble and .beads
 // Create only .beads
+// Actually, we need to push a branch named 'beads-sync' to the remote
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
@@ -32,16 +33,17 @@ Pebble is a streamlined, "bare-bones" alternative to `beads`. It intentionally s
 This document outlines the step-by-step plan to implement `pebble`, a simplified Rust version of `beads`.
 This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
 This track introduces the `pebble init` command to simplify project setup and a `pebble import` command to allow users to ingest or migrate data from JSONL files (such as those produced by `beads`). It also adds proactive initialization checks to other CLI commands and formalizes the structure of the data synchronization branch.
+assert!(branch == "HEAD" || branch == "beads-sync");
+assert!(path.parent().unwrap().exists()); // Worktree should be created and contain .beads
 bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
 bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
 check_beads(all, false, false)?;
-const DEFAULT_CONFIG_PATH_BEADS: &str = ".beads/config.yaml";
+const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
 fn test_default_config_discovery_beads_fallback() {
 fn test_default_config_discovery_pebble_over_beads() {
 fs::create_dir(root.join(".beads")).unwrap();
 if lower_line.contains("bead") {
-let config_dir = path.join(".beads");
 let entry = "foo bead bar";
 let whitelist_path = root.join(".bead-whitelist");
 println!("Found forbidden words 'bead' or 'beads' in the following locations:");
