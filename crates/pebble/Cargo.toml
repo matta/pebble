@@ -2,6 +2,7 @@
 name = "pebble"
 version = "0.1.0"
 edition = "2024"
+description = "A distributed issue tracking system built on Git."
 
 [dependencies]
 color-eyre = "0.6"
