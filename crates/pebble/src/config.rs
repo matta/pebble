@@ -29,6 +29,9 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
+        if self.sync_branch.is_none() {
+            return Err(color_eyre::eyre::eyre!("sync-branch is required in configuration"));
+        }
         Ok(())
     }
 }
@@ -64,10 +67,25 @@ issue-prefix = "pebble"
     fn test_config_empty() {
         let content = "";
         let config: Config = toml::from_str(content).expect("Failed to parse config");
-        config.validate().expect("Validation failed");
+        assert!(config.validate().is_err()); // Validation should fail without sync-branch
 
         assert_eq!(config.sync_branch, None);
         assert_eq!(config.issue_prefix, None);
+    }
+
+    #[test]
+    fn test_config_validation() {
+        let config = Config {
+            sync_branch: None,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+
+        let config = Config {
+            sync_branch: Some("main".to_string()),
+            ..Default::default()
+        };
+        assert!(config.validate().is_ok());
     }
 
     #[test]
