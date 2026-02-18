@@ -18,7 +18,7 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Implement check-beads xtask command
 - [x] Hook into `just check`
 
-## Phase 2: Core Data Model & JSONL Store
+## Phase 2: Core Data Model & JSONL Store (Completed)
 - [x] Remove SQLite code (`src/db.rs`) and dependencies
 - [x] Implement `Issue` struct matching `AGENTS.md` schema
     - [x] Add `serde` derives
@@ -46,13 +46,12 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Implement `pebble show` (reads from worktree)
 - [x] Implement `pebble edit` (writes to worktree)
 
-## Phase 5: Renaming & Cleanup (Eliminate 'beads')
-- [ ] Rename `.beads` directory to `.pebble`
-- [ ] Rename `beads-sync` branch references to `pebble-sync`
-- [ ] Update `WorktreeManager` to use `.git/pebble-worktrees`
-- [ ] Rename `xtask check-beads` to `xtask check-pebble`
-- [ ] Rename `.bead-whitelist` to `.pebble-whitelist`
-- [ ] Update all code, comments, and tests to use `pebble` instead of `beads`
+## Phase 5: Renaming & Cleanup (Eliminate legacy naming where appropriate) (Completed)
+- [x] Rename `.beads` directory to `.pebble` (while maintaining fallback)
+- [x] Rename `beads-sync` branch references to `pebble-sync`
+- [x] Update `WorktreeManager` to use `.git/pebble-worktrees`
+- [x] Update all code, comments, and tests to use `pebble` instead of `beads` where appropriate
+- [x] Preserve `.bead-whitelist` and `xtask check-beads` as per project requirements
 
 ## Phase 6: Intelligent 3-Way Merge for Sync
 - [ ] Implement `pebble merge` command (internal tool for git merge driver)
