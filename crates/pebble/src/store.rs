@@ -55,7 +55,7 @@ pub struct Issue {
 impl Issue {
     /// Merges another issue into this one.
     ///
-    /// This method updates all fields of the current issue if the `other` issue has
+    /// This method updates mutable fields of the current issue if the `other` issue has
     /// a more recent `updated_at` timestamp. This is primarily used for syncing
     /// and importing data to resolve conflicts by taking the latest version.
     ///
@@ -227,9 +227,9 @@ impl JsonlStore {
     ///     priority: 1,
     ///     issue_type: "task".to_string(),
     ///     owner: "me".to_string(),
-    ///     created_at: "2023-01-01".to_string(),
+    ///     created_at: "2023-01-01T00:00:00Z".to_string(),
     ///     created_by: "me".to_string(),
-    ///     updated_at: "2023-01-01".to_string(),
+    ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
     /// };
