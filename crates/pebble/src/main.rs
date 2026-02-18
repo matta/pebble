@@ -155,7 +155,7 @@ fn main() -> Result<()> {
                 println!("Pebble initialized successfully!");
             }
             Commands::Import { path } => {
-                let config = config.unwrap();
+                let config = config.as_ref().unwrap();
                 let sync_branch = config
                     .sync_branch
                     .as_deref()
@@ -205,46 +205,24 @@ fn main() -> Result<()> {
                 }
             }
             Commands::Config { command } => {
-                let config = config.unwrap();
+                let config = config.as_ref().unwrap();
                 match command {
-                    ConfigCommands::Get { key } => match key.as_str() {
-                        "sync-branch" => {
-                            if let Some(val) = &config.sync_branch {
-                                println!("{}", val);
-                            } else {
-                                return Err(eyre!("Config key 'sync-branch' not set"));
-                            }
+                    ConfigCommands::Get { key } => {
+                        let val = match key.as_str() {
+                            "sync-branch" => config.sync_branch.clone(),
+                            "issue-prefix" => config.issue_prefix.clone(),
+                            "no-db" => config.no_db.map(|v| v.to_string()),
+                            "no-daemon" => config.no_daemon.map(|v| v.to_string()),
+                            "auto-start-daemon" => config.auto_start_daemon.map(|v| v.to_string()),
+                            _ => return Err(eyre!("Unknown config key '{}'", key)),
+                        };
+
+                        if let Some(v) = val {
+                            println!("{}", v);
+                        } else {
+                            return Err(eyre!("Config key '{}' not set", key));
                         }
-                        "issue-prefix" => {
-                            if let Some(val) = &config.issue_prefix {
-                                println!("{}", val);
-                            } else {
-                                return Err(eyre!("Config key 'issue-prefix' not set"));
-                            }
-                        }
-                        "no-db" => {
-                            if let Some(val) = &config.no_db {
-                                println!("{}", val);
-                            } else {
-                                return Err(eyre!("Config key 'no-db' not set"));
-                            }
-                        }
-                        "no-daemon" => {
-                            if let Some(val) = &config.no_daemon {
-                                println!("{}", val);
-                            } else {
-                                return Err(eyre!("Config key 'no-daemon' not set"));
-                            }
-                        }
-                        "auto-start-daemon" => {
-                            if let Some(val) = &config.auto_start_daemon {
-                                println!("{}", val);
-                            } else {
-                                return Err(eyre!("Config key 'auto-start-daemon' not set"));
-                            }
-                        }
-                        _ => return Err(eyre!("Unknown config key: {}", key)),
-                    },
+                    }
                 }
             }
 
