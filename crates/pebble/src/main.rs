@@ -122,6 +122,14 @@ fn main() -> Result<()> {
                 println!("Initializing worktree at {}...", pebble_dir.display());
                 manager.init_worktree(&pebble_dir)?;
                 
+                // 3. Save config
+                println!("Saving configuration...");
+                let config = pebble::config::Config {
+                    sync_branch: Some(sync_branch.clone()),
+                    ..Default::default()
+                };
+                config.save(&pebble_dir.join("config.yaml"))?;
+                
                 println!("Pebble initialized successfully!");
             }
             Commands::Config { command } => {
