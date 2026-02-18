@@ -7,6 +7,7 @@ use std::process::Command;
 pub struct WorktreeManager {
     repo_root: PathBuf,
     sync_branch: String,
+    custom_editor: Option<String>,
 }
 
 impl WorktreeManager {
@@ -14,7 +15,13 @@ impl WorktreeManager {
         Self {
             repo_root,
             sync_branch,
+            custom_editor: None,
         }
+    }
+
+    pub fn with_editor(mut self, editor: String) -> Self {
+        self.custom_editor = Some(editor);
+        self
     }
 
     pub fn get_worktree_path(&self) -> PathBuf {
@@ -65,7 +72,7 @@ impl WorktreeManager {
         Command::new("git")
             .args(["add", "."])
             .current_dir(worktree_path)
-            .check_run()
+            .check_output()
             .with_context(|| "Failed to stage changes")?;
 
         // Check if there are changes to commit
@@ -77,9 +84,9 @@ impl WorktreeManager {
 
         if !status.trim().is_empty() {
             Command::new("git")
-                .args(["commit", "-m", "Auto-sync"])
+                .args(["commit", "--no-verify", "-m", "Auto-sync"])
                 .current_dir(worktree_path)
-                .check_run()
+                .check_output()
                 .with_context(|| "Failed to commit changes")?;
         }
         Ok(())
@@ -100,7 +107,11 @@ impl WorktreeManager {
         }
 
         let files: Vec<&str> = output.lines().collect();
-        let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+        let editor = self
+            .custom_editor
+            .clone()
+            .or_else(|| std::env::var("EDITOR").ok())
+            .unwrap_or_else(|| "vi".to_string());
 
         // We use status() to let the editor take over stdin/stdout
         let status = Command::new(&editor)
@@ -117,13 +128,13 @@ impl WorktreeManager {
         Command::new("git")
             .args(["add", "."])
             .current_dir(worktree_path)
-            .check_run()
+            .check_output()
             .with_context(|| "Failed to stage resolved files")?;
 
         Command::new("git")
-            .args(["commit", "--no-edit"])
+            .args(["commit", "--no-verify", "--no-edit"])
             .current_dir(worktree_path)
-            .check_run() // check_run uses exit_ok()
+            .check_output()
             .with_context(|| "Failed to commit merge resolution")?;
 
         Ok(())

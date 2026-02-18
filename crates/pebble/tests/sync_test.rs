@@ -87,21 +87,6 @@ fn test_sync_conflict_resolution() {
     run_git(&["push", "origin", "beads-sync"], user_a_path);
 
     // 5. User B tries to sync, but has local changes (simulated)
-    let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "beads-sync".to_string());
-
-    let worktree_path = manager_b
-        .ensure_worktree()
-        .expect("Failed to create worktree");
-
-    // Create local change in B's worktree
-    let issues_json_b = r#"{"id":"1","title":"Title B","status":"open"}"#;
-    std::fs::create_dir_all(worktree_path.join(".beads")).unwrap();
-    std::fs::write(
-        worktree_path.join(".beads/issues.jsonl"),
-        format!("{}\n", issues_json_b),
-    )
-    .unwrap();
-
     // Create mock editor script
     let editor_script_path = user_b_path.join("mock_editor.sh");
     let script_content = r#"#!/bin/sh
@@ -120,10 +105,21 @@ echo '{"id":"1","title":"Title Resolved","status":"open"}' > "$1"
         std::fs::set_permissions(&editor_script_path, perms).unwrap();
     }
 
-    // Set EDITOR env var
-    unsafe {
-        std::env::set_var("EDITOR", editor_script_path.to_str().unwrap());
-    }
+    let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "beads-sync".to_string())
+        .with_editor(editor_script_path.to_str().unwrap().to_string());
+
+    let worktree_path = manager_b
+        .ensure_worktree()
+        .expect("Failed to create worktree");
+
+    // Create local change in B's worktree
+    let issues_json_b = r#"{"id":"1","title":"Title B","status":"open"}"#;
+    std::fs::create_dir_all(worktree_path.join(".beads")).unwrap();
+    std::fs::write(
+        worktree_path.join(".beads/issues.jsonl"),
+        format!("{}\n", issues_json_b),
+    )
+    .unwrap();
 
     // Now call sync.
     // It should:
