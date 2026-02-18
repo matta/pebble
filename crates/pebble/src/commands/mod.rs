@@ -92,6 +92,9 @@ mod tests {
         };
         let result = get_worktree_manager(&config);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "sync-branch not configured");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "sync-branch not configured"
+        );
     }
 }
