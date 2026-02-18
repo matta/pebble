@@ -36,8 +36,8 @@ fn test_get_absolute_jsonl_path() {
 
     setup_git_repo(&repo_root);
 
-    std::fs::create_dir(repo_root.join(".beads")).unwrap();
-    std::fs::write(repo_root.join(".beads/dummy"), "dummy").unwrap();
+    std::fs::create_dir(repo_root.join(".pebble")).unwrap();
+    std::fs::write(repo_root.join(".pebble/dummy"), "dummy").unwrap();
     execute_git(&["add", "."], &repo_root);
     execute_git(&["commit", "-m", "Initial"], &repo_root);
 

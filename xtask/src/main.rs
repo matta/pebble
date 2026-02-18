@@ -22,7 +22,7 @@ enum Commands {
         all: bool,
     },
     /// Check for forbidden words like "bead" or "beads"
-    CheckBeads {
+    CheckForbiddenWords {
         /// Scan all tracked files instead of just edited ones
         #[arg(long)]
         all: bool,
@@ -46,15 +46,15 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Check { all } => {
-            check_beads(all, false, false)?;
+            check_forbidden_words(all, false, false)?;
             check_file_length(all)?;
             Ok(())
         }
-        Commands::CheckBeads {
+        Commands::CheckForbiddenWords {
             all,
             generate_whitelist,
             minimize_whitelist,
-        } => check_beads(all, generate_whitelist, minimize_whitelist),
+        } => check_forbidden_words(all, generate_whitelist, minimize_whitelist),
         Commands::CheckFileLength { all } => check_file_length(all),
     }
 }
@@ -86,9 +86,13 @@ fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
     Ok(files)
 }
 
-fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
+fn check_forbidden_words(
+    all: bool,
+    generate_whitelist: bool,
+    minimize_whitelist: bool,
+) -> Result<()> {
     let root = std::env::current_dir()?;
-    let whitelist_path = root.join(".bead-whitelist");
+    let whitelist_path = root.join(".forbidden-word-whitelist");
 
     // Whitelist generation and minimization always scan all files
     let scan_all = all || generate_whitelist || minimize_whitelist;
@@ -126,7 +130,7 @@ fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) ->
 
         if path
             .file_name()
-            .is_some_and(|name| name == ".bead-whitelist")
+            .is_some_and(|name| name == ".forbidden-word-whitelist")
         {
             continue;
         }
@@ -171,16 +175,19 @@ fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) ->
             for (file, line, content) in violations {
                 println!("{}:{}: {}", file, line, content.trim());
             }
-            bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
+            bail!("Found forbidden words. Please remove them or add the line to .forbidden-word-whitelist if intended.");
         }
 
         if scan_all && found_whitelisted.len() < whitelist.len() {
             let unused: Vec<_> = whitelist.difference(&found_whitelisted).collect();
-            println!("Found {} unused lines in .bead-whitelist:", unused.len());
+            println!(
+                "Found {} unused lines in .forbidden-word-whitelist:",
+                unused.len()
+            );
             for line in unused {
                 println!("  {}", line);
             }
-            bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
+            bail!("Whitelist contains unused entries. Run 'cargo xtask check-forbidden-words --minimize-whitelist' to clean it up.");
         }
 
         println!("No forbidden words found.");

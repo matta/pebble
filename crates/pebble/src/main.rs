@@ -68,24 +68,12 @@ enum ConfigCommands {
 }
 
 const DEFAULT_CONFIG_PATH_PEBBLE: &str = ".pebble/config.yaml";
-const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 
 fn load_config(path: Option<&std::path::Path>) -> Result<Config> {
     let config_path = if let Some(p) = path {
         std::path::PathBuf::from(p)
     } else {
-        let pebble_path = std::path::PathBuf::from(DEFAULT_CONFIG_PATH_PEBBLE);
-        if pebble_path.exists() {
-            pebble_path
-        } else {
-            let beads_path = std::path::PathBuf::from(DEFAULT_CONFIG_PATH);
-            if beads_path.exists() {
-                beads_path
-            } else {
-                // If neither exists, and no path provided, use .pebble/config.yaml as default for error reporting
-                pebble_path
-            }
-        }
+        std::path::PathBuf::from(DEFAULT_CONFIG_PATH_PEBBLE)
     };
     let content = std::fs::read_to_string(&config_path)
         .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
