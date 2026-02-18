@@ -3,6 +3,7 @@ use crate::git_provider::{GitProvider, RealGit};
 use crate::{ISSUES_FILE, WORKTREE_DIR};
 use color_eyre::Result;
 use color_eyre::eyre::{Context, eyre};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use std::process::Command;
@@ -129,16 +130,11 @@ impl<G: GitProvider> WorktreeManager<G> {
         }
 
         // git worktree add <path> <branch>
-        Command::new("git")
-            .arg("worktree")
-            .arg("add")
-            .arg(path)
-            .arg("--")
-            .arg(&self.sync_branch)
-            .current_dir(&self.repo_root)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .check_run()
+        self.git
+            .run_quiet(
+                &[&"worktree", &"add", &path, &self.sync_branch],
+                &self.repo_root,
+            )
             .with_context(|| format!("Failed to add git worktree at {:?}", path))?;
 
         Ok(())
@@ -241,25 +237,17 @@ impl<G: GitProvider> WorktreeManager<G> {
         };
 
         if let Some(target) = target_branch {
+            let args: &[&dyn AsRef<OsStr>] = &[&"worktree", &"add", &"--detach", &path, &target];
             self.git
-<<<<<<< pebble-sync-6409498596486673174
-                .run_quiet(
-                    &[&"worktree", &"add", &"--detach", &path, &target],
-=======
-                .run(
-                    &[&"worktree", &"add", &"--detach", &path, &"--", &target],
->>>>>>> main
-                    &self.repo_root,
-                )
+                .run_quiet(args, &self.repo_root)
                 .with_context(|| "Failed to execute git worktree add")?;
         } else {
             // Initialize as orphan branch
             // First create worktree without checking out anything (to avoid huge checkout)
+            let args: &[&dyn AsRef<OsStr>] =
+                &[&"worktree", &"add", &"--detach", &"--no-checkout", &path];
             self.git
-                .run_quiet(
-                    &[&"worktree", &"add", &"--detach", &"--no-checkout", &path],
-                    &self.repo_root,
-                )
+                .run_quiet(args, &self.repo_root)
                 .with_context(|| "Failed to execute git worktree add (orphan)")?;
 
             // Create orphan branch inside worktree

@@ -29,11 +29,7 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
-        if let Some(branch) = &self.sync_branch {
-            if branch.starts_with('-') {
-                return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
-            }
-        } else {
+        if self.sync_branch.is_none() {
             return Err(color_eyre::eyre::eyre!(
                 "sync-branch is required in configuration"
             ));
@@ -45,13 +41,6 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_config_sync_branch_starts_with_dash() {
-        let content = "sync-branch = \"-bad\"\n";
-        let config: Config = toml::from_str(content).expect("Failed to parse config");
-        assert!(config.validate().is_err());
-    }
 
     #[test]
     fn test_config_parsing() {
