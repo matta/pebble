@@ -69,7 +69,7 @@ impl WorktreeManager {
 
         // 2. Create a commit from that tree (with no parents)
         let commit_hash = Command::new("git")
-            .args(["commit-tree", empty_tree_hash, "-m", "Initial pebble database tracking branch"])
+            .args(["commit-tree", empty_tree_hash, "-m", "Pebble database tracking branch initial commit"])
             .current_dir(&self.repo_root)
             .check_output()?;
         let commit_hash = commit_hash.trim();
