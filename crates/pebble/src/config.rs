@@ -22,14 +22,14 @@ pub struct Config {
 
 impl Config {
     pub fn validate(&self) -> Result<()> {
-        if let Some(false) = self.no_daemon {
-            return Err(eyre!("Daemon mode is not supported"));
+        if self.no_daemon == Some(false) {
+            return Err(eyre!("Configuration 'no-daemon: false' is invalid as daemon mode is not supported."));
         }
-        if let Some(true) = self.auto_start_daemon {
-            return Err(eyre!("Daemon mode is not supported"));
+        if self.auto_start_daemon == Some(true) {
+            return Err(eyre!("Configuration 'auto-start-daemon: true' is invalid as daemon mode is not supported."));
         }
-        if let Some(false) = self.no_db {
-            return Err(eyre!("Database mode is not supported"));
+        if self.no_db == Some(false) {
+            return Err(eyre!("Configuration 'no-db: false' is invalid as database mode is not supported."));
         }
         Ok(())
     }
@@ -58,7 +58,8 @@ mod tests {
             no_daemon: Some(false),
             auto_start_daemon: None,
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert_eq!(err.to_string(), "Configuration 'no-daemon: false' is invalid as daemon mode is not supported.");
     }
 
     #[test]
@@ -70,7 +71,8 @@ mod tests {
             no_daemon: None,
             auto_start_daemon: Some(true),
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert_eq!(err.to_string(), "Configuration 'auto-start-daemon: true' is invalid as daemon mode is not supported.");
     }
 
     #[test]
@@ -82,6 +84,7 @@ mod tests {
             no_daemon: None,
             auto_start_daemon: None,
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert_eq!(err.to_string(), "Configuration 'no-db: false' is invalid as database mode is not supported.");
     }
 }
