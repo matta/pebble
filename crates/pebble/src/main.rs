@@ -159,6 +159,12 @@ fn main() -> Result<()> {
                 let manager =
                     pebble::worktree::WorktreeManager::new(repo_root, sync_branch.to_string());
 
+                // BUG FIX / Safety: Refuse to import if worktree is dirty
+                if manager.is_dirty()? {
+                    eprintln!("Error: Pebble data worktree has uncommitted changes. Please commit or stash them before importing.");
+                    std::process::exit(1);
+                }
+
                 let jsonl_path = manager.get_absolute_jsonl_path()?;
                 let store = pebble::store::JsonlStore::new(jsonl_path.to_str().unwrap());
                 let mut issues = store.read_issues()?;
@@ -185,6 +191,8 @@ fn main() -> Result<()> {
 
                 if updated_count > 0 || added_count > 0 {
                     store.write_issues(&issues)?;
+                    // Automatically commit changes in the data worktree
+                    manager.commit_all(&format!("Imported data from {}", path.display()))?;
                     println!("Import complete: {} added, {} updated.", added_count, updated_count);
                 } else {
                     println!("Import complete: No changes.");

@@ -17,6 +17,16 @@ impl WorktreeManager {
         }
     }
 
+    /// Checks if the current directory is inside a Git repository.
+    pub fn is_inside_git_repo(path: &std::path::Path) -> bool {
+        Command::new("git")
+            .args(["rev-parse", "--is-inside-work-tree"])
+            .current_dir(path)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
     /// Creates an orphaned branch for synchronization with no shared history.
     pub fn create_orphaned_sync_branch(&self) -> Result<()> {
         // git checkout --orphan <sync_branch>
@@ -59,7 +69,7 @@ impl WorktreeManager {
 
         // 2. Create a commit from that tree (with no parents)
         let commit_hash = Command::new("git")
-            .args(["commit-tree", empty_tree_hash, "-m", "Initial orphaned branch"])
+            .args(["commit-tree", empty_tree_hash, "-m", "Initial pebble database tracking branch"])
             .current_dir(&self.repo_root)
             .check_output()?;
         let commit_hash = commit_hash.trim();
@@ -89,10 +99,40 @@ impl WorktreeManager {
         Ok(())
     }
 
+    /// Checks if the worktree has uncommitted changes.
+    pub fn is_dirty(&self) -> Result<bool> {
+        let path = self.get_worktree_path();
+        if !path.exists() {
+            return Ok(false);
+        }
+
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&path)
+            .check_output()?;
+
+        Ok(!output.trim().is_empty())
+    }
+
+    /// Stages all changes and commits them in the worktree.
+    pub fn commit_all(&self, message: &str) -> Result<()> {
+        let path = self.get_worktree_path();
+        
+        Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(&path)
+            .check_run()?;
+            
+        Command::new("git")
+            .args(["commit", "-m", message])
+            .current_dir(&path)
+            .check_run()?;
+            
+        Ok(())
+    }
+
     pub fn get_worktree_path(&self) -> PathBuf {
-        self.repo_root
-            .join(".git/pebble-worktrees")
-            .join(&self.sync_branch)
+        self.repo_root.join(".git/x-pebble")
     }
 
     pub fn ensure_worktree(&self) -> Result<PathBuf> {
@@ -221,7 +261,7 @@ mod tests {
     fn test_worktree_path_generation() {
         let repo_root = PathBuf::from("/tmp/repo");
         let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-        let expected = repo_root.join(".git/pebble-worktrees/pebble-sync");
+        let expected = repo_root.join(".git/x-pebble");
         assert_eq!(manager.get_worktree_path(), expected);
     }
 
@@ -240,7 +280,7 @@ mod tests {
         run_git(&["commit", "-m", "Initial"], &repo_root);
 
         let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-        let expected = repo_root.join(".git/pebble-worktrees/pebble-sync/.beads/issues.jsonl");
+        let expected = repo_root.join(".git/x-pebble/.beads/issues.jsonl");
 
         let path = manager
             .get_absolute_jsonl_path()
