@@ -9,6 +9,9 @@ use std::process::Command;
 
 pub trait GitProvider {
     fn run(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()>;
+    fn run_quiet(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        self.run(args, current_dir)
+    }
     fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String>;
     fn status(
         &self,
@@ -26,6 +29,17 @@ impl GitProvider for RealGit {
             cmd.arg(arg);
         }
         cmd.current_dir(current_dir).check_run().map_err(Into::into)
+    }
+
+    fn run_quiet(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        let mut cmd = Command::new("git");
+        for arg in args {
+            cmd.arg(arg);
+        }
+        cmd.current_dir(current_dir)
+            .stdout(std::process::Stdio::null())
+            .check_run()
+            .map_err(Into::into)
     }
 
     fn output(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<String> {
@@ -89,8 +103,10 @@ impl<G: GitProvider> WorktreeManager<G> {
         Command::new("git")
             .args(["rev-parse", "--is-inside-work-tree"])
             .current_dir(path)
-            .output()
-            .map(|o| o.status.success())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
             .unwrap_or(false)
     }
 
@@ -106,12 +122,14 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // Let's use the current repository to create the branch
         // We first need to check if the branch already exists.
-        let output = Command::new("git")
+        let status = Command::new("git")
             .args(["rev-parse", "--verify", &self.sync_branch])
             .current_dir(&self.repo_root)
-            .output()?;
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()?;
 
-        if output.status.success() {
+        if status.success() {
             // Branch already exists, nothing to do for "create"
             return Ok(());
         }
@@ -175,6 +193,8 @@ impl<G: GitProvider> WorktreeManager<G> {
             .arg(path)
             .arg(&self.sync_branch)
             .current_dir(&self.repo_root)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .check_run()
             .with_context(|| format!("Failed to add git worktree at {:?}", path))?;
 
@@ -235,6 +255,8 @@ impl<G: GitProvider> WorktreeManager<G> {
         let has_local = Command::new("git")
             .args(["rev-parse", "--verify", &self.sync_branch])
             .current_dir(&self.repo_root)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .check_run()
             .is_ok();
 
@@ -246,6 +268,8 @@ impl<G: GitProvider> WorktreeManager<G> {
             let has_origin = Command::new("git")
                 .args(["remote", "get-url", "origin"])
                 .current_dir(&self.repo_root)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
                 .check_run()
                 .is_ok();
 
@@ -262,6 +286,8 @@ impl<G: GitProvider> WorktreeManager<G> {
                 let has_remote = Command::new("git")
                     .args(["rev-parse", "--verify", &remote_ref])
                     .current_dir(&self.repo_root)
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
                     .check_run()
                     .is_ok();
 
@@ -273,7 +299,7 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         if let Some(target) = target_branch {
             self.git
-                .run(
+                .run_quiet(
                     &[&"worktree", &"add", &"--detach", &path, &target],
                     &self.repo_root,
                 )
@@ -282,7 +308,7 @@ impl<G: GitProvider> WorktreeManager<G> {
             // Initialize as orphan branch
             // First create worktree without checking out anything (to avoid huge checkout)
             self.git
-                .run(
+                .run_quiet(
                     &[&"worktree", &"add", &"--detach", &"--no-checkout", &path],
                     &self.repo_root,
                 )
