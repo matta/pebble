@@ -242,13 +242,8 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         if let Some(target) = target_branch {
             self.git
-<<<<<<< pebble-sync-6409498596486673174
                 .run_quiet(
-                    &[&"worktree", &"add", &"--detach", &path, &target],
-=======
-                .run(
                     &[&"worktree", &"add", &"--detach", &path, &"--", &target],
->>>>>>> main
                     &self.repo_root,
                 )
                 .with_context(|| "Failed to execute git worktree add")?;
