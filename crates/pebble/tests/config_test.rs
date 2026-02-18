@@ -8,11 +8,11 @@ use tempfile::TempDir;
 fn test_custom_config_path_flag() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
-    let custom_config = root.join("my-config.yaml");
+    let custom_config = root.join("my-config.toml");
 
     fs::write(
         &custom_config,
-        "sync-branch: custom-sync\nissue-prefix: custom\n",
+        "sync-branch = \"custom-sync\"\nissue-prefix = \"custom\"\n",
     )
     .unwrap();
 
@@ -30,9 +30,13 @@ fn test_custom_config_path_flag() {
 fn test_custom_config_path_env() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
-    let custom_config = root.join("env-config.yaml");
+    let custom_config = root.join("env-config.toml");
 
-    fs::write(&custom_config, "sync-branch: env-sync\nissue-prefix: env\n").unwrap();
+    fs::write(
+        &custom_config,
+        "sync-branch = \"env-sync\"\nissue-prefix = \"env\"\n",
+    )
+    .unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -47,14 +51,18 @@ fn test_custom_config_path_env() {
 fn test_custom_config_path_relative() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
-    let custom_config = root.join("rel-config.yaml");
+    let custom_config = root.join("rel-config.toml");
 
-    fs::write(&custom_config, "sync-branch: rel-sync\nissue-prefix: rel\n").unwrap();
+    fs::write(
+        &custom_config,
+        "sync-branch = \"rel-sync\"\nissue-prefix = \"rel\"\n",
+    )
+    .unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
         .arg("-c")
-        .arg("rel-config.yaml")
+        .arg("rel-config.toml")
         .args(["config", "get", "sync-branch"])
         .assert()
         .success()

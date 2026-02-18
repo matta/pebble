@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 #[allow(deprecated)]
 use assert_cmd::cargo::cargo_bin;
+use pebble::{CONFIG_DIR, CONFIG_FILE};
 use std::fs;
 use tempfile::TempDir;
 
@@ -34,9 +35,9 @@ fn test_id_generation_length() {
     assert!(status.success());
 
     // Create config file and directory BEFORE commit
-    let config_dir = path.join(".pebble");
+    let config_dir = path.join(CONFIG_DIR);
     fs::create_dir(&config_dir).unwrap();
-    fs::write(config_dir.join("config.yaml"), "sync-branch: main\n").unwrap();
+    fs::write(config_dir.join(CONFIG_FILE), "sync-branch = \"main\"\n").unwrap();
 
     // Create an initial commit including .pebble
     fs::write(path.join("README.md"), "# Test Repo").unwrap();

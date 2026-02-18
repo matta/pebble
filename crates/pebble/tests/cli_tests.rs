@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
 use pebble::command::CommandExt;
+use pebble::config::Config;
+use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -36,11 +38,11 @@ impl TestEnv {
             .check_run()
             .unwrap();
 
-        // .pebble/config.yaml
-        std::fs::create_dir(root.join(".pebble")).unwrap();
+        // .pebble/config.toml
+        std::fs::create_dir(root.join(CONFIG_DIR)).unwrap();
         std::fs::write(
-            root.join(".pebble/config.yaml"),
-            "sync-branch: pebble-sync\nissue-prefix: test\n",
+            Config::default_path(&root),
+            "sync-branch = \"pebble-sync\"\n",
         )
         .unwrap();
 
@@ -59,18 +61,23 @@ impl TestEnv {
 
         // Create sync branch with issues.jsonl
         std::process::Command::new("git")
-            .args(["checkout", "-b", "pebble-sync"])
+            .arg("checkout")
+            .arg("-b")
+            .arg("pebble-sync")
             .current_dir(&root)
             .check_run()
             .unwrap();
-        std::fs::write(root.join(".pebble/issues.jsonl"), "").unwrap();
+        std::fs::write(root.join(ISSUES_FILE), "").unwrap();
         std::process::Command::new("git")
-            .args(["add", ".pebble/issues.jsonl"])
+            .arg("add")
+            .arg(root.join(ISSUES_FILE))
             .current_dir(&root)
             .check_run()
             .unwrap();
         std::process::Command::new("git")
-            .args(["commit", "-m", "sync init"])
+            .arg("commit")
+            .arg("-m")
+            .arg("sync init")
             .current_dir(&root)
             .check_run()
             .unwrap();
@@ -89,9 +96,9 @@ impl TestEnv {
     }
 
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
-        let worktree_path = self.root.join(".git/x-pebble");
+        let worktree_path = self.root.join(WORKTREE_DIR);
         std::fs::create_dir_all(&worktree_path).unwrap();
-        let issues_path = worktree_path.join("issues.jsonl");
+        let issues_path = worktree_path.join(ISSUES_FILE);
 
         let mut file = std::fs::OpenOptions::new()
             .create(true)
@@ -142,30 +149,11 @@ fn test_config_get_unknown_key() {
 fn test_config_get_unset_key() {
     let env = TestEnv::setup();
     env.pebble()
-        .args(["config", "get", "no-db"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("Config key 'no-db' not set"));
-}
-
-#[test]
-fn test_config_daemon_unsupported() {
-    let temp_dir = TempDir::new().unwrap();
-    let root = temp_dir.path();
-    std::fs::create_dir(root.join(".pebble")).unwrap();
-    std::fs::write(
-        root.join(".pebble/config.yaml"),
-        "sync-branch: pebble-sync\nauto-start-daemon: true\n",
-    )
-    .unwrap();
-
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(root)
-        .arg("list")
+        .args(["config", "get", "issue-prefix"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "Configuration 'auto-start-daemon: true' is invalid as daemon mode is not supported.",
+            "Config key 'issue-prefix' not set",
         ));
 }
 
@@ -231,7 +219,7 @@ fn test_add_issue() {
         .args(["add", "New Test Issue", "--description", "This is a test"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Added issue test-"));
+        .stdout(predicate::str::contains("Added issue issue-"));
 }
 
 #[test]

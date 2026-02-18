@@ -1,3 +1,4 @@
+use pebble::CONFIG_DIR;
 use pebble::config::Config;
 use std::fs;
 use tempfile::TempDir;
@@ -17,7 +18,7 @@ fn test_is_initialized_with_pebble_dir() {
     let root = temp_dir.path();
 
     // Create a .pebble directory
-    fs::create_dir(root.join(".pebble")).unwrap();
+    fs::create_dir(root.join(CONFIG_DIR)).unwrap();
 
     // It should now be initialized
     assert!(Config::is_initialized(root));

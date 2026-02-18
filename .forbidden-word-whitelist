@@ -1,18 +1,15 @@
-- **configuration parsing**: must parse `.beads/config.yaml` format. specifically handle `sync-branch`.
 - **no local copy**: the `issues.jsonl` file does **not** exist in the user's working directory (e.g., `.beads/issues.jsonl`).
 - **original beads users**: people looking for a more predictable, rust-powered alternative to the original go implementation.
 - **reference**: the `../beads` directory contains the original implementation (go). consult it for behavior clarification when needed, but do not copy-paste code directly. focus on re-implementation in idiomatic rust.
-- [ ] `pebble import` correctly merges issues from a `beads`-style jsonl file using shared merging logic for field updates.
 - [ ] implement field-level 3-way merge algorithm (matching `beads` behavior)
 - [x] implement check-beads xtask command
 - [x] rename `.beads` directory to `.pebble` (while maintaining fallback)
 - [x] rename `beads-sync` branch references to `pebble-sync`
 - [x] update all code, comments, and tests to use `pebble` instead of `beads` where appropriate
-- configuration: **strict**. the only supported format is 'sync-branch' configuration as found in `../mydoo/.beads/config.yaml`. other configurations are unsupported.
+- configuration: **strict**. the only supported format is toml configuration in `.pebble/config.toml`. other configurations are unsupported. (note: original `beads` used `.beads/config.yaml`).
 - the repository `../beads` is synced to this release commit.
 - use `../mydoo` as a reference testbed where beads is set up correctly.
 pebble is a simplified rust re-implementation of the `beads` tool, focusing on a jsonl backend, strict git-based worktree synchronization, and a test-driven development (tdd) approach.
 pebble is a streamlined, "bare-bones" alternative to `beads`. it intentionally strips away peripheral features to focus on a minimal, high-performance core for developers who value simplicity and zero overhead.
 this document outlines the step-by-step plan to implement `pebble`, a simplified rust version of `beads`.
 this project is a rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
-this track introduces the `pebble init` command to simplify project setup and a `pebble import` command to allow users to ingest or migrate data from jsonl files (such as those produced by `beads`). it also adds proactive initialization checks to other cli commands and formalizes the structure of the data synchronization branch.

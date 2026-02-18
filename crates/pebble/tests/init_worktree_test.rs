@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
+use pebble::WORKTREE_DIR;
 use std::process::Command as std_command;
 use tempfile::TempDir;
 
@@ -49,12 +50,9 @@ fn test_init_creates_worktree() {
         .assert()
         .success();
 
-    // 1. Verify worktree exists at .git/x-pebble
-    let pebble_dir = root.join(".git/x-pebble");
-    assert!(
-        pebble_dir.exists(),
-        "Worktree directory .git/x-pebble should be created"
-    );
+    // 1. Verify worktree exists
+    let pebble_dir = root.join(WORKTREE_DIR);
+    assert!(pebble_dir.exists(), "Worktree directory should be created");
 
     // 2. Verify it's a worktree and on the correct branch
     let output = std_command::new("git")
@@ -73,7 +71,7 @@ fn test_init_creates_worktree() {
         .expect("Failed to run git worktree list");
     let worktree_list = String::from_utf8_lossy(&output.stdout).to_string();
     assert!(
-        worktree_list.contains("x-pebble"),
+        worktree_list.contains(WORKTREE_DIR.split('/').next_back().unwrap()),
         "Worktree should be listed by git"
     );
 }

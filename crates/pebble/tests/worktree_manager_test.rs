@@ -1,5 +1,7 @@
 use color_eyre::Result;
 use pebble::worktree::{GitProvider, WorktreeManager};
+use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::TempDir;
@@ -25,7 +27,7 @@ fn setup_git_repo(path: &std::path::Path) {
 fn test_worktree_path_generation() {
     let repo_root = PathBuf::from("/tmp/repo");
     let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-    let expected = repo_root.join(".git/x-pebble");
+    let expected = repo_root.join(WORKTREE_DIR);
     assert_eq!(manager.get_worktree_path(), expected);
 }
 
@@ -36,13 +38,13 @@ fn test_get_absolute_jsonl_path() {
 
     setup_git_repo(&repo_root);
 
-    std::fs::create_dir(repo_root.join(".pebble")).unwrap();
-    std::fs::write(repo_root.join(".pebble/dummy"), "dummy").unwrap();
+    std::fs::create_dir(repo_root.join(CONFIG_DIR)).unwrap();
+    std::fs::write(repo_root.join(CONFIG_DIR).join("dummy"), "dummy").unwrap();
     execute_git(&["add", "."], &repo_root);
     execute_git(&["commit", "-m", "Initial"], &repo_root);
 
     let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-    let expected = repo_root.join(".git/x-pebble/issues.jsonl");
+    let expected = repo_root.join(WORKTREE_DIR).join(ISSUES_FILE);
 
     let path = manager
         .get_absolute_jsonl_path()
@@ -173,25 +175,33 @@ impl MockGit {
 }
 
 impl GitProvider for MockGit {
-    fn run(&self, args: &[&str], _current_dir: &Path) -> Result<()> {
-        if args.contains(&"fetch") && self.fail_fetch {
+    fn run(&self, args: &[&dyn AsRef<OsStr>], _current_dir: &Path) -> Result<()> {
+        let has_arg = |target: &str| args.iter().any(|a| a.as_ref() == target);
+
+        if has_arg("fetch") && self.fail_fetch {
             return Err(color_eyre::eyre::eyre!("Simulated fetch failure"));
         }
-        if args.contains(&"merge") && self.fail_merge {
+        if has_arg("merge") && self.fail_merge {
             return Err(color_eyre::eyre::eyre!("Simulated merge failure"));
         }
-        if args.contains(&"push") && self.fail_push {
+        if has_arg("push") && self.fail_push {
             return Err(color_eyre::eyre::eyre!("Simulated push failure"));
         }
         Ok(())
     }
 
-    fn output(&self, _args: &[&str], _current_dir: &Path) -> Result<String> {
+    fn output(&self, _args: &[&dyn AsRef<OsStr>], _current_dir: &Path) -> Result<String> {
         Ok(String::new())
     }
 
-    fn status(&self, args: &[&str], _current_dir: &Path) -> Result<std::process::ExitStatus> {
-        if args.contains(&"merge") && self.fail_merge {
+    fn status(
+        &self,
+        args: &[&dyn AsRef<OsStr>],
+        _current_dir: &Path,
+    ) -> Result<std::process::ExitStatus> {
+        let has_arg = |target: &str| args.iter().any(|a| a.as_ref() == target);
+
+        if has_arg("merge") && self.fail_merge {
             // Return a non-zero exit status (code 1 for conflict)
             // We use "false" command to get a status with code 1.
             return Ok(std::process::Command::new("false").status().unwrap());
