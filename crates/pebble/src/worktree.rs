@@ -173,6 +173,7 @@ impl<G: GitProvider> WorktreeManager<G> {
             .arg("worktree")
             .arg("add")
             .arg(path)
+            .arg("--")
             .arg(&self.sync_branch)
             .current_dir(&self.repo_root)
             .check_run()
@@ -274,7 +275,7 @@ impl<G: GitProvider> WorktreeManager<G> {
         if let Some(target) = target_branch {
             self.git
                 .run(
-                    &[&"worktree", &"add", &"--detach", &path, &target],
+                    &[&"worktree", &"add", &"--detach", &path, &"--", &target],
                     &self.repo_root,
                 )
                 .with_context(|| "Failed to execute git worktree add")?;
