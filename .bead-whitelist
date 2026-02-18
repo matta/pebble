@@ -23,7 +23,6 @@
 .stdout(predicate::str::contains("beads-sync"));
 // .beads/config.yaml
 // Actually, we need to push a branch named 'beads-sync' to the remote
-const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 /// Check for forbidden words like "bead" or "beads"
 CheckBeads {
 Commands::CheckBeads {
@@ -32,13 +31,12 @@ This document outlines the step-by-step plan to implement `pebble`, a simplified
 This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
 assert!(branch == "HEAD" || branch == "beads-sync");
 assert!(path.parent().unwrap().exists()); // Worktree should be created and contain .beads
-assert_eq!(config.sync_branch, Some("beads-sync".to_string()));
 bail!("Found forbidden words. Please remove them or add the line to .bead-whitelist if intended.");
 bail!("Whitelist contains unused entries. Run 'cargo xtask check-beads --minimize-whitelist' to clean it up.");
 check_beads(all, false, false)?;
+const DEFAULT_CONFIG_PATH: &str = ".beads/config.yaml";
 fn check_beads(all: bool, generate_whitelist: bool, minimize_whitelist: bool) -> Result<()> {
 if lower_line.contains("bead") {
-let content = "sync-branch: beads-sync\nissue-prefix: pebble\n";
 let entry = "foo bead bar";
         let expected = repo_root.join(".git/beads-worktrees/my-sync-branch");
         let expected = repo_root.join(".git/beads-worktrees/my-sync-branch/.beads/issues.jsonl");
