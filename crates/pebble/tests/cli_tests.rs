@@ -363,7 +363,12 @@ fn test_show_issue_json() {
 #[test]
 fn test_no_args_fails() {
     let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.assert().failure().stderr(predicate::str::contains(
-        "Usage: pebble [OPTIONS] <COMMAND>",
-    ));
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "A distributed issue tracking system built on Git.",
+        ))
+        .stderr(predicate::str::contains(
+            "Usage: pebble [OPTIONS] <COMMAND>",
+        ));
 }

@@ -5,8 +5,8 @@ use pebble::config::Config;
 mod commands;
 
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
 #[command(name = "pebble")]
+#[command(version, about = "A distributed issue tracking system built on Git.", long_about = None)]
 struct Cli {
     /// Change to this directory before doing anything else
     #[arg(short = 'C', long)]
