@@ -36,14 +36,14 @@ impl WorktreeManager {
         // For simplicity and matching requirements:
         // 1. Create an orphan branch (without switching to it in the main repo)
         // 2. We can use a lower-level git command or just do it in the main repo if we are careful.
-        
+
         // Let's use the current repository to create the branch
         // We first need to check if the branch already exists.
         let output = Command::new("git")
             .args(["rev-parse", "--verify", &self.sync_branch])
             .current_dir(&self.repo_root)
             .output()?;
-            
+
         if output.status.success() {
             // Branch already exists, nothing to do for "create"
             return Ok(());
@@ -69,14 +69,23 @@ impl WorktreeManager {
 
         // 2. Create a commit from that tree (with no parents)
         let commit_hash = Command::new("git")
-            .args(["commit-tree", empty_tree_hash, "-m", "Pebble database tracking branch initial commit"])
+            .args([
+                "commit-tree",
+                empty_tree_hash,
+                "-m",
+                "Pebble database tracking branch initial commit",
+            ])
             .current_dir(&self.repo_root)
             .check_output()?;
         let commit_hash = commit_hash.trim();
 
         // 3. Update the reference to point to this commit
         Command::new("git")
-            .args(["update-ref", &format!("refs/heads/{}", self.sync_branch), commit_hash])
+            .args([
+                "update-ref",
+                &format!("refs/heads/{}", self.sync_branch),
+                commit_hash,
+            ])
             .current_dir(&self.repo_root)
             .check_run()?;
 
@@ -86,7 +95,10 @@ impl WorktreeManager {
     /// Initializes a worktree at the given path linked to the sync branch.
     pub fn init_worktree(&self, path: &std::path::Path) -> Result<()> {
         if path.exists() {
-            return Err(color_eyre::eyre::eyre!("Worktree path {:?} already exists", path));
+            return Err(color_eyre::eyre::eyre!(
+                "Worktree path {:?} already exists",
+                path
+            ));
         }
 
         // git worktree add <path> <branch>
@@ -117,17 +129,17 @@ impl WorktreeManager {
     /// Stages all changes and commits them in the worktree.
     pub fn commit_all(&self, message: &str) -> Result<()> {
         let path = self.get_worktree_path();
-        
+
         Command::new("git")
             .args(["add", "-A"])
             .current_dir(&path)
             .check_run()?;
-            
+
         Command::new("git")
             .args(["commit", "-m", message])
             .current_dir(&path)
             .check_run()?;
-            
+
         Ok(())
     }
 

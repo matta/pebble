@@ -100,7 +100,9 @@ fn main() -> Result<()> {
         // Initialization check for commands that require it
         let requires_init = !matches!(command, Commands::Init { .. } | Commands::Config { .. });
         if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
-            eprintln!("Error: Pebble is not initialized in this repository. Run 'pebble init' to get started.");
+            eprintln!(
+                "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
+            );
             std::process::exit(1);
         }
 
@@ -111,16 +113,16 @@ fn main() -> Result<()> {
             Some(load_config(cli.config.as_deref())?)
         };
 
-        if let Some(ref config) = config {
-            if config.no_daemon == Some(false) || config.auto_start_daemon == Some(true) {
-                return Err(eyre!("Daemon mode is not supported"));
-            }
+        if let Some(ref config) = config
+            && (config.no_daemon == Some(false) || config.auto_start_daemon == Some(true))
+        {
+            return Err(eyre!("Daemon mode is not supported"));
         }
 
         match command {
             Commands::Init { sync_branch } => {
                 let repo_root = std::env::current_dir()?;
-                
+
                 // BUG 1 FIX: Check if inside a git repo
                 if !pebble::worktree::WorktreeManager::is_inside_git_repo(&repo_root) {
                     eprintln!("Error: 'pebble init' must be run inside a Git repository.");
@@ -128,30 +130,35 @@ fn main() -> Result<()> {
                 }
 
                 // 1. Create orphaned branch
-                let manager =
-                    pebble::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());
-                
+                let manager = pebble::worktree::WorktreeManager::new(
+                    repo_root.clone(),
+                    sync_branch.to_string(),
+                );
+
                 println!("Creating orphaned sync branch: {}...", sync_branch);
                 manager.create_orphaned_sync_branch()?;
-                
+
                 // 2. Initialize worktree
                 // BUG 2 FIX: Use the path from manager (now .git/x-pebble)
                 let worktree_path = manager.get_worktree_path();
                 println!("Initializing worktree at {}...", worktree_path.display());
                 manager.init_worktree(&worktree_path)?;
-                
+
                 // 3. Save config in .pebble/config.yaml
                 let pebble_dir = repo_root.join(".pebble");
                 if !pebble_dir.exists() {
                     std::fs::create_dir_all(&pebble_dir)?;
                 }
-                println!("Saving configuration to {}...", pebble_dir.join("config.yaml").display());
+                println!(
+                    "Saving configuration to {}...",
+                    pebble_dir.join("config.yaml").display()
+                );
                 let config = pebble::config::Config {
                     sync_branch: Some(sync_branch.clone()),
                     ..Default::default()
                 };
                 config.save(&pebble_dir.join("config.yaml"))?;
-                
+
                 println!("Pebble initialized successfully!");
             }
             Commands::Import { path } => {
@@ -167,7 +174,9 @@ fn main() -> Result<()> {
 
                 // BUG FIX / Safety: Refuse to import if worktree is dirty
                 if manager.is_dirty()? {
-                    eprintln!("Error: Pebble data worktree has uncommitted changes. Please commit or stash them before importing.");
+                    eprintln!(
+                        "Error: Pebble data worktree has uncommitted changes. Please commit or stash them before importing."
+                    );
                     std::process::exit(1);
                 }
 
@@ -176,7 +185,9 @@ fn main() -> Result<()> {
                 let mut issues = store.read_issues()?;
 
                 // Read external issues
-                let external_store = pebble::store::JsonlStore::new(path.to_str().ok_or_else(|| eyre!("Invalid path"))?);
+                let external_store = pebble::store::JsonlStore::new(
+                    path.to_str().ok_or_else(|| eyre!("Invalid path"))?,
+                );
                 let external_issues = external_store.read_issues()?;
 
                 let mut updated_count = 0;
@@ -199,7 +210,10 @@ fn main() -> Result<()> {
                     store.write_issues(&issues)?;
                     // Automatically commit changes in the data worktree
                     manager.commit_all(&format!("Imported data from {}", path.display()))?;
-                    println!("Import complete: {} added, {} updated.", added_count, updated_count);
+                    println!(
+                        "Import complete: {} added, {} updated.",
+                        added_count, updated_count
+                    );
                 } else {
                     println!("Import complete: No changes.");
                 }

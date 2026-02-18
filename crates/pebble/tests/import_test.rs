@@ -23,15 +23,20 @@ fn setup_pebble_repo(path: &std::path::Path) {
         .status()
         .unwrap();
     fs::write(path.join("README.md"), "test").unwrap();
-    std_command::new("git").args(["add", "."]).current_dir(path).status().unwrap();
-    std_command::new("git").args(["commit", "-m", "initial"]).current_dir(path).status().unwrap();
+    std_command::new("git")
+        .args(["add", "."])
+        .current_dir(path)
+        .status()
+        .unwrap();
+    std_command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(path)
+        .status()
+        .unwrap();
 
     // 2. pebble init
     let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(path)
-        .arg("init")
-        .assert()
-        .success();
+    cmd.current_dir(path).arg("init").assert().success();
 }
 
 #[test]
@@ -39,7 +44,7 @@ fn test_import_basic() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
     setup_pebble_repo(root);
-    
+
     // Create an external JSONL file to import
     let import_file = root.join("external.jsonl");
     let issue = Issue {
@@ -59,16 +64,23 @@ fn test_import_basic() {
         extra: Default::default(),
     };
     let json = serde_json::to_string(&issue).unwrap();
-    fs::write(&import_file, format!("{}
-", json)).unwrap();
-    
+    fs::write(
+        &import_file,
+        format!(
+            "{}
+",
+            json
+        ),
+    )
+    .unwrap();
+
     // Run 'pebble import external.jsonl'
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
         .args(["import", import_file.to_str().unwrap()])
         .assert()
         .success();
-        
+
     // Verify it was imported
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)

@@ -7,7 +7,7 @@ use tempfile::TempDir;
 fn test_uninitialized_error_message() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
-    
+
     // Run 'pebble list' in an empty directory
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -22,7 +22,7 @@ fn test_uninitialized_error_message() {
 fn test_uninitialized_error_message_add() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
-    
+
     // Run 'pebble add' in an empty directory
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -38,11 +38,15 @@ fn test_initialized_no_error() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
     use std::fs;
-    
+
     // Create a .pebble directory and a dummy config
     fs::create_dir(root.join(".pebble")).unwrap();
-    fs::write(root.join(".pebble/config.yaml"), "sync-branch: pebble-sync\n").unwrap();
-    
+    fs::write(
+        root.join(".pebble/config.yaml"),
+        "sync-branch: pebble-sync\n",
+    )
+    .unwrap();
+
     // Run 'pebble list' - it should NOT show the initialization error
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)

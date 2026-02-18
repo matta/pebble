@@ -6,13 +6,37 @@ use std::process::Command as std_command;
 use tempfile::TempDir;
 
 fn setup_pebble_repo(path: &std::path::Path) {
-    std_command::new("git").args(["init", "-b", "main"]).current_dir(path).status().unwrap();
-    std_command::new("git").args(["config", "user.email", "test@example.com"]).current_dir(path).status().unwrap();
-    std_command::new("git").args(["config", "user.name", "Test User"]).current_dir(path).status().unwrap();
+    std_command::new("git")
+        .args(["init", "-b", "main"])
+        .current_dir(path)
+        .status()
+        .unwrap();
+    std_command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(path)
+        .status()
+        .unwrap();
+    std_command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(path)
+        .status()
+        .unwrap();
     fs::write(path.join("README.md"), "test").unwrap();
-    std_command::new("git").args(["add", "."]).current_dir(path).status().unwrap();
-    std_command::new("git").args(["commit", "-m", "initial"]).current_dir(path).status().unwrap();
-    Command::new(cargo_bin!("pebble")).current_dir(path).arg("init").assert().success();
+    std_command::new("git")
+        .args(["add", "."])
+        .current_dir(path)
+        .status()
+        .unwrap();
+    std_command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(path)
+        .status()
+        .unwrap();
+    Command::new(cargo_bin!("pebble"))
+        .current_dir(path)
+        .arg("init")
+        .assert()
+        .success();
 }
 
 #[test]
@@ -20,14 +44,14 @@ fn test_import_refuses_dirty_worktree() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
     setup_pebble_repo(root);
-    
+
     // Create a dirty file in the worktree
     let worktree_path = root.join(".git/x-pebble");
     fs::write(worktree_path.join("dirty.txt"), "dirty").unwrap();
-    
+
     let import_file = root.join("external.jsonl");
     fs::write(&import_file, "{}").unwrap(); // dummy content
-    
+
     // Run 'pebble import' - should fail
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
@@ -42,7 +66,7 @@ fn test_import_idempotency() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
     setup_pebble_repo(root);
-    
+
     let import_file = root.join("external.jsonl");
     let issue = Issue {
         id: "EXT-1".to_string(),
@@ -61,17 +85,26 @@ fn test_import_idempotency() {
         extra: Default::default(),
     };
     let json = serde_json::to_string(&issue).unwrap();
-    fs::write(&import_file, format!("{}
-", json)).unwrap();
-    
+    fs::write(
+        &import_file,
+        format!(
+            "{}
+",
+            json
+        ),
+    )
+    .unwrap();
+
     // 1. First import
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)
         .args(["import", import_file.to_str().unwrap()])
         .assert()
         .success()
-        .stdout(predicates::str::contains("Import complete: 1 added, 0 updated."));
-        
+        .stdout(predicates::str::contains(
+            "Import complete: 1 added, 0 updated.",
+        ));
+
     // 2. Second import (same file) - should be no changes
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(root)

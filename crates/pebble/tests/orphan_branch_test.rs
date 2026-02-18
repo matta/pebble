@@ -18,11 +18,19 @@ fn setup_git_repo(path: &std::path::Path) {
         .current_dir(path)
         .status()
         .unwrap();
-    
+
     // Create initial commit
     std::fs::write(path.join("README.md"), "Initial").unwrap();
-    Command::new("git").args(["add", "."]).current_dir(path).status().unwrap();
-    Command::new("git").args(["commit", "-m", "Initial"]).current_dir(path).status().unwrap();
+    Command::new("git")
+        .args(["add", "."])
+        .current_dir(path)
+        .status()
+        .unwrap();
+    Command::new("git")
+        .args(["commit", "-m", "Initial"])
+        .current_dir(path)
+        .status()
+        .unwrap();
 }
 
 #[test]
@@ -30,12 +38,14 @@ fn test_create_orphaned_branch() {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
     setup_git_repo(root);
-    
+
     let sync_branch = "pebble-data";
     let manager = WorktreeManager::new(root.to_path_buf(), sync_branch.to_string());
-    
-    manager.create_orphaned_sync_branch().expect("Failed to create orphaned branch");
-    
+
+    manager
+        .create_orphaned_sync_branch()
+        .expect("Failed to create orphaned branch");
+
     // Verify the branch exists
     let output = Command::new("git")
         .args(["rev-parse", "--verify", sync_branch])
@@ -43,7 +53,7 @@ fn test_create_orphaned_branch() {
         .output()
         .expect("Failed to run git rev-parse");
     assert!(output.status.success(), "Branch should exist");
-    
+
     // Verify the commit message
     let output = Command::new("git")
         .args(["log", "--format=%s", "-n", "1", sync_branch])
