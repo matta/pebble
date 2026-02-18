@@ -43,6 +43,7 @@ pub struct WorktreeManager<G: GitProvider = RealGit> {
     repo_root: PathBuf,
     sync_branch: String,
     git: G,
+    custom_editor: Option<String>,
 }
 
 impl WorktreeManager<RealGit> {
@@ -51,6 +52,7 @@ impl WorktreeManager<RealGit> {
             repo_root,
             sync_branch,
             git: RealGit,
+            custom_editor: None,
         }
     }
 }
@@ -61,7 +63,13 @@ impl<G: GitProvider> WorktreeManager<G> {
             repo_root,
             sync_branch,
             git,
+            custom_editor: None,
         }
+    }
+
+    pub fn with_editor(mut self, editor: String) -> Self {
+        self.custom_editor = Some(editor);
+        self
     }
 
     /// Checks if the current directory is inside a Git repository.
@@ -308,7 +316,7 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         if !status.trim().is_empty() {
             self.git
-                .run(&["commit", "-m", "Auto-sync"], worktree_path)
+                .run(&["commit", "--no-verify", "-m", "Auto-sync"], worktree_path)
                 .with_context(|| "Failed to commit changes")?;
         }
         Ok(())
@@ -332,7 +340,11 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         let files: Vec<&str> = output.lines().collect();
         println!("Conflicted files: {:?}", files);
-        let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+        let editor = self
+            .custom_editor
+            .clone()
+            .or_else(|| std::env::var("EDITOR").ok())
+            .unwrap_or_else(|| "vi".to_string());
         println!("Launching editor: {}", editor);
 
         // We use status() to let the editor take over stdin/stdout
@@ -355,7 +367,7 @@ impl<G: GitProvider> WorktreeManager<G> {
             .with_context(|| "Failed to stage resolved files")?;
 
         self.git
-            .run(&["commit", "--no-edit"], worktree_path)
+            .run(&["commit", "--no-verify", "--no-edit"], worktree_path)
             .with_context(|| "Failed to commit merge resolution")?;
 
         println!("Merge resolution committed.");

@@ -116,10 +116,7 @@ echo '{"id":"1","title":"Title Resolved","status":"open"}' > "$1"
         std::fs::set_permissions(&editor_script_path, perms).unwrap();
     }
 
-    // Set EDITOR env var
-    unsafe {
-        std::env::set_var("EDITOR", editor_script_path.to_str().unwrap());
-    }
+    let manager_b = manager_b.with_editor(editor_script_path.to_str().unwrap().to_string());
 
     // Now call sync.
     // It should:
