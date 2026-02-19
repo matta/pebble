@@ -1,8 +1,8 @@
 use crate::commands::config_cmd::ConfigCommand;
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand};
-use color_eyre::Result;
 use color_eyre::eyre::eyre;
+use color_eyre::Result;
 use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, OutputFormat, UsageError};
 use pebble::config::Config;
 
@@ -61,6 +61,14 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Search issues by title or description
+    #[command(after_help = "Examples:\n  pebble search \"login\"\n  pebble search \"login\" --json")]
+    Search {
+        query: String,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Add a new issue
     #[command(
         after_help = "Examples:\n  pebble add \"Fix login\"\n  pebble add \"Fix login\" --description \"Investigate session timeout\"\n  pebble add \"Fix login\" --json"
@@ -73,7 +81,7 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
-    /// Edit an existing issue
+    /// Edit an existing issue (title/description only)
     #[command(
         after_help = "Examples:\n  pebble edit issue-abc123 --title \"Fix login flow\"\n  pebble edit issue-abc123 --description \"Updated details\"\n  pebble edit issue-abc123 --json"
     )]
@@ -87,10 +95,30 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
-    /// Show a single issue
+    /// Update an existing issue (broader field set)
     #[command(
-        after_help = "Examples:\n  pebble show issue-abc123\n  pebble show issue-abc123 --json"
+        after_help = "Examples:\n  pebble update issue-abc123 --status closed\n  pebble update issue-abc123 --priority 2 --owner you@example.com\n  pebble update issue-abc123 --json"
     )]
+    Update {
+        id: String,
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+        #[arg(long)]
+        owner: Option<String>,
+        #[arg(long)]
+        issue_type: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show a single issue
+    #[command(after_help = "Examples:\n  pebble show issue-abc123\n  pebble show issue-abc123 --json")]
     Show {
         id: String,
         /// Output as JSON
@@ -98,8 +126,16 @@ enum Commands {
         json: bool,
     },
     /// List issues in the data worktree
-    #[command(after_help = "Examples:\n  pebble list\n  pebble list --json")]
+    #[command(
+        after_help = "Examples:\n  pebble list\n  pebble list --status open\n  pebble list --json"
+    )]
     List {
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        owner: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -193,9 +229,14 @@ fn run(cli: Cli) -> Result<()> {
             let format = OutputFormat::from_json_flag(json);
             commands::sync::run(config.as_ref().unwrap(), format)?;
         }
-        Commands::List { json } => {
+        Commands::List {
+            status,
+            owner,
+            priority,
+            json,
+        } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::list::run(config.as_ref().unwrap(), format)?;
+            commands::list::run(config.as_ref().unwrap(), status, owner, priority, format)?;
         }
         Commands::Add {
             title,
@@ -205,10 +246,6 @@ fn run(cli: Cli) -> Result<()> {
             let format = OutputFormat::from_json_flag(json);
             commands::add::run(config.as_ref().unwrap(), title, description, format)?;
         }
-        Commands::Show { id, json } => {
-            let format = OutputFormat::from_json_flag(json);
-            commands::show::run(config.as_ref().unwrap(), id, format)?;
-        }
         Commands::Edit {
             id,
             title,
@@ -217,6 +254,37 @@ fn run(cli: Cli) -> Result<()> {
         } => {
             let format = OutputFormat::from_json_flag(json);
             commands::edit::run(config.as_ref().unwrap(), id, title, description, format)?;
+        }
+        Commands::Update {
+            id,
+            title,
+            description,
+            status,
+            priority,
+            owner,
+            issue_type,
+            json,
+        } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::update::run(
+                config.as_ref().unwrap(),
+                id,
+                title,
+                description,
+                status,
+                priority,
+                owner,
+                issue_type,
+                format,
+            )?;
+        }
+        Commands::Show { id, json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::show::run(config.as_ref().unwrap(), id, format)?;
+        }
+        Commands::Search { query, json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::search::run(config.as_ref().unwrap(), query, format)?;
         }
     }
 

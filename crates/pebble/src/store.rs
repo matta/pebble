@@ -351,7 +351,11 @@ impl JsonlStore {
         let file = File::create(path)?;
         let mut writer = std::io::BufWriter::new(file);
 
-        for issue in issues {
+        // Sort issues by ID to ensure deterministic output
+        let mut sorted_issues: Vec<&Issue> = issues.iter().collect();
+        sorted_issues.sort_by_key(|issue| &issue.id);
+
+        for issue in sorted_issues {
             serde_json::to_writer(&mut writer, issue)?;
             writeln!(writer)?;
         }
