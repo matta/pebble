@@ -149,6 +149,8 @@ fn test_config_get_unknown_key() {
         .args(["config", "get", "unknown-key"])
         .assert()
         .failure()
+        .code(2)
+        .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains("Unknown config key 'unknown-key'"));
 }
 

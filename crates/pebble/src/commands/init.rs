@@ -1,4 +1,5 @@
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use pebble::CONFIG_DIR;
 use pebble::config::Config;
 
@@ -8,8 +9,9 @@ pub fn run(sync_branch: String) -> Result<()> {
     if !pebble::worktree::WorktreeManager::<pebble::git_provider::RealGit>::is_inside_git_repo(
         &repo_root,
     ) {
-        eprintln!("Error: 'pebble init' must be run inside a Git repository.");
-        std::process::exit(1);
+        return Err(eyre!(
+            "Error: 'pebble init' must be run inside a Git repository."
+        ));
     }
 
     let manager =

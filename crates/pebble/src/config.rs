@@ -1,4 +1,5 @@
 use color_eyre::eyre::Result;
+use color_eyre::eyre::eyre;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -31,10 +32,10 @@ impl Config {
     pub fn validate(&self) -> Result<()> {
         if let Some(branch) = &self.sync_branch {
             if branch.starts_with('-') {
-                return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
+                return Err(eyre!("sync-branch cannot start with '-'"));
             }
         } else {
-            return Err(color_eyre::eyre::eyre!(
+            return Err(eyre!(
                 "sync-branch is required in configuration"
             ));
         }

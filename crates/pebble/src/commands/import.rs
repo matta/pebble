@@ -8,10 +8,9 @@ pub fn run(config: &Config, path: PathBuf) -> Result<()> {
     let (store, manager, _jsonl_path) = get_store(config)?;
 
     if manager.is_dirty()? {
-        eprintln!(
+        return Err(eyre!(
             "Error: Pebble data worktree has uncommitted changes. Please commit or stash them before importing."
-        );
-        std::process::exit(1);
+        ));
     }
 
     let mut issues = store.read_issues()?;

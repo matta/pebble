@@ -57,6 +57,12 @@ struct Issue {
 - Maintain compatibility with the existing `bd` command interface where applicable for the subset of features supported.
 - Do not implement daemon mode.
 - **Style Guide**: Adhere to the [Style Guide](.gemini/styleguide.md).
+- **Docs Discoverability**: Any new documentation added to the repository must be linked from this file.
+
+## Documentation
+
+- [CLI I/O Contract](docs/cli-contract.md) - Defines stdout/stderr usage and exit code semantics.
+- [UX for Agents](docs/ux-for-agents.md) - Guidelines for designing the CLI for humans and agents.
 
 ## Workflows
 

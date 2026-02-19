@@ -1,6 +1,10 @@
 use clap::{Parser, Subcommand};
+use clap::error::ErrorKind;
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use pebble::config::Config;
+use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, UsageError};
+use crate::commands::config_cmd::ConfigCommand;
 
 mod commands;
 
@@ -66,37 +70,46 @@ enum ConfigCommands {
     Get { key: String },
 }
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
-    let cli = Cli::parse();
+fn main() {
+    if let Err(err) = color_eyre::install() {
+        eprintln!("Error: {}", err);
+    }
 
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(err) => handle_clap_error(err),
+    };
+
+    if let Err(err) = run(cli) {
+        exit_with_error(err);
+    }
+}
+
+fn run(cli: Cli) -> Result<()> {
     if let Some(ref dir) = cli.directory {
         std::env::set_current_dir(dir)?;
     }
 
-    let command = &cli.command;
-    // Initialization check for commands that require it
-    let requires_init = !matches!(command, Commands::Init { .. } | Commands::Config { .. });
+    let requires_init =
+        !matches!(&cli.command, Commands::Init { .. } | Commands::Config { .. });
     if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
-        eprintln!(
+        return Err(eyre!(
             "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
-        );
-        std::process::exit(1);
+        ));
     }
 
-    let config = if matches!(command, Commands::Init { .. }) {
-        // Init doesn't need to load config first
+    let config = if matches!(&cli.command, Commands::Init { .. }) {
         None
     } else {
         Some(commands::load_config(cli.config.as_deref())?)
     };
 
-    match command {
+    match cli.command {
         Commands::Init { sync_branch } => {
-            commands::init::run(sync_branch.clone())?;
+            commands::init::run(sync_branch)?;
         }
         Commands::Import { path } => {
-            commands::import::run(config.as_ref().unwrap(), path.clone())?;
+            commands::import::run(config.as_ref().unwrap(), path)?;
         }
         Commands::Config { command } => {
             let config = config.as_ref().unwrap();
@@ -104,7 +117,7 @@ fn main() -> Result<()> {
                 ConfigCommands::Get { key } => {
                     commands::config_cmd::run(
                         config,
-                        commands::config_cmd::ConfigCommand::Get { key: key.clone() },
+                        ConfigCommand::Get { key },
                     )?;
                 }
             }
@@ -113,27 +126,41 @@ fn main() -> Result<()> {
             commands::sync::run(config.as_ref().unwrap())?;
         }
         Commands::List { json } => {
-            commands::list::run(config.as_ref().unwrap(), *json)?;
+            commands::list::run(config.as_ref().unwrap(), json)?;
         }
         Commands::Add { title, description } => {
-            commands::add::run(config.as_ref().unwrap(), title.clone(), description.clone())?;
+            commands::add::run(config.as_ref().unwrap(), title, description)?;
         }
         Commands::Show { id, json } => {
-            commands::show::run(config.as_ref().unwrap(), id.clone(), *json)?;
+            commands::show::run(config.as_ref().unwrap(), id, json)?;
         }
         Commands::Edit {
             id,
             title,
             description,
         } => {
-            commands::edit::run(
-                config.as_ref().unwrap(),
-                id.clone(),
-                title.clone(),
-                description.clone(),
-            )?;
+            commands::edit::run(config.as_ref().unwrap(), id, title, description)?;
         }
     }
 
     Ok(())
+}
+
+fn handle_clap_error(err: clap::Error) -> ! {
+    let code = match err.kind() {
+        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => EXIT_OK,
+        _ => EXIT_USAGE,
+    };
+    let _ = err.print();
+    std::process::exit(code);
+}
+
+fn exit_with_error(err: color_eyre::Report) -> ! {
+    let code = if err.downcast_ref::<UsageError>().is_some() {
+        EXIT_USAGE
+    } else {
+        EXIT_ERROR
+    };
+    eprintln!("{err}");
+    std::process::exit(code);
 }
