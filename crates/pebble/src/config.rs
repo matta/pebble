@@ -3,6 +3,13 @@ use color_eyre::eyre::eyre;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+pub fn validate_branch_name(branch: &str) -> Result<()> {
+    if branch.starts_with('-') {
+        return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
+    }
+    Ok(())
+}
+
 /// Represents the configuration for the Pebble application.
 ///
 /// This struct maps to the TOML configuration file, typically located at `.pebble/config.toml`.
@@ -47,9 +54,7 @@ impl Config {
 
     pub fn validate(&self) -> Result<()> {
         if let Some(branch) = &self.sync_branch {
-            if branch.starts_with('-') {
-                return Err(eyre!("sync-branch cannot start with '-'"));
-            }
+            validate_branch_name(branch)?;
         } else {
             return Err(eyre!("sync-branch is required in configuration"));
         }
