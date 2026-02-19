@@ -149,6 +149,9 @@ fn main() -> Result<()> {
                 *json,
             )?;
         }
+        Commands::Search { query, json } => {
+            commands::search::run(config.as_ref().unwrap(), query.clone(), *json)?;
+        }
         Commands::Add {
             title,
             description,
@@ -164,9 +167,6 @@ fn main() -> Result<()> {
         Commands::Show { id, json } => {
             commands::show::run(config.as_ref().unwrap(), id.clone(), *json)?;
         }
-        Commands::Search { query, json } => {
-            commands::search::run(config.as_ref().unwrap(), query.clone(), *json)?;
-        }
         Commands::Update {
             id,
             title,
@@ -179,14 +179,16 @@ fn main() -> Result<()> {
         } => {
             commands::update::run(
                 config.as_ref().unwrap(),
-                id.clone(),
-                title.clone(),
-                description.clone(),
-                status.clone(),
-                *priority,
-                owner.clone(),
-                issue_type.clone(),
-                *json,
+                commands::update::UpdateArgs {
+                    id: id.clone(),
+                    title: title.clone(),
+                    description: description.clone(),
+                    status: status.clone(),
+                    priority: *priority,
+                    owner: owner.clone(),
+                    issue_type: issue_type.clone(),
+                    json: *json,
+                },
             )?;
         }
     }

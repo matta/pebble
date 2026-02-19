@@ -232,8 +232,7 @@ fn test_add_issue() {
 #[test]
 fn test_add_issue_json() {
     let env = TestEnv::setup();
-    let output = env
-        .pebble()
+    let output = env.pebble()
         .args(["add", "New JSON Issue", "--json"])
         .assert()
         .success()
@@ -243,7 +242,7 @@ fn test_add_issue_json() {
 
     let json_str = String::from_utf8(output).unwrap();
     let issue: serde_json::Value =
-        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+        serde_json::from_str(&json_str).unwrap_or_else(|e| panic!("Failed to parse JSON output: {}; content: {:?}", e, json_str));
     assert_eq!(issue["title"], "New JSON Issue");
     assert!(issue["id"].as_str().unwrap().starts_with("issue-"));
 }
@@ -301,17 +300,17 @@ fn test_edit_issue() {
 
     // 2. Update issue
     env.pebble()
-        .args(["update", id, "--title", "New Updated Title"])
+        .args(["update", id, "--title", "New Edited Title"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Updated issue"));
 
-    // 3. Verify update
+    // 3. Verify edit
     env.pebble()
         .args(["show", id])
         .assert()
         .success()
-        .stdout(predicate::str::contains("New Updated Title"));
+        .stdout(predicate::str::contains("New Edited Title"));
 }
 
 #[test]
@@ -466,7 +465,7 @@ fn test_update_issue_json() {
 
     let json_str = String::from_utf8(output).unwrap();
     let issue: serde_json::Value =
-        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+        serde_json::from_str(&json_str).unwrap_or_else(|e| panic!("Failed to parse JSON output: {}; content: {:?}", e, json_str));
     assert_eq!(issue["id"], id);
     assert_eq!(issue["title"], "Updated JSON Title");
 }
@@ -490,16 +489,11 @@ fn test_update_status_priority_owner() {
     // 2. Update fields
     env.pebble()
         .args([
-            "update",
-            id,
-            "--status",
-            "closed",
-            "--priority",
-            "5",
-            "--owner",
-            "new@example.com",
-            "--issue-type",
-            "bug",
+            "update", id,
+            "--status", "closed",
+            "--priority", "5",
+            "--owner", "new@example.com",
+            "--issue-type", "bug"
         ])
         .assert()
         .success();

@@ -6,13 +6,13 @@ use std::path::Path;
 
 pub mod add;
 pub mod config_cmd;
+pub mod update;
+pub mod search;
 pub mod import;
 pub mod init;
 pub mod list;
-pub mod search;
 pub mod show;
 pub mod sync;
-pub mod update;
 
 pub fn load_config(path: Option<&Path>) -> Result<Config> {
     let config_path = match path {

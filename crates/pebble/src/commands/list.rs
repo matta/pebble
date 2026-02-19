@@ -19,20 +19,14 @@ pub fn run(
     let filtered_issues: Vec<_> = issues
         .into_iter()
         .filter(|issue| {
-            if let Some(s) = &status {
-                if &issue.status != s {
-                    return false;
-                }
+            if status.as_ref().is_some_and(|s| &issue.status != s) {
+                return false;
             }
-            if let Some(o) = &owner {
-                if &issue.owner != o {
-                    return false;
-                }
+            if owner.as_ref().is_some_and(|o| &issue.owner != o) {
+                return false;
             }
-            if let Some(p) = priority {
-                if issue.priority != p {
-                    return false;
-                }
+            if priority.is_some_and(|p| issue.priority != p) {
+                return false;
             }
             true
         })

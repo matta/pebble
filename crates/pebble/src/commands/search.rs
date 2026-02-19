@@ -17,13 +17,11 @@ pub fn run(config: &Config, query: String, json: bool) -> Result<()> {
 
     if json {
         println!("{}", serde_json::to_string_pretty(&matches)?);
+    } else if matches.is_empty() {
+        println!("No issues found matching '{}'", query);
     } else {
-        if matches.is_empty() {
-            println!("No issues found matching '{}'", query);
-        } else {
-            for issue in matches {
-                println!("{} [{}] {}", issue.id, issue.status, issue.title);
-            }
+        for issue in matches {
+            println!("{} [{}] {}", issue.id, issue.status, issue.title);
         }
     }
 
