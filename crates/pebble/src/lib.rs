@@ -14,7 +14,8 @@ pub const WORKTREE_DIR: &str = ".git/x-pebble";
 /// of less than 1 in 1 trillion (10^-12) for a given population size.
 ///
 /// This assumes the Birthday Paradox applies: P ≈ k^2 / (2 * N)
-/// where k = current_population, N = alphabet_size^length.
+/// where k = current_population + 1 (the size after adding a new item),
+/// and N = alphabet_size^length.
 pub fn recommended_id_length(current_population: usize) -> usize {
     // Alphabet: a-z (26) + 0-9 (10) = 36
     const ALPHABET_SIZE: f64 = 36.0;
@@ -22,13 +23,8 @@ pub fn recommended_id_length(current_population: usize) -> usize {
     // Target safety: 1 in 1,000,000,000,000
     const TARGET_PROBABILITY: f64 = 1.0e-12;
 
-    // Even with 0 or 1 item, we want to maintain the safety margin for the *next* item
-    // so we calculate based on at least 1 item.
-    let k = if current_population == 0 {
-        1.0
-    } else {
-        current_population as f64
-    };
+    // We size the ID space for the post-add population to maintain the safety margin.
+    let k = current_population.saturating_add(1) as f64;
 
     // Derived from the Birthday Paradox approximation:
     // P ≈ k^2 / (2 * N)
