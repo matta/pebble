@@ -4,19 +4,28 @@ use color_eyre::eyre::eyre;
 use pebble::cli::OutputFormat;
 use pebble::config::Config;
 
-pub fn run(
-    config: &Config,
-    id: String,
-    title: Option<String>,
-    description: Option<String>,
-    status: Option<String>,
-    priority: Option<i32>,
-    owner: Option<String>,
-    issue_type: Option<String>,
-    format: OutputFormat,
-) -> Result<()> {
+#[derive(Debug, Default)]
+pub struct UpdateFields {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub priority: Option<i32>,
+    pub owner: Option<String>,
+    pub issue_type: Option<String>,
+}
+
+pub fn run(config: &Config, id: String, fields: UpdateFields, format: OutputFormat) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
     let mut issues = store.read_issues()?;
+
+    let UpdateFields {
+        title,
+        description,
+        status,
+        priority,
+        owner,
+        issue_type,
+    } = fields;
 
     let idx = issues
         .iter()

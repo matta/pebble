@@ -42,17 +42,17 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Implement `pebble list` (reads from worktree)
 - [x] Implement `pebble add` (writes to worktree)
 - [x] Implement `pebble show` (reads from worktree)
-- [x] Implement `pebble edit` (writes to worktree)
+- [x] Implement `pebble update` (writes to worktree)
 
 ## Phase 4.5: Extended Issue Fields (Next)
 - [ ] Define which new fields are **editable** via CLI vs. read-only (e.g., `created_at`, `updated_at`, `closed_at`, `deleted_at` are not user-editable).
 - [ ] Add `pebble add` support for the chosen editable fields (flags + parsing + validation).
-- [ ] Add `pebble edit` support for the chosen editable fields (flags + parsing + validation).
+- [ ] Add `pebble update` support for the chosen editable fields (flags + parsing + validation).
 - [ ] Add tests that assert:
     - [ ] `pebble add` can set allowed fields.
     - [ ] `pebble add` rejects attempts to set read-only fields with a usage error (exit code 2).
-    - [ ] `pebble edit` can modify allowed fields.
-    - [ ] `pebble edit` rejects attempts to modify read-only fields with a usage error (exit code 2).
+    - [ ] `pebble update` can modify allowed fields.
+    - [ ] `pebble update` rejects attempts to modify read-only fields with a usage error (exit code 2).
 - [ ] Validate `pebble show` outputs new fields properly:
     - [ ] JSON output includes all stored fields.
     - [ ] Human output includes any new fields we decide to surface (and omits empty ones).
@@ -72,7 +72,7 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 ## Phase 6: Agent UX & Issue Lifecycle (MVP)
 Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 → P6-9 → P6-10
 - [ ] P6-1 Define CLI I/O contract: `stdout` data, `stderr` diagnostics, stable error codes, and exit code map (`0/1/2`).
-- [ ] P6-2 Implement `--json` on **all** commands (add/edit/update/search/list/show/sync/init/import/config).
+- [ ] P6-2 Implement `--json` on **all** commands (add/update/search/list/show/sync/init/import/config).
 - [ ] P6-3 Add `--help-json` (or `pebble help --json`) with output schemas.
 - [ ] P6-4 Update `--help` with concrete examples for core workflows.
 - [ ] P6-5 Add list filters/sorting (`--status`, `--owner`, `--type`, `--priority`, `--updated`).
@@ -101,7 +101,7 @@ Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 
 - [ ] Auto-sync on command entry/exit with debounce state file
 - [ ] Ensure **every** write path commits immediately to sync worktree
 - [ ] Atomic file writes (temp + rename) to avoid partial JSONL writes
-- [ ] File locking to prevent concurrent add/edit/update collisions
+- [ ] File locking to prevent concurrent add/update collisions
 - [ ] Crash recovery: detect dirty worktree and auto-repair on next run
 
 ## Rules

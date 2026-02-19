@@ -1,12 +1,12 @@
-use assert_cmd::cargo_bin;
 use assert_cmd::Command;
+use assert_cmd::cargo_bin;
 use predicates::prelude::*;
 use tempfile::TempDir;
 
 mod common;
 use common::TEST_SYNC_BRANCH;
 mod cli_support;
-use cli_support::{create_test_issue, TestEnv};
+use cli_support::{TestEnv, create_test_issue};
 
 #[test]
 fn test_config_get_unknown_key() {
@@ -152,7 +152,7 @@ fn test_show_non_existent_issue() {
 }
 
 #[test]
-fn test_edit_issue() {
+fn test_update_issue() {
     let env = TestEnv::setup();
     // 1. Add issue
     let output = env

@@ -1,8 +1,8 @@
 use crate::commands::config_cmd::ConfigCommand;
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand};
-use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, OutputFormat, UsageError};
 use pebble::config::Config;
 
@@ -13,7 +13,7 @@ mod help_json;
 #[command(name = "pebble")]
 #[command(version, about = "A distributed issue tracking system built on Git.", long_about = None)]
 #[command(
-    after_help = "Examples:\n  pebble init\n  pebble add \"Fix login\" --description \"Investigate session timeout\"\n  pebble list\n  pebble show issue-abc123\n  pebble edit issue-abc123 --title \"Fix login flow\"\n  pebble sync\n  pebble import issues.jsonl\n  pebble config get sync-branch"
+    after_help = "Examples:\n  pebble init\n  pebble add \"Fix login\" --description \"Investigate session timeout\"\n  pebble list\n  pebble show issue-abc123\n  pebble update issue-abc123 --title \"Fix login flow\"\n  pebble sync\n  pebble import issues.jsonl\n  pebble config get sync-branch"
 )]
 struct Cli {
     /// Change to this directory before doing anything else
@@ -62,7 +62,9 @@ enum Commands {
         json: bool,
     },
     /// Search issues by title or description
-    #[command(after_help = "Examples:\n  pebble search \"login\"\n  pebble search \"login\" --json")]
+    #[command(
+        after_help = "Examples:\n  pebble search \"login\"\n  pebble search \"login\" --json"
+    )]
     Search {
         query: String,
         /// Output as JSON
@@ -75,20 +77,6 @@ enum Commands {
     )]
     Add {
         title: String,
-        #[arg(long)]
-        description: Option<String>,
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
-    },
-    /// Edit an existing issue (title/description only)
-    #[command(
-        after_help = "Examples:\n  pebble edit issue-abc123 --title \"Fix login flow\"\n  pebble edit issue-abc123 --description \"Updated details\"\n  pebble edit issue-abc123 --json"
-    )]
-    Edit {
-        id: String,
-        #[arg(long)]
-        title: Option<String>,
         #[arg(long)]
         description: Option<String>,
         /// Output as JSON
@@ -118,7 +106,9 @@ enum Commands {
         json: bool,
     },
     /// Show a single issue
-    #[command(after_help = "Examples:\n  pebble show issue-abc123\n  pebble show issue-abc123 --json")]
+    #[command(
+        after_help = "Examples:\n  pebble show issue-abc123\n  pebble show issue-abc123 --json"
+    )]
     Show {
         id: String,
         /// Output as JSON
@@ -207,27 +197,31 @@ fn run(cli: Cli) -> Result<()> {
         Some(commands::load_config(cli.config.as_deref())?)
     };
 
-    match cli.command {
+    dispatch_command(cli.command, &config)
+}
+
+fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
+    match command {
         Commands::Init { sync_branch, json } => {
             let format = OutputFormat::from_json_flag(json);
             commands::init::run(sync_branch, format)?;
         }
         Commands::Import { path, json } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::import::run(config.as_ref().unwrap(), path, format)?;
+            commands::import::run(require_config(config)?, path, format)?;
         }
-        Commands::Config { command } => {
-            let config = config.as_ref().unwrap();
-            match command {
-                ConfigCommands::Get { key, json } => {
-                    let format = OutputFormat::from_json_flag(json);
-                    commands::config_cmd::run(config, ConfigCommand::Get { key, format })?;
-                }
+        Commands::Config { command } => match command {
+            ConfigCommands::Get { key, json } => {
+                let format = OutputFormat::from_json_flag(json);
+                commands::config_cmd::run(
+                    require_config(config)?,
+                    ConfigCommand::Get { key, format },
+                )?;
             }
-        }
+        },
         Commands::Sync { json } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::sync::run(config.as_ref().unwrap(), format)?;
+            commands::sync::run(require_config(config)?, format)?;
         }
         Commands::List {
             status,
@@ -236,7 +230,7 @@ fn run(cli: Cli) -> Result<()> {
             json,
         } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::list::run(config.as_ref().unwrap(), status, owner, priority, format)?;
+            commands::list::run(require_config(config)?, status, owner, priority, format)?;
         }
         Commands::Add {
             title,
@@ -244,16 +238,7 @@ fn run(cli: Cli) -> Result<()> {
             json,
         } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::add::run(config.as_ref().unwrap(), title, description, format)?;
-        }
-        Commands::Edit {
-            id,
-            title,
-            description,
-            json,
-        } => {
-            let format = OutputFormat::from_json_flag(json);
-            commands::edit::run(config.as_ref().unwrap(), id, title, description, format)?;
+            commands::add::run(require_config(config)?, title, description, format)?;
         }
         Commands::Update {
             id,
@@ -266,29 +251,31 @@ fn run(cli: Cli) -> Result<()> {
             json,
         } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::update::run(
-                config.as_ref().unwrap(),
-                id,
+            let fields = commands::update::UpdateFields {
                 title,
                 description,
                 status,
                 priority,
                 owner,
                 issue_type,
-                format,
-            )?;
+            };
+            commands::update::run(require_config(config)?, id, fields, format)?;
         }
         Commands::Show { id, json } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::show::run(config.as_ref().unwrap(), id, format)?;
+            commands::show::run(require_config(config)?, id, format)?;
         }
         Commands::Search { query, json } => {
             let format = OutputFormat::from_json_flag(json);
-            commands::search::run(config.as_ref().unwrap(), query, format)?;
+            commands::search::run(require_config(config)?, query, format)?;
         }
     }
 
     Ok(())
+}
+
+fn require_config(config: &Option<Config>) -> Result<&Config> {
+    config.as_ref().ok_or_else(|| eyre!("Config not loaded"))
 }
 
 fn handle_clap_error(err: clap::Error) -> ! {

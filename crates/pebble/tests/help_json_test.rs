@@ -25,7 +25,7 @@ fn test_help_json() {
     assert!(names.contains(&"list"));
     assert!(names.contains(&"add"));
     assert!(names.contains(&"show"));
-    assert!(names.contains(&"edit"));
+    assert!(names.contains(&"update"));
     assert!(names.contains(&"sync"));
     assert!(names.contains(&"init"));
     assert!(names.contains(&"import"));
