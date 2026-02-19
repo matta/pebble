@@ -2,6 +2,22 @@ use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+/// Represents the configuration for the Pebble application.
+///
+/// This struct maps to the TOML configuration file, typically located at `.pebble/config.toml`.
+/// It holds settings that control the behavior of the application, such as the branch used for
+/// synchronization and ID generation prefixes.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::config::Config;
+///
+/// let config = Config {
+///     sync_branch: Some("pebble-sync".to_string()),
+///     issue_prefix: Some("issue".to_string()),
+/// };
+/// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
