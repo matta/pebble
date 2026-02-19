@@ -2,6 +2,13 @@ use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+pub fn validate_branch_name(branch: &str) -> Result<()> {
+    if branch.starts_with('-') {
+        return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
@@ -30,9 +37,7 @@ impl Config {
 
     pub fn validate(&self) -> Result<()> {
         if let Some(branch) = &self.sync_branch {
-            if branch.starts_with('-') {
-                return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
-            }
+            validate_branch_name(branch)?;
         } else {
             return Err(color_eyre::eyre::eyre!(
                 "sync-branch is required in configuration"

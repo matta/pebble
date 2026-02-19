@@ -3,6 +3,8 @@ use pebble::CONFIG_DIR;
 use pebble::config::Config;
 
 pub fn run(sync_branch: String) -> Result<()> {
+    pebble::config::validate_branch_name(&sync_branch)?;
+
     let repo_root = std::env::current_dir()?;
 
     if !pebble::worktree::WorktreeManager::<pebble::git_provider::RealGit>::is_inside_git_repo(
