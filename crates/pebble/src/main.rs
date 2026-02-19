@@ -1,12 +1,20 @@
+use crate::commands::config_cmd::ConfigCommand;
+use clap::error::ErrorKind;
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
+use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, OutputFormat, UsageError};
 use pebble::config::Config;
 
 mod commands;
+mod help_json;
 
 #[derive(Parser)]
 #[command(name = "pebble")]
 #[command(version, about = "A distributed issue tracking system built on Git.", long_about = None)]
+#[command(
+    after_help = "Examples:\n  pebble init\n  pebble add \"Fix login\" --description \"Investigate session timeout\"\n  pebble list\n  pebble show issue-abc123\n  pebble edit issue-abc123 --title \"Fix login flow\"\n  pebble sync\n  pebble import issues.jsonl\n  pebble config get sync-branch"
+)]
 struct Cli {
     /// Change to this directory before doing anything else
     #[arg(short = 'C', long)]
@@ -27,113 +35,177 @@ enum Commands {
         /// Name of the synchronization branch
         #[arg(long, default_value = pebble::DEFAULT_SYNC_BRANCH)]
         sync_branch: String,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Inspect or read configuration values
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
     },
     /// Import issues from a JSONL file
     Import {
         /// Path to the JSONL file to import
         path: std::path::PathBuf,
-    },
-    Config {
-        #[command(subcommand)]
-        command: ConfigCommands,
-    },
-    Sync,
-    List {
         #[arg(long)]
         json: bool,
     },
+    /// Add a new issue
     Add {
         title: String,
         #[arg(long)]
         description: Option<String>,
-    },
-    Show {
-        id: String,
         #[arg(long)]
         json: bool,
     },
+    /// Edit an existing issue
     Edit {
         id: String,
         #[arg(long)]
         title: Option<String>,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show a single issue
+    Show {
+        id: String,
+        #[arg(long)]
+        json: bool,
+    },
+    /// List issues in the data worktree
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Sync the data worktree with the remote
+    Sync {
+        #[arg(long)]
+        json: bool,
     },
 }
 
 #[derive(Subcommand)]
 enum ConfigCommands {
-    Get { key: String },
+    Get {
+        key: String,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
-    let cli = Cli::parse();
+fn main() {
+    if let Err(err) = color_eyre::install() {
+        eprintln!("Error: {}", err);
+    }
 
+    if std::env::args().any(|arg| arg == "--help-json") {
+        if let Err(err) = help_json::print() {
+            eprintln!("Error: {}", err);
+            std::process::exit(EXIT_ERROR);
+        }
+        std::process::exit(EXIT_OK);
+    }
+
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(err) => handle_clap_error(err),
+    };
+
+    if let Err(err) = run(cli) {
+        exit_with_error(err);
+    }
+}
+
+fn run(cli: Cli) -> Result<()> {
     if let Some(ref dir) = cli.directory {
         std::env::set_current_dir(dir)?;
     }
 
-    let command = &cli.command;
-    // Initialization check for commands that require it
-    let requires_init = !matches!(command, Commands::Init { .. } | Commands::Config { .. });
+    let requires_init = !matches!(
+        &cli.command,
+        Commands::Init { .. } | Commands::Config { .. }
+    );
     if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
-        eprintln!(
+        return Err(eyre!(
             "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
-        );
-        std::process::exit(1);
+        ));
     }
 
-    let config = if matches!(command, Commands::Init { .. }) {
-        // Init doesn't need to load config first
+    let config = if matches!(&cli.command, Commands::Init { .. }) {
         None
     } else {
         Some(commands::load_config(cli.config.as_deref())?)
     };
 
-    match command {
-        Commands::Init { sync_branch } => {
-            commands::init::run(sync_branch.clone())?;
+    match cli.command {
+        Commands::Init { sync_branch, json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::init::run(sync_branch, format)?;
         }
-        Commands::Import { path } => {
-            commands::import::run(config.as_ref().unwrap(), path.clone())?;
+        Commands::Import { path, json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::import::run(config.as_ref().unwrap(), path, format)?;
         }
         Commands::Config { command } => {
             let config = config.as_ref().unwrap();
             match command {
-                ConfigCommands::Get { key } => {
-                    commands::config_cmd::run(
-                        config,
-                        commands::config_cmd::ConfigCommand::Get { key: key.clone() },
-                    )?;
+                ConfigCommands::Get { key, json } => {
+                    let format = OutputFormat::from_json_flag(json);
+                    commands::config_cmd::run(config, ConfigCommand::Get { key, format })?;
                 }
             }
         }
-        Commands::Sync => {
-            commands::sync::run(config.as_ref().unwrap())?;
+        Commands::Sync { json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::sync::run(config.as_ref().unwrap(), format)?;
         }
         Commands::List { json } => {
-            commands::list::run(config.as_ref().unwrap(), *json)?;
+            let format = OutputFormat::from_json_flag(json);
+            commands::list::run(config.as_ref().unwrap(), format)?;
         }
-        Commands::Add { title, description } => {
-            commands::add::run(config.as_ref().unwrap(), title.clone(), description.clone())?;
+        Commands::Add {
+            title,
+            description,
+            json,
+        } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::add::run(config.as_ref().unwrap(), title, description, format)?;
         }
         Commands::Show { id, json } => {
-            commands::show::run(config.as_ref().unwrap(), id.clone(), *json)?;
+            let format = OutputFormat::from_json_flag(json);
+            commands::show::run(config.as_ref().unwrap(), id, format)?;
         }
         Commands::Edit {
             id,
             title,
             description,
+            json,
         } => {
-            commands::edit::run(
-                config.as_ref().unwrap(),
-                id.clone(),
-                title.clone(),
-                description.clone(),
-            )?;
+            let format = OutputFormat::from_json_flag(json);
+            commands::edit::run(config.as_ref().unwrap(), id, title, description, format)?;
         }
     }
 
     Ok(())
+}
+
+fn handle_clap_error(err: clap::Error) -> ! {
+    let code = match err.kind() {
+        ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => EXIT_OK,
+        _ => EXIT_USAGE,
+    };
+    let _ = err.print();
+    std::process::exit(code);
+}
+
+fn exit_with_error(err: color_eyre::Report) -> ! {
+    let code = if err.downcast_ref::<UsageError>().is_some() {
+        EXIT_USAGE
+    } else {
+        EXIT_ERROR
+    };
+    eprintln!("{err}");
+    std::process::exit(code);
 }
