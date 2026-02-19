@@ -115,6 +115,12 @@ impl Issue {
     }
 }
 
+/// Helper struct for partial deserialization of issue IDs.
+#[derive(Deserialize)]
+struct IdOnly {
+    id: String,
+}
+
 /// A persistent store for managing issues in a JSON Lines (JSONL) file.
 ///
 /// This struct handles reading and writing [`Issue`] records to a file at a specified path.
@@ -141,6 +147,17 @@ impl JsonlStore {
         Self {
             path: path.to_string(),
         }
+    }
+
+    /// Helper to open a buffered reader for the store file.
+    /// Returns `Ok(None)` if the file does not exist.
+    fn open_reader(&self) -> Result<Option<BufReader<File>>> {
+        let path = Path::new(&self.path);
+        if !path.exists() {
+            return Ok(None);
+        }
+        let file = File::open(path)?;
+        Ok(Some(BufReader::new(file)))
     }
 
     /// Reads and deserializes all issues from the store file.
@@ -189,13 +206,10 @@ impl JsonlStore {
     }
 
     fn read_issues_inner(&self) -> Result<Vec<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        let Some(reader) = self.open_reader()? else {
             return Ok(Vec::new());
-        }
+        };
 
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
         let mut issues = Vec::new();
 
         // Optimization: Stream JSON objects directly from reader to avoid allocating String for each line
@@ -209,19 +223,11 @@ impl JsonlStore {
     }
 
     fn read_issue_ids_inner(&self) -> Result<HashSet<String>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        let Some(reader) = self.open_reader()? else {
             return Ok(HashSet::new());
-        }
+        };
 
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
         let mut ids = HashSet::new();
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
 
         // Optimization: Stream JSON objects directly but only parse the ID field
         let deserializer = serde_json::Deserializer::from_reader(reader);
@@ -390,18 +396,9 @@ impl JsonlStore {
     }
 
     fn find_issue_inner(&self, id: &str) -> Result<Option<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        let Some(reader) = self.open_reader()? else {
             return Ok(None);
-        }
-
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
+        };
 
         for line in reader.lines() {
             let line = line?;
@@ -425,18 +422,9 @@ impl JsonlStore {
     /// This method is optimized for existence checks (e.g., during ID generation)
     /// and avoids allocating full Issue structs.
     pub fn issue_exists(&self, id: &str) -> Result<bool> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        let Some(reader) = self.open_reader()? else {
             return Ok(false);
-        }
-
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
+        };
 
         for line in reader.lines() {
             let line = line?;
