@@ -2,10 +2,13 @@ use assert_cmd::Command;
 use assert_cmd::cargo_bin;
 use pebble::command::CommandExt;
 use pebble::config::Config;
-use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
+use pebble::{CONFIG_DIR, ISSUES_FILE};
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
+
+mod common;
+use common::TEST_SYNC_BRANCH;
 
 struct TestEnv {
     _temp_dir: TempDir,
@@ -42,7 +45,7 @@ impl TestEnv {
         std::fs::create_dir(root.join(CONFIG_DIR)).unwrap();
         std::fs::write(
             Config::default_path(&root),
-            "sync-branch = \"pebble-sync\"\n",
+            format!("sync-branch = \"{}\"\n", TEST_SYNC_BRANCH),
         )
         .unwrap();
 
@@ -63,7 +66,7 @@ impl TestEnv {
         std::process::Command::new("git")
             .arg("checkout")
             .arg("-b")
-            .arg("pebble-sync")
+            .arg(TEST_SYNC_BRANCH)
             .current_dir(&root)
             .check_run()
             .unwrap();
@@ -95,8 +98,12 @@ impl TestEnv {
         }
     }
 
+    fn get_worktree_path(&self) -> PathBuf {
+        pebble::worktree::generate_worktree_path(&self.root, TEST_SYNC_BRANCH)
+    }
+
     fn add_issue_to_worktree(&self, issue: &serde_json::Value) {
-        let worktree_path = self.root.join(WORKTREE_DIR);
+        let worktree_path = self.get_worktree_path();
         std::fs::create_dir_all(&worktree_path).unwrap();
         let issues_path = worktree_path.join(ISSUES_FILE);
 
@@ -173,7 +180,7 @@ fn test_config_get_sync_branch() {
         .args(["config", "get", "sync-branch"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("pebble-sync"));
+        .stdout(predicate::str::contains(TEST_SYNC_BRANCH));
 }
 
 #[test]

@@ -7,6 +7,11 @@ use std::path::{Path, PathBuf};
 
 use std::process::Command;
 
+/// Generates the path for a worktree given the repository root and sync branch name.
+pub fn generate_worktree_path(repo_root: &Path, sync_branch: &str) -> PathBuf {
+    repo_root.join(WORKTREE_DIR).join(sync_branch)
+}
+
 #[derive(Debug)]
 pub struct WorktreeManager<G: GitProvider = RealGit> {
     repo_root: PathBuf,
@@ -118,6 +123,13 @@ impl<G: GitProvider> WorktreeManager<G> {
             ));
         }
 
+        // Ensure the parent directory exists
+        if let Some(parent) = path.parent().filter(|p| !p.exists()) {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create worktree parent directory: {:?}", parent)
+            })?;
+        }
+
         // git worktree add <path> <branch>
         self.git
             .run_silent(
@@ -153,7 +165,7 @@ impl<G: GitProvider> WorktreeManager<G> {
     }
 
     pub fn get_worktree_path(&self) -> PathBuf {
-        self.repo_root.join(WORKTREE_DIR)
+        generate_worktree_path(&self.repo_root, &self.sync_branch)
     }
 
     pub fn ensure_worktree(&self) -> Result<PathBuf> {

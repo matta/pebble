@@ -2,6 +2,9 @@ use pebble::worktree::WorktreeManager;
 use std::process::Command;
 use tempfile::TempDir;
 
+mod common;
+use common::TEST_SYNC_BRANCH;
+
 fn run_git(args: &[&str], dir: &std::path::Path) {
     let output = Command::new("git")
         .args(args)
@@ -48,7 +51,7 @@ fn test_sync_conflict_resolution() {
     run_git(&["push", "-u", "origin", "main"], user_a_path);
 
     // Create sync branch on remote
-    run_git(&["checkout", "-b", "pebble-sync"], user_a_path);
+    run_git(&["checkout", "-b", TEST_SYNC_BRANCH], user_a_path);
     // We need an issues.jsonl to conflict on
     let issues_json = r#"{"id":"1","title":"Original Title","status":"open"}"#;
     std::fs::write(
@@ -58,7 +61,7 @@ fn test_sync_conflict_resolution() {
     .unwrap();
     run_git(&["add", "issues.jsonl"], user_a_path);
     run_git(&["commit", "-m", "Add issues.jsonl"], user_a_path);
-    run_git(&["push", "-u", "origin", "pebble-sync"], user_a_path);
+    run_git(&["push", "-u", "origin", TEST_SYNC_BRANCH], user_a_path);
 
     // 3. Setup User B
     let user_b_dir = TempDir::new().unwrap();
@@ -72,7 +75,7 @@ fn test_sync_conflict_resolution() {
     run_git(&["checkout", "-b", "main", "origin/main"], user_b_path);
 
     // Initialize User B's sync worktree BEFORE User A makes more changes
-    let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), "pebble-sync".to_string());
+    let manager_b = WorktreeManager::new(user_b_path.to_path_buf(), TEST_SYNC_BRANCH.to_string());
     let worktree_path = manager_b
         .ensure_worktree()
         .expect("Failed to create worktree");
@@ -87,7 +90,7 @@ fn test_sync_conflict_resolution() {
     .unwrap();
     run_git(&["add", "issues.jsonl"], user_a_path);
     run_git(&["commit", "-m", "User A change"], user_a_path);
-    run_git(&["push", "origin", "pebble-sync"], user_a_path);
+    run_git(&["push", "origin", TEST_SYNC_BRANCH], user_a_path);
 
     // 5. User B modifies locally and tries to sync
     // Create local change in B's worktree
@@ -135,7 +138,7 @@ echo '{"id":"1","title":"Title Resolved","status":"open"}' > "$1"
     let verify_dir = TempDir::new().unwrap();
     let verify_path = verify_dir.path();
     run_git(&["clone", remote_path.to_str().unwrap(), "."], verify_path);
-    run_git(&["checkout", "pebble-sync"], verify_path);
+    run_git(&["checkout", TEST_SYNC_BRANCH], verify_path);
 
     let content = std::fs::read_to_string(verify_path.join("issues.jsonl")).unwrap();
     assert!(

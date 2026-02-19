@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use pebble::git_provider::GitProvider;
 use pebble::worktree::WorktreeManager;
-use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
+use pebble::{CONFIG_DIR, ISSUES_FILE};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,11 +24,14 @@ fn setup_git_repo(path: &std::path::Path) {
     execute_git(&["config", "user.name", "Test User"], path);
 }
 
+mod common;
+use common::TEST_SYNC_BRANCH;
+
 #[test]
 fn test_worktree_path_generation() {
     let repo_root = PathBuf::from("/tmp/repo");
-    let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-    let expected = repo_root.join(WORKTREE_DIR);
+    let manager = WorktreeManager::new(repo_root.clone(), TEST_SYNC_BRANCH.to_string());
+    let expected = pebble::worktree::generate_worktree_path(&repo_root, TEST_SYNC_BRANCH);
     assert_eq!(manager.get_worktree_path(), expected);
 }
 
@@ -44,8 +47,9 @@ fn test_get_absolute_jsonl_path() {
     execute_git(&["add", "."], &repo_root);
     execute_git(&["commit", "-m", "Initial"], &repo_root);
 
-    let manager = WorktreeManager::new(repo_root.clone(), "pebble-sync".to_string());
-    let expected = repo_root.join(WORKTREE_DIR).join(ISSUES_FILE);
+    let manager = WorktreeManager::new(repo_root.clone(), TEST_SYNC_BRANCH.to_string());
+    let expected =
+        pebble::worktree::generate_worktree_path(&repo_root, TEST_SYNC_BRANCH).join(ISSUES_FILE);
 
     let path = manager
         .get_absolute_jsonl_path()
