@@ -56,6 +56,7 @@ struct Issue {
 - Strictly adhere to TDD. Write failing tests first, then implement.
 - Maintain compatibility with the existing `bd` command interface where applicable for the subset of features supported.
 - Do not implement daemon mode.
+- **Style Guide**: Adhere to the [Style Guide](.gemini/styleguide.md).
 
 ## Workflows
 

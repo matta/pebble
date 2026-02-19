@@ -1,5 +1,6 @@
 pub mod command;
 pub mod config;
+pub mod git_provider;
 pub mod store;
 pub mod worktree;
 
@@ -7,6 +8,7 @@ pub const CONFIG_DIR: &str = ".pebble";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const ISSUES_FILE: &str = "issues.jsonl";
 pub const WORKTREE_DIR: &str = ".git/x-pebble";
+pub const DEFAULT_SYNC_BRANCH: &str = "pebble-data";
 
 /// Computes the required random ID length to maintain a collision probability
 /// of less than 1 in 1 trillion (10^-12) for a given population size.

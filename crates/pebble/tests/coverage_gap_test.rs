@@ -1,4 +1,5 @@
 use assert_cmd::prelude::*;
+use pebble::{DEFAULT_SYNC_BRANCH, ISSUES_FILE};
 use predicates::prelude::*;
 use std::process::Command;
 use tempfile::TempDir;
@@ -60,7 +61,8 @@ fn test_import_no_changes() {
         .success();
 
     // 3. Get the JSONL content and write to an external file
-    let issues_path = root.join(".git/x-pebble/issues.jsonl");
+    let issues_path =
+        pebble::worktree::generate_worktree_path(root, DEFAULT_SYNC_BRANCH).join(ISSUES_FILE);
     let content = std::fs::read_to_string(issues_path).unwrap();
     let ext_path = root.join("ext.jsonl");
     std::fs::write(&ext_path, content).unwrap();
