@@ -1,9 +1,15 @@
 use crate::commands::{get_git_config, get_store};
 use color_eyre::Result;
+use pebble::cli::OutputFormat;
 use pebble::config::Config;
 use pebble::id::generate_unique_id;
 
-pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
+pub fn run(
+    config: &Config,
+    title: String,
+    description: Option<String>,
+    format: OutputFormat,
+) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
 
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
@@ -38,6 +44,9 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
 
     store.append_issue(&issue)?;
     manager.commit_all(&format!("Add issue {}", id))?;
-    println!("Added issue {}", id);
+    match format {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&issue)?),
+        OutputFormat::Human => println!("Added issue {}", id),
+    }
     Ok(())
 }

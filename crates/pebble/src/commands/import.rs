@@ -1,10 +1,11 @@
 use crate::commands::get_store;
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
+use pebble::cli::OutputFormat;
 use pebble::config::Config;
 use std::path::PathBuf;
 
-pub fn run(config: &Config, path: PathBuf) -> Result<()> {
+pub fn run(config: &Config, path: PathBuf, format: OutputFormat) -> Result<()> {
     let (store, manager, _jsonl_path) = get_store(config)?;
 
     if manager.is_dirty()? {
@@ -38,12 +39,38 @@ pub fn run(config: &Config, path: PathBuf) -> Result<()> {
     if updated_count > 0 || added_count > 0 {
         store.write_issues(&issues)?;
         manager.commit_all(&format!("Imported data from {}", path.display()))?;
-        println!(
-            "Import complete: {} added, {} updated.",
-            added_count, updated_count
-        );
+        match format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "added": added_count,
+                        "updated": updated_count,
+                    }))?
+                );
+            }
+            OutputFormat::Human => {
+                println!(
+                    "Import complete: {} added, {} updated.",
+                    added_count, updated_count
+                );
+            }
+        }
     } else {
-        println!("Import complete: No changes.");
+        match format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "added": 0,
+                        "updated": 0,
+                    }))?
+                );
+            }
+            OutputFormat::Human => {
+                println!("Import complete: No changes.");
+            }
+        }
     }
     Ok(())
 }

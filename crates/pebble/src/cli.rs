@@ -4,6 +4,22 @@ pub const EXIT_OK: i32 = 0;
 pub const EXIT_ERROR: i32 = 1;
 pub const EXIT_USAGE: i32 = 2;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum OutputFormat {
+    Human,
+    Json,
+}
+
+impl OutputFormat {
+    pub fn from_json_flag(json: bool) -> Self {
+        if json { Self::Json } else { Self::Human }
+    }
+
+    pub fn is_json(self) -> bool {
+        matches!(self, Self::Json)
+    }
+}
+
 #[derive(Debug)]
 pub struct UsageError {
     message: String,

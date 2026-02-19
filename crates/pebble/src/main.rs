@@ -1,10 +1,10 @@
-use clap::{Parser, Subcommand};
+use crate::commands::config_cmd::ConfigCommand;
 use clap::error::ErrorKind;
+use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
+use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, OutputFormat, UsageError};
 use pebble::config::Config;
-use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, UsageError};
-use crate::commands::config_cmd::ConfigCommand;
 
 mod commands;
 
@@ -36,6 +36,8 @@ enum Commands {
     Import {
         /// Path to the JSONL file to import
         path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
     },
     Config {
         #[command(subcommand)]
@@ -50,6 +52,8 @@ enum Commands {
         title: String,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long)]
+        json: bool,
     },
     Show {
         id: String,
@@ -62,12 +66,18 @@ enum Commands {
         title: Option<String>,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long)]
+        json: bool,
     },
 }
 
 #[derive(Subcommand)]
 enum ConfigCommands {
-    Get { key: String },
+    Get {
+        key: String,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 fn main() {
@@ -90,8 +100,10 @@ fn run(cli: Cli) -> Result<()> {
         std::env::set_current_dir(dir)?;
     }
 
-    let requires_init =
-        !matches!(&cli.command, Commands::Init { .. } | Commands::Config { .. });
+    let requires_init = !matches!(
+        &cli.command,
+        Commands::Init { .. } | Commands::Config { .. }
+    );
     if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
         return Err(eyre!(
             "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
@@ -108,17 +120,16 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Init { sync_branch } => {
             commands::init::run(sync_branch)?;
         }
-        Commands::Import { path } => {
-            commands::import::run(config.as_ref().unwrap(), path)?;
+        Commands::Import { path, json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::import::run(config.as_ref().unwrap(), path, format)?;
         }
         Commands::Config { command } => {
             let config = config.as_ref().unwrap();
             match command {
-                ConfigCommands::Get { key } => {
-                    commands::config_cmd::run(
-                        config,
-                        ConfigCommand::Get { key },
-                    )?;
+                ConfigCommands::Get { key, json } => {
+                    let format = OutputFormat::from_json_flag(json);
+                    commands::config_cmd::run(config, ConfigCommand::Get { key, format })?;
                 }
             }
         }
@@ -126,20 +137,29 @@ fn run(cli: Cli) -> Result<()> {
             commands::sync::run(config.as_ref().unwrap())?;
         }
         Commands::List { json } => {
-            commands::list::run(config.as_ref().unwrap(), json)?;
+            let format = OutputFormat::from_json_flag(json);
+            commands::list::run(config.as_ref().unwrap(), format)?;
         }
-        Commands::Add { title, description } => {
-            commands::add::run(config.as_ref().unwrap(), title, description)?;
+        Commands::Add {
+            title,
+            description,
+            json,
+        } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::add::run(config.as_ref().unwrap(), title, description, format)?;
         }
         Commands::Show { id, json } => {
-            commands::show::run(config.as_ref().unwrap(), id, json)?;
+            let format = OutputFormat::from_json_flag(json);
+            commands::show::run(config.as_ref().unwrap(), id, format)?;
         }
         Commands::Edit {
             id,
             title,
             description,
+            json,
         } => {
-            commands::edit::run(config.as_ref().unwrap(), id, title, description)?;
+            let format = OutputFormat::from_json_flag(json);
+            commands::edit::run(config.as_ref().unwrap(), id, title, description, format)?;
         }
     }
 

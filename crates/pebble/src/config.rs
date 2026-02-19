@@ -35,9 +35,7 @@ impl Config {
                 return Err(eyre!("sync-branch cannot start with '-'"));
             }
         } else {
-            return Err(eyre!(
-                "sync-branch is required in configuration"
-            ));
+            return Err(eyre!("sync-branch is required in configuration"));
         }
         Ok(())
     }
