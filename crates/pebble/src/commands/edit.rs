@@ -27,7 +27,7 @@ pub fn run(
             changed = true;
         }
         if let Some(d) = description {
-            issue.description = d;
+            issue.description = Some(d);
             changed = true;
         }
         if changed {

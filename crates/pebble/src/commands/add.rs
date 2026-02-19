@@ -29,17 +29,18 @@ pub fn run(
 
     let issue = pebble::store::Issue {
         id: id.clone(),
-        title: title.clone(),
-        description: description.clone().unwrap_or_default(),
+        title,
+        description,
         status: "open".to_string(),
         priority: 0,
         issue_type: "task".to_string(),
-        owner: user_email,
+        owner: Some(user_email),
         created_at: now.clone(),
-        created_by: user_name,
+        created_by: Some(user_name),
         updated_at: now,
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
 
     store.append_issue(&issue)?;
