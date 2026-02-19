@@ -45,15 +45,6 @@ pub struct IssueDependency {
     pub created_by: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct IssueComment {
-    pub id: i32,
-    pub issue_id: String,
-    pub author: String,
-    pub text: String,
-    pub created_at: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct Issue {
     pub id: String,
@@ -75,8 +66,6 @@ pub struct Issue {
     pub close_reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub acceptance_criteria: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub comments: Vec<IssueComment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub defer_until: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -156,7 +145,6 @@ impl Issue {
             self.closed_at = other.closed_at;
             self.close_reason = other.close_reason;
             self.acceptance_criteria = other.acceptance_criteria;
-            self.comments = other.comments;
             self.defer_until = other.defer_until;
             self.delete_reason = other.delete_reason;
             self.deleted_at = other.deleted_at;

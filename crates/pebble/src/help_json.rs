@@ -187,20 +187,6 @@ fn issue_schema() -> serde_json::Value {
             "closed_at": {"type": "string"},
             "close_reason": {"type": "string"},
             "acceptance_criteria": {"type": "string"},
-            "comments": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                        "issue_id": {"type": "string"},
-                        "author": {"type": "string"},
-                        "text": {"type": "string"},
-                        "created_at": {"type": "string"}
-                    },
-                    "required": ["id", "issue_id", "author", "text", "created_at"]
-                }
-            },
             "defer_until": {"type": "string"},
             "delete_reason": {"type": "string"},
             "deleted_at": {"type": "string"},
