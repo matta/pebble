@@ -159,8 +159,7 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         self.git.run_quiet(&[&"add", &"-A"], &path)?;
 
-        self.git
-            .run_quiet(&[&"commit", &"-m", &message], &path)?;
+        self.git.run_quiet(&[&"commit", &"-m", &message], &path)?;
 
         Ok(())
     }
