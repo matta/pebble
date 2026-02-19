@@ -45,4 +45,3 @@ pub fn recommended_id_length(current_population: usize) -> usize {
 }
 
 pub const DEFAULT_SYNC_BRANCH: &str = "pebble-data";
-
