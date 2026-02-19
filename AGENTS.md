@@ -58,6 +58,7 @@ struct Issue {
 - Do not implement daemon mode.
 - **Style Guide**: Adhere to the [Style Guide](.gemini/styleguide.md).
 - **Docs Discoverability**: Any new documentation added to the repository must be linked from this file.
+- **Clippy Changes Require Approval**: Any modifications to clippy configuration or suppression of clippy warnings must be explicitly discussed and approved by the operator before applying.
 
 ## Documentation
 

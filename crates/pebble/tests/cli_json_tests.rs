@@ -3,6 +3,7 @@ mod common;
 
 use cli_support::{TestEnv, create_test_issue};
 use common::TEST_SYNC_BRANCH;
+use tempfile::TempDir;
 
 #[test]
 fn test_list_issues_json() {
@@ -128,4 +129,53 @@ fn test_config_get_sync_branch_json() {
         serde_json::from_str(&json_str).expect("Failed to parse JSON output");
     assert_eq!(data["key"], "sync-branch");
     assert_eq!(data["value"], TEST_SYNC_BRANCH);
+}
+
+#[test]
+fn test_sync_json() {
+    let env = TestEnv::setup();
+    let origin_dir = TempDir::new().unwrap();
+
+    std::process::Command::new("git")
+        .args(["init", "--bare"])
+        .current_dir(origin_dir.path())
+        .status()
+        .unwrap();
+
+    std::process::Command::new("git")
+        .args([
+            "remote",
+            "add",
+            "origin",
+            origin_dir.path().to_str().unwrap(),
+        ])
+        .current_dir(env.root())
+        .status()
+        .unwrap();
+
+    std::process::Command::new("git")
+        .args(["push", "-u", "origin", "main"])
+        .current_dir(env.root())
+        .status()
+        .unwrap();
+
+    std::process::Command::new("git")
+        .args(["push", "-u", "origin", TEST_SYNC_BRANCH])
+        .current_dir(env.root())
+        .status()
+        .unwrap();
+
+    let output = env
+        .pebble()
+        .args(["sync", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let data: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+    assert_eq!(data["status"], "ok");
 }

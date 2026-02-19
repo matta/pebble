@@ -31,6 +31,8 @@ enum Commands {
         /// Name of the synchronization branch
         #[arg(long, default_value = pebble::DEFAULT_SYNC_BRANCH)]
         sync_branch: String,
+        #[arg(long)]
+        json: bool,
     },
     /// Import issues from a JSONL file
     Import {
@@ -43,7 +45,10 @@ enum Commands {
         #[command(subcommand)]
         command: ConfigCommands,
     },
-    Sync,
+    Sync {
+        #[arg(long)]
+        json: bool,
+    },
     List {
         #[arg(long)]
         json: bool,
@@ -117,8 +122,9 @@ fn run(cli: Cli) -> Result<()> {
     };
 
     match cli.command {
-        Commands::Init { sync_branch } => {
-            commands::init::run(sync_branch)?;
+        Commands::Init { sync_branch, json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::init::run(sync_branch, format)?;
         }
         Commands::Import { path, json } => {
             let format = OutputFormat::from_json_flag(json);
@@ -133,8 +139,9 @@ fn run(cli: Cli) -> Result<()> {
                 }
             }
         }
-        Commands::Sync => {
-            commands::sync::run(config.as_ref().unwrap())?;
+        Commands::Sync { json } => {
+            let format = OutputFormat::from_json_flag(json);
+            commands::sync::run(config.as_ref().unwrap(), format)?;
         }
         Commands::List { json } => {
             let format = OutputFormat::from_json_flag(json);
