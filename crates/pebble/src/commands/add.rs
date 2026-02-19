@@ -1,27 +1,21 @@
 use crate::commands::{get_git_config, get_store};
 use color_eyre::Result;
 use pebble::config::Config;
-use rand::RngExt;
+use pebble::id::generate_unique_id;
 
 pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
 
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
 
-    let mut id;
-    loop {
-        let suffix: String = rand::rng()
-            .sample_iter(&rand::distr::Alphanumeric)
-            .take(6)
-            .map(char::from)
-            .collect::<String>()
-            .to_lowercase();
-        id = format!("{}-{}", prefix, suffix);
+    // TODO(matt): Avoid full deserialization when only IDs/count are needed.
+    // TODO(matt): Keep add resilient to malformed JSONL by tolerating bad lines.
+    let existing_issues = store.read_issues()?;
+    let existing_ids: std::collections::HashSet<String> =
+        existing_issues.into_iter().map(|i| i.id).collect();
 
-        if !store.issue_exists(&id)? {
-            break;
-        }
-    }
+    let suffix_length = pebble::recommended_id_length(existing_ids.len());
+    let id = generate_unique_id(prefix, &existing_ids, suffix_length);
 
     let now = chrono::Local::now().to_rfc3339();
     let user_name = get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());

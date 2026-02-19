@@ -90,6 +90,12 @@ fn test_id_generation_length() {
     assert!(id.starts_with("issue-"));
     let parts: Vec<&str> = id.split('-').collect();
     assert_eq!(parts.len(), 2);
-    // New behavior is 6 chars
-    assert_eq!(parts[1].len(), 6, "ID suffix should be 6 chars");
+
+    // When adding the first issue, population is 0.
+    // recommended_id_length(0) calculates 8 characters.
+    assert_eq!(
+        parts[1].len(),
+        8,
+        "ID suffix should be 8 chars for the first issue"
+    );
 }
