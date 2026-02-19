@@ -44,6 +44,24 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Implement `pebble show` (reads from worktree)
 - [x] Implement `pebble edit` (writes to worktree)
 
+## Phase 4.5: Extended Issue Fields (Next)
+- [ ] Define which new fields are **editable** via CLI vs. read-only (e.g., `created_at`, `updated_at`, `closed_at`, `deleted_at` are not user-editable).
+- [ ] Add `pebble add` support for the chosen editable fields (flags + parsing + validation).
+- [ ] Add `pebble edit` support for the chosen editable fields (flags + parsing + validation).
+- [ ] Add tests that assert:
+    - [ ] `pebble add` can set allowed fields.
+    - [ ] `pebble add` rejects attempts to set read-only fields with a usage error (exit code 2).
+    - [ ] `pebble edit` can modify allowed fields.
+    - [ ] `pebble edit` rejects attempts to modify read-only fields with a usage error (exit code 2).
+- [ ] Validate `pebble show` outputs new fields properly:
+    - [ ] JSON output includes all stored fields.
+    - [ ] Human output includes any new fields we decide to surface (and omits empty ones).
+- [ ] Validate `pebble list` supports the new fields properly:
+    - [ ] JSON output includes all stored fields.
+    - [ ] Human output remains stable (or add a new “long”/expanded view if needed).
+- [ ] Update help JSON schema and CLI help/examples to reflect the supported new fields.
+- [ ] Resolve the forbidden-words check for the golden fixture (whitelist vs. sanitize) while preserving the golden test intent.
+
 ## Phase 5: Renaming & Cleanup (Eliminate legacy naming where appropriate) (Completed)
 - [x] Rename `.beads` directory to `.pebble` (while maintaining fallback)
 - [x] Rename `beads-sync` branch references to `pebble-sync`
