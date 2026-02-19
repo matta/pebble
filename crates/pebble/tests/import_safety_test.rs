@@ -72,16 +72,17 @@ fn test_import_idempotency() {
     let issue = Issue {
         id: "EXT-1".to_string(),
         title: "Imported Issue".to_string(),
-        description: "External desc".to_string(),
+        description: Some("External desc".to_string()),
         status: "open".to_string(),
         priority: 1,
         issue_type: "task".to_string(),
-        owner: "external@example.com".to_string(),
+        owner: Some("external@example.com".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
-        created_by: "External".to_string(),
+        created_by: Some("External".to_string()),
         updated_at: "2026-01-01T10:00:00Z".to_string(),
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
     let json = serde_json::to_string(&issue).unwrap();
     fs::write(

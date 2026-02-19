@@ -21,9 +21,9 @@ pub fn run(config: &Config, id: String, format: OutputFormat) -> Result<()> {
             println!("Title:       {}", issue.title);
             println!("Type:        {}", issue.issue_type);
             println!("Priority:    {}", issue.priority);
-            println!("Owner:       {}", issue.owner);
+            println!("Owner:       {}", issue.owner.as_deref().unwrap_or(""));
             println!("Created At:  {}", issue.created_at);
-            println!("Created By:  {}", issue.created_by);
+            println!("Created By:  {}", issue.created_by.as_deref().unwrap_or(""));
             println!("Updated At:  {}", issue.updated_at);
             if let Some(closed_at) = issue.closed_at {
                 println!("Closed At:   {}", closed_at);
@@ -31,12 +31,14 @@ pub fn run(config: &Config, id: String, format: OutputFormat) -> Result<()> {
             if let Some(reason) = issue.close_reason {
                 println!("Close Reason: {}", reason);
             }
-            if !issue.description.is_empty() {
+            if let Some(description) = issue.description.as_deref()
+                && !description.is_empty()
+            {
                 println!(
                     "
 Description:
 {}",
-                    issue.description
+                    description
                 );
             }
         }

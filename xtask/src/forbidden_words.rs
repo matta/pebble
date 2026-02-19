@@ -62,7 +62,7 @@ fn scan_forbidden_words(
 
     for file_path in files {
         let path = root.join(&file_path);
-        if should_skip_forbidden_check(&path) {
+        if should_skip_forbidden_check(&path, &file_path) {
             continue;
         }
 
@@ -87,8 +87,17 @@ fn scan_forbidden_words(
     Ok(violations)
 }
 
-fn should_skip_forbidden_check(path: &Path) -> bool {
+fn should_skip_forbidden_check(path: &Path, relative_path: &str) -> bool {
     if !path.exists() || path.is_dir() {
+        return true;
+    }
+
+    const IGNORED_FILES: &[&str] = &["crates/pebble/tests/fixtures/golden.jsonl"];
+    let normalized_relative = relative_path.replace('\\', "/");
+    if IGNORED_FILES
+        .iter()
+        .any(|ignored| *ignored == normalized_relative)
+    {
         return true;
     }
 
@@ -214,6 +223,7 @@ impl WhitelistState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_process_line() {
@@ -227,5 +237,17 @@ mod tests {
         assert!(!process_line("  foo   baz   bar  ", "baz", &mut state));
         assert!(!process_line("FOO BAZ BAR", "baz", &mut state));
         assert!(process_line("other baz", "baz", &mut state));
+    }
+
+    #[test]
+    fn test_should_skip_forbidden_check_ignores_configured_files() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let relative = "crates/pebble/tests/fixtures/golden.jsonl";
+        let file_path = temp_dir.path().join(relative);
+        std::fs::create_dir_all(file_path.parent().expect("fixture parent"))
+            .expect("create fixture dirs");
+        std::fs::write(&file_path, "forbidden").expect("write fixture");
+
+        assert!(should_skip_forbidden_check(&file_path, relative));
     }
 }

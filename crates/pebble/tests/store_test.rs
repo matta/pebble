@@ -27,16 +27,17 @@ fn test_write_issues() {
     let issues = vec![Issue {
         id: "test-1".to_string(),
         title: "Title 1".to_string(),
-        description: "Desc 1".to_string(),
+        description: Some("Desc 1".to_string()),
         status: "open".to_string(),
         priority: 1,
         issue_type: "task".to_string(),
-        owner: "me".to_string(),
+        owner: Some("me".to_string()),
         created_at: "2026-01-01T00:00:00Z".to_string(),
-        created_by: "Me".to_string(),
+        created_by: Some("Me".to_string()),
         updated_at: "2026-01-01T00:00:00Z".to_string(),
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     }];
 
     store.write_issues(&issues).expect("Failed to write issues");
@@ -50,31 +51,33 @@ fn test_issue_merge() {
     let mut base = Issue {
         id: "test-1".to_string(),
         title: "Original Title".to_string(),
-        description: "Original Desc".to_string(),
+        description: Some("Original Desc".to_string()),
         status: "open".to_string(),
         priority: 1,
         issue_type: "task".to_string(),
-        owner: "me".to_string(),
+        owner: Some("me".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
-        created_by: "Me".to_string(),
+        created_by: Some("Me".to_string()),
         updated_at: "2026-01-01T10:00:00Z".to_string(),
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
 
     let incoming = Issue {
         id: "test-1".to_string(),
         title: "New Title".to_string(),
-        description: "New Desc".to_string(),
+        description: Some("New Desc".to_string()),
         status: "closed".to_string(),
         priority: 2,
         issue_type: "bug".to_string(),
-        owner: "you".to_string(),
+        owner: Some("you".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
-        created_by: "Me".to_string(),
+        created_by: Some("Me".to_string()),
         updated_at: "2026-01-01T11:00:00Z".to_string(), // Newer
         closed_at: Some("2026-01-01T11:00:00Z".to_string()),
         close_reason: Some("fixed".to_string()),
+        ..Default::default()
     };
 
     base.merge(incoming);
@@ -90,31 +93,33 @@ fn test_issue_merge_older_ignored() {
     let mut base = Issue {
         id: "test-1".to_string(),
         title: "Newer Title".to_string(),
-        description: "Newer Desc".to_string(),
+        description: Some("Newer Desc".to_string()),
         status: "open".to_string(),
         priority: 1,
         issue_type: "task".to_string(),
-        owner: "me".to_string(),
+        owner: Some("me".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
-        created_by: "Me".to_string(),
+        created_by: Some("Me".to_string()),
         updated_at: "2026-01-01T12:00:00Z".to_string(), // Newer
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
 
     let incoming = Issue {
         id: "test-1".to_string(),
         title: "Older Title".to_string(),
-        description: "Older Desc".to_string(),
+        description: Some("Older Desc".to_string()),
         status: "closed".to_string(),
         priority: 2,
         issue_type: "bug".to_string(),
-        owner: "you".to_string(),
+        owner: Some("you".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
-        created_by: "Me".to_string(),
+        created_by: Some("Me".to_string()),
         updated_at: "2026-01-01T11:00:00Z".to_string(), // Older
         closed_at: Some("2026-01-01T11:00:00Z".to_string()),
         close_reason: Some("fixed".to_string()),
+        ..Default::default()
     };
 
     base.merge(incoming);
@@ -151,16 +156,17 @@ fn test_read_issues_mixed_valid_and_invalid() {
     let valid_issue = Issue {
         id: "1".to_string(),
         title: "Valid".to_string(),
-        description: String::new(),
+        description: Some(String::new()),
         status: "open".to_string(),
         priority: 1,
         issue_type: "task".to_string(),
-        owner: "me".to_string(),
+        owner: Some("me".to_string()),
         created_at: "2023-01-01".to_string(),
-        created_by: String::new(),
+        created_by: Some(String::new()),
         updated_at: "2023-01-01".to_string(),
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
     let valid_json = serde_json::to_string(&valid_issue).unwrap();
     writeln!(file, "{}", valid_json).unwrap();
@@ -193,16 +199,17 @@ fn test_append_issue_newline_handling() {
     let issue = Issue {
         id: "test-1".to_string(),
         title: "Title 1".to_string(),
-        description: "Desc 1".to_string(),
+        description: Some("Desc 1".to_string()),
         status: "open".to_string(),
         priority: 1,
         issue_type: "task".to_string(),
-        owner: "me".to_string(),
+        owner: Some("me".to_string()),
         created_at: "2026-01-01T00:00:00Z".to_string(),
-        created_by: "Me".to_string(),
+        created_by: Some("Me".to_string()),
         updated_at: "2026-01-01T00:00:00Z".to_string(),
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
 
     // Case 1: File exists but doesn't end with newline

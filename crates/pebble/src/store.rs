@@ -20,37 +20,79 @@ use std::path::Path;
 /// let issue = Issue {
 ///     id: "PROJECT-123".to_string(),
 ///     title: "Implement documentation".to_string(),
-///     description: "Add doc comments to public API".to_string(),
+///     description: Some("Add doc comments to public API".to_string()),
 ///     status: "open".to_string(),
 ///     priority: 1,
 ///     issue_type: "task".to_string(),
-///     owner: "alice@example.com".to_string(),
+///     owner: Some("alice@example.com".to_string()),
 ///     created_at: "2023-10-27T10:00:00Z".to_string(),
-///     created_by: "Alice".to_string(),
+///     created_by: Some("Alice".to_string()),
 ///     updated_at: "2023-10-27T10:00:00Z".to_string(),
 ///     closed_at: None,
 ///     close_reason: None,
+///     ..Default::default()
 /// };
 ///
 /// assert_eq!(issue.status, "open");
 /// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct IssueDependency {
+    pub issue_id: String,
+    pub depends_on_id: String,
+    #[serde(rename = "type")]
+    pub dependency_type: String,
+    pub created_at: String,
+    pub created_by: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct IssueComment {
+    pub id: i32,
+    pub issue_id: String,
+    pub author: String,
+    pub text: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct Issue {
     pub id: String,
     pub title: String,
-    #[serde(default)]
-    pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     pub status: String,
     pub priority: i32,
     pub issue_type: String,
-    #[serde(default)]
-    pub owner: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
     pub created_at: String,
-    #[serde(default)]
-    pub created_by: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_by: Option<String>,
     pub updated_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub close_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub acceptance_criteria: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<IssueComment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub defer_until: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delete_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<IssueDependency>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_type: Option<String>,
 }
 
 impl Issue {
@@ -68,31 +110,33 @@ impl Issue {
     /// let mut issue1 = Issue {
     ///     id: "1".to_string(),
     ///     title: "Old Title".to_string(),
-    ///     description: "Old Desc".to_string(),
+    ///     description: Some("Old Desc".to_string()),
     ///     status: "open".to_string(),
     ///     priority: 1,
     ///     issue_type: "bug".to_string(),
-    ///     owner: "me".to_string(),
+    ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// let issue2 = Issue {
     ///     id: "1".to_string(),
     ///     title: "New Title".to_string(),
-    ///     description: "New Desc".to_string(),
+    ///     description: Some("New Desc".to_string()),
     ///     status: "in_progress".to_string(),
     ///     priority: 2,
     ///     issue_type: "bug".to_string(),
-    ///     owner: "you".to_string(),
+    ///     owner: Some("you".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-02T00:00:00Z".to_string(), // Newer
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// issue1.merge(issue2);
@@ -111,6 +155,16 @@ impl Issue {
             self.updated_at = other.updated_at;
             self.closed_at = other.closed_at;
             self.close_reason = other.close_reason;
+            self.acceptance_criteria = other.acceptance_criteria;
+            self.comments = other.comments;
+            self.defer_until = other.defer_until;
+            self.delete_reason = other.delete_reason;
+            self.deleted_at = other.deleted_at;
+            self.deleted_by = other.deleted_by;
+            self.dependencies = other.dependencies;
+            self.labels = other.labels;
+            self.notes = other.notes;
+            self.original_type = other.original_type;
         }
     }
 }
@@ -263,16 +317,17 @@ impl JsonlStore {
     /// let issue = Issue {
     ///     id: "1".to_string(),
     ///     title: "Test".to_string(),
-    ///     description: "Desc".to_string(),
+    ///     description: Some("Desc".to_string()),
     ///     status: "open".to_string(),
     ///     priority: 1,
     ///     issue_type: "task".to_string(),
-    ///     owner: "me".to_string(),
+    ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// store.write_issues(&[issue])?;
@@ -328,16 +383,17 @@ impl JsonlStore {
     /// let issue = Issue {
     ///     id: "2".to_string(),
     ///     title: "New Issue".to_string(),
-    ///     description: "Description".to_string(),
+    ///     description: Some("Description".to_string()),
     ///     status: "open".to_string(),
     ///     priority: 1,
     ///     issue_type: "bug".to_string(),
-    ///     owner: "me".to_string(),
+    ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-01".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// store.append_issue(&issue)?;

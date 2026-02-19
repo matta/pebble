@@ -184,22 +184,53 @@ fn issue_schema() -> serde_json::Value {
             "created_at": {"type": "string"},
             "created_by": {"type": "string"},
             "updated_at": {"type": "string"},
-            "closed_at": {"type": ["string", "null"]},
-            "close_reason": {"type": ["string", "null"]}
+            "closed_at": {"type": "string"},
+            "close_reason": {"type": "string"},
+            "acceptance_criteria": {"type": "string"},
+            "comments": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "issue_id": {"type": "string"},
+                        "author": {"type": "string"},
+                        "text": {"type": "string"},
+                        "created_at": {"type": "string"}
+                    },
+                    "required": ["id", "issue_id", "author", "text", "created_at"]
+                }
+            },
+            "defer_until": {"type": "string"},
+            "delete_reason": {"type": "string"},
+            "deleted_at": {"type": "string"},
+            "deleted_by": {"type": "string"},
+            "dependencies": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "issue_id": {"type": "string"},
+                        "depends_on_id": {"type": "string"},
+                        "type": {"type": "string"},
+                        "created_at": {"type": "string"},
+                        "created_by": {"type": "string"}
+                    },
+                    "required": ["issue_id", "depends_on_id", "type", "created_at", "created_by"]
+                }
+            },
+            "labels": {"type": "array", "items": {"type": "string"}},
+            "notes": {"type": "string"},
+            "original_type": {"type": "string"}
         },
         "required": [
             "id",
             "title",
-            "description",
             "status",
             "priority",
             "issue_type",
-            "owner",
             "created_at",
-            "created_by",
-            "updated_at",
-            "closed_at",
-            "close_reason"
+            "updated_at"
         ]
     })
 }

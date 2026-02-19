@@ -31,56 +31,83 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Initialize a new Pebble repository
+    #[command(
+        after_help = "Examples:\n  pebble init\n  pebble init --sync-branch my-sync-branch\n  pebble init --json"
+    )]
     Init {
         /// Name of the synchronization branch
         #[arg(long, default_value = pebble::DEFAULT_SYNC_BRANCH)]
         sync_branch: String,
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
     /// Inspect or read configuration values
+    #[command(
+        after_help = "Examples:\n  pebble config get sync-branch\n  pebble config get issue-prefix --json"
+    )]
     Config {
         #[command(subcommand)]
         command: ConfigCommands,
     },
     /// Import issues from a JSONL file
+    #[command(
+        after_help = "Examples:\n  pebble import issues.jsonl\n  pebble import /path/to/issues.jsonl --json"
+    )]
     Import {
         /// Path to the JSONL file to import
         path: std::path::PathBuf,
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
     /// Add a new issue
+    #[command(
+        after_help = "Examples:\n  pebble add \"Fix login\"\n  pebble add \"Fix login\" --description \"Investigate session timeout\"\n  pebble add \"Fix login\" --json"
+    )]
     Add {
         title: String,
         #[arg(long)]
         description: Option<String>,
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
     /// Edit an existing issue
+    #[command(
+        after_help = "Examples:\n  pebble edit issue-abc123 --title \"Fix login flow\"\n  pebble edit issue-abc123 --description \"Updated details\"\n  pebble edit issue-abc123 --json"
+    )]
     Edit {
         id: String,
         #[arg(long)]
         title: Option<String>,
         #[arg(long)]
         description: Option<String>,
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
     /// Show a single issue
+    #[command(
+        after_help = "Examples:\n  pebble show issue-abc123\n  pebble show issue-abc123 --json"
+    )]
     Show {
         id: String,
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
     /// List issues in the data worktree
+    #[command(after_help = "Examples:\n  pebble list\n  pebble list --json")]
     List {
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
     /// Sync the data worktree with the remote
+    #[command(after_help = "Examples:\n  pebble sync\n  pebble sync --json")]
     Sync {
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
@@ -88,8 +115,13 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ConfigCommands {
+    /// Get a configuration value
+    #[command(
+        after_help = "Examples:\n  pebble config get sync-branch\n  pebble config get issue-prefix --json"
+    )]
     Get {
         key: String,
+        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
