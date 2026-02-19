@@ -246,3 +246,31 @@ fn test_append_issue_newline_handling() {
         "Should not contain double newlines"
     );
 }
+
+#[test]
+fn test_read_issue_ids() {
+    let mut file = NamedTempFile::new().unwrap();
+    let issue_json = r#"{"id":"id-1","title":"Test Issue","description":"Desc","status":"open","priority":0,"issue_type":"task","owner":"me","created_at":"2026-01-01T00:00:00Z","created_by":"Me","updated_at":"2026-01-01T00:00:00Z","closed_at":null,"close_reason":null}"#;
+    writeln!(file, "{}", issue_json).unwrap();
+    let issue_json2 = r#"{"id":"id-2","title":"Test Issue 2","description":"Desc","status":"open","priority":0,"issue_type":"task","owner":"me","created_at":"2026-01-01T00:00:00Z","created_by":"Me","updated_at":"2026-01-01T00:00:00Z","closed_at":null,"close_reason":null}"#;
+    writeln!(file, "{}", issue_json2).unwrap();
+
+    let path = file.path().to_str().unwrap();
+    let store = JsonlStore::new(path);
+
+    let ids = store.read_issue_ids().expect("Failed to read issue IDs");
+
+    assert_eq!(ids.len(), 2);
+    assert!(ids.contains("id-1"));
+    assert!(ids.contains("id-2"));
+}
+
+#[test]
+fn test_read_issue_ids_empty_file() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap();
+    let store = JsonlStore::new(path);
+
+    let ids = store.read_issue_ids().expect("Failed to read issue IDs");
+    assert_eq!(ids.len(), 0);
+}
