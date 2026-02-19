@@ -349,6 +349,36 @@ impl JsonlStore {
     /// This method is optimized for performance by reading the file line-by-line and
     /// partially deserializing only the `id` field first. It avoids full deserialization
     /// and allocation for non-matching records.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, read failure)
+    /// or if a matching line cannot be fully deserialized as an [`Issue`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::{JsonlStore, Issue};
+    /// use std::io::Write;
+    ///
+    /// # fn main() -> color_eyre::Result<()> {
+    /// let dir = tempfile::tempdir()?;
+    /// let file_path = dir.path().join("issues.jsonl");
+    /// let mut file = std::fs::File::create(&file_path)?;
+    /// let json = r#"{"id":"1","title":"Test","status":"open","priority":1,"issue_type":"bug","created_at":"2023-01-01","updated_at":"2023-01-01","closed_at":null,"close_reason":null}"#;
+    /// writeln!(file, "{}", json)?;
+    ///
+    /// let store = JsonlStore::new(file_path.to_str().unwrap());
+    /// let issue = store.find_issue("1")?;
+    ///
+    /// assert!(issue.is_some());
+    /// assert_eq!(issue.unwrap().title, "Test");
+    ///
+    /// let not_found = store.find_issue("999")?;
+    /// assert!(not_found.is_none());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn find_issue(&self, id: &str) -> Result<Option<Issue>> {
         self.find_issue_inner(id)
             .with_context(|| format!("Failed to find issue {} in {}", id, self.path))
