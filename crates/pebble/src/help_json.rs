@@ -154,7 +154,7 @@ fn output_schema_for(path: &str) -> Option<&'static str> {
         "config get" => Some("ConfigValue"),
         "sync" => Some("SyncResult"),
         "list" => Some("IssueList"),
-        "add" | "show" | "edit" => Some("Issue"),
+        "add" | "show" | "update" => Some("Issue"),
         _ => None,
     }
 }

@@ -3,7 +3,6 @@ use color_eyre::Result;
 use pebble::cli::OutputFormat;
 use pebble::config::Config;
 use pebble::id::generate_unique_id;
-
 pub fn run(
     config: &Config,
     title: String,

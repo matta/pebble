@@ -82,7 +82,7 @@ fn test_add_issue_json() {
 }
 
 #[test]
-fn test_edit_issue_json() {
+fn test_update_issue_json() {
     let env = TestEnv::setup();
     let output = env
         .pebble()
@@ -98,7 +98,7 @@ fn test_edit_issue_json() {
 
     let output = env
         .pebble()
-        .args(["edit", id, "--title", "JSON Edited Title", "--json"])
+        .args(["update", id, "--title", "JSON Edited Title", "--json"])
         .assert()
         .success()
         .get_output()
