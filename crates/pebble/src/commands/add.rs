@@ -1,7 +1,7 @@
 use crate::commands::{get_git_config, get_store};
 use color_eyre::Result;
 use pebble::config::Config;
-use rand::RngExt;
+use rand::distr::Distribution;
 
 pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
@@ -15,14 +15,19 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
     let suffix_length = pebble::recommended_id_length(existing_ids.len());
 
     let mut id;
+    let mut rng = rand::rng();
+    const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
+
     loop {
         // rand::rng() returns ThreadRng which is cryptographically secure (ChaCha12)
-        let suffix: String = rand::rng()
-            .sample_iter(&rand::distr::Alphanumeric)
-            .take(suffix_length)
-            .map(char::from)
-            .collect::<String>()
-            .to_lowercase();
+        let suffix: String = (0..suffix_length)
+            .map(|_| {
+                let idx = rand::distr::uniform::Uniform::new(0, CHARSET.len())
+                    .expect("CHARSET is not empty")
+                    .sample(&mut rng);
+                CHARSET[idx] as char
+            })
+            .collect();
         id = format!("{}-{}", prefix, suffix);
 
         if !existing_ids.contains(&id) {
