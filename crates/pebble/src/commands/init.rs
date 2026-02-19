@@ -5,7 +5,7 @@ use pebble::config::Config;
 pub fn run(sync_branch: String) -> Result<()> {
     let repo_root = std::env::current_dir()?;
 
-    if !pebble::worktree::WorktreeManager::<pebble::worktree::RealGit>::is_inside_git_repo(
+    if !pebble::worktree::WorktreeManager::<pebble::git_provider::RealGit>::is_inside_git_repo(
         &repo_root,
     ) {
         eprintln!("Error: 'pebble init' must be run inside a Git repository.");

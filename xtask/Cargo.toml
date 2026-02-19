@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-color-eyre = "0.6"
-clap = { version = "4.5.59", features = ["derive"] }
+color-eyre.workspace = true
+clap = { workspace = true, features = ["derive"] }
 ra-ap-rustc_lexer = "0.150.0"
 anyhow = "1.0"
 regex = "1.12.3"
-serde = { version = "1.0", features = ["derive"] }
-toml = "0.8.19"
+serde = { workspace = true, features = ["derive"] }
+toml.workspace = true
 
 [dev-dependencies]
-tempfile = "3.17.1"
+tempfile.workspace = true

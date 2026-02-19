@@ -1,6 +1,7 @@
 use color_eyre::Result;
-use pebble::worktree::{GitProvider, WorktreeManager};
-use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
+use pebble::git_provider::GitProvider;
+use pebble::worktree::WorktreeManager;
+use pebble::{CONFIG_DIR, ISSUES_FILE};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -47,8 +48,8 @@ fn test_get_absolute_jsonl_path() {
     execute_git(&["commit", "-m", "Initial"], &repo_root);
 
     let manager = WorktreeManager::new(repo_root.clone(), TEST_SYNC_BRANCH.to_string());
-    let expected = pebble::worktree::generate_worktree_path(&repo_root, TEST_SYNC_BRANCH)
-        .join(ISSUES_FILE);
+    let expected =
+        pebble::worktree::generate_worktree_path(&repo_root, TEST_SYNC_BRANCH).join(ISSUES_FILE);
 
     let path = manager
         .get_absolute_jsonl_path()
@@ -194,6 +195,14 @@ impl GitProvider for MockGit {
         Ok(())
     }
 
+    fn run_quiet(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        self.run(args, current_dir)
+    }
+
+    fn run_silent(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()> {
+        self.run(args, current_dir)
+    }
+
     fn output(&self, _args: &[&dyn AsRef<OsStr>], _current_dir: &Path) -> Result<String> {
         Ok(String::new())
     }
@@ -211,6 +220,14 @@ impl GitProvider for MockGit {
             return Ok(std::process::Command::new("false").status().unwrap());
         }
         Ok(std::process::Command::new("true").status().unwrap())
+    }
+
+    fn status_silent(
+        &self,
+        args: &[&dyn AsRef<OsStr>],
+        current_dir: &Path,
+    ) -> Result<std::process::ExitStatus> {
+        self.status(args, current_dir)
     }
 }
 #[test]

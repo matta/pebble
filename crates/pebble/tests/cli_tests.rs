@@ -2,7 +2,7 @@ use assert_cmd::Command;
 use assert_cmd::cargo_bin;
 use pebble::command::CommandExt;
 use pebble::config::Config;
-use pebble::{CONFIG_DIR, ISSUES_FILE, WORKTREE_DIR};
+use pebble::{CONFIG_DIR, ISSUES_FILE};
 use predicates::prelude::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -201,8 +201,8 @@ fn test_list_issues_empty() {
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Using database:"))
-        .stdout(predicate::str::contains("No issues found."));
+        .stderr(predicate::str::contains("Using database:"))
+        .stderr(predicate::str::contains("No issues found."));
 }
 
 #[test]
@@ -215,7 +215,7 @@ fn test_list_issues_with_data() {
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Using database:"))
+        .stderr(predicate::str::contains("Using database:"))
         .stdout(predicate::str::contains("test-123 [open] Fixture Issue"));
 }
 
@@ -318,8 +318,8 @@ fn test_directory_flag() {
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Using database:"))
-        .stdout(predicate::str::contains("No issues found."));
+        .stderr(predicate::str::contains("Using database:"))
+        .stderr(predicate::str::contains("No issues found."));
 }
 
 #[test]
@@ -365,4 +365,17 @@ fn test_show_issue_json() {
         serde_json::from_str(&json_str).expect("Failed to parse JSON output");
     assert_eq!(issue_out["id"], "test-json-show");
     assert_eq!(issue_out["title"], "JSON Show Issue");
+}
+
+#[test]
+fn test_no_args_fails() {
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "A distributed issue tracking system built on Git.",
+        ))
+        .stderr(predicate::str::contains(
+            "Usage: pebble [OPTIONS] <COMMAND>",
+        ));
 }

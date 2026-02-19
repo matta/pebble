@@ -1,0 +1,1 @@
+- Centralize shared dependencies in the workspace `Cargo.toml`.
