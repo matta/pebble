@@ -304,7 +304,9 @@ fn test_issue_exists() {
     store.append_issue(&issue).expect("Failed to append issue");
 
     // Test existing issue
-    let exists = store.issue_exists("exists").expect("Failed to check existence");
+    let exists = store
+        .issue_exists("exists")
+        .expect("Failed to check existence");
     assert!(exists);
 
     // Test non-existing issue
