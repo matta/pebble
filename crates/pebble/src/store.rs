@@ -481,11 +481,29 @@ impl JsonlStore {
     /// # }
     /// ```
     pub fn find_issue(&self, id: &str) -> Result<Option<Issue>> {
-        self.find_issue_inner(id)
-            .with_context(|| format!("Failed to find issue {} in {}", id, self.path))
+        if let Some(line) = self
+            .find_line_by_id(id)
+            .with_context(|| format!("Failed to find issue {} in {}", id, self.path))?
+        {
+            let issue: Issue = serde_json::from_str(&line)?;
+            Ok(Some(issue))
+        } else {
+            Ok(None)
+        }
     }
 
-    fn find_issue_inner(&self, id: &str) -> Result<Option<Issue>> {
+    /// Checks if an issue exists by its ID without loading the entire file into memory.
+    ///
+    /// This method is optimized for existence checks (e.g., during ID generation)
+    /// and avoids allocating full Issue structs.
+    pub fn issue_exists(&self, id: &str) -> Result<bool> {
+        Ok(self
+            .find_line_by_id(id)
+            .with_context(|| format!("Failed to check existence of issue {} in {}", id, self.path))?
+            .is_some())
+    }
+
+    fn find_line_by_id(&self, id: &str) -> Result<Option<String>> {
         let Some(reader) = self.open_reader()? else {
             return Ok(None);
         };
@@ -498,35 +516,10 @@ impl JsonlStore {
 
             // Optimization: Parse only ID first to avoid full deserialization overhead
             if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
-                // Found the issue, now deserialize strictly/fully
-                let issue: Issue = serde_json::from_str(&line)?;
-                return Ok(Some(issue));
+                return Ok(Some(line));
             }
         }
 
         Ok(None)
-    }
-
-    /// Checks if an issue exists by its ID without loading the entire file into memory.
-    ///
-    /// This method is optimized for existence checks (e.g., during ID generation)
-    /// and avoids allocating full Issue structs.
-    pub fn issue_exists(&self, id: &str) -> Result<bool> {
-        let Some(reader) = self.open_reader()? else {
-            return Ok(false);
-        };
-
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-
-            if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
     }
 }

@@ -281,3 +281,76 @@ fn test_read_issue_ids_empty_file() {
     let ids = store.read_issue_ids().expect("Failed to read issue IDs");
     assert_eq!(ids.len(), 0);
 }
+
+#[test]
+fn test_find_issue() {
+    let file = NamedTempFile::new().unwrap();
+    let store = JsonlStore::new(file.path().to_str().unwrap());
+
+    let issue = Issue {
+        id: "find-me".to_string(),
+        title: "Find Me".to_string(),
+        description: Some("Desc".to_string()),
+        status: "open".to_string(),
+        priority: 1,
+        issue_type: "task".to_string(),
+        owner: Some("me".to_string()),
+        created_at: "2026-01-01T00:00:00Z".to_string(),
+        created_by: Some("Me".to_string()),
+        updated_at: "2026-01-01T00:00:00Z".to_string(),
+        closed_at: None,
+        close_reason: None,
+        ..Default::default()
+    };
+
+    store.append_issue(&issue).expect("Failed to append issue");
+
+    // Test finding existing issue
+    let found = store
+        .find_issue("find-me")
+        .expect("Failed to find issue")
+        .expect("Issue not found");
+    assert_eq!(found.title, "Find Me");
+
+    // Test finding non-existing issue
+    let not_found = store
+        .find_issue("does-not-exist")
+        .expect("Failed to search issue");
+    assert!(not_found.is_none());
+}
+
+#[test]
+fn test_issue_exists() {
+    let file = NamedTempFile::new().unwrap();
+    let store = JsonlStore::new(file.path().to_str().unwrap());
+
+    let issue = Issue {
+        id: "exists".to_string(),
+        title: "Exists".to_string(),
+        description: Some("Desc".to_string()),
+        status: "open".to_string(),
+        priority: 1,
+        issue_type: "task".to_string(),
+        owner: Some("me".to_string()),
+        created_at: "2026-01-01T00:00:00Z".to_string(),
+        created_by: Some("Me".to_string()),
+        updated_at: "2026-01-01T00:00:00Z".to_string(),
+        closed_at: None,
+        close_reason: None,
+        ..Default::default()
+    };
+
+    store.append_issue(&issue).expect("Failed to append issue");
+
+    // Test existing issue
+    let exists = store
+        .issue_exists("exists")
+        .expect("Failed to check existence");
+    assert!(exists);
+
+    // Test non-existing issue
+    let exists = store
+        .issue_exists("does-not-exist")
+        .expect("Failed to check existence");
+    assert!(!exists);
+}
