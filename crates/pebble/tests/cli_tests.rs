@@ -232,7 +232,8 @@ fn test_add_issue() {
 #[test]
 fn test_add_issue_json() {
     let env = TestEnv::setup();
-    let output = env.pebble()
+    let output = env
+        .pebble()
         .args(["add", "New JSON Issue", "--json"])
         .assert()
         .success()
@@ -489,11 +490,16 @@ fn test_update_status_priority_owner() {
     // 2. Update fields
     env.pebble()
         .args([
-            "update", id,
-            "--status", "closed",
-            "--priority", "5",
-            "--owner", "new@example.com",
-            "--issue-type", "bug"
+            "update",
+            id,
+            "--status",
+            "closed",
+            "--priority",
+            "5",
+            "--owner",
+            "new@example.com",
+            "--issue-type",
+            "bug",
         ])
         .assert()
         .success();

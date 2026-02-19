@@ -149,8 +149,17 @@ fn main() -> Result<()> {
                 *json,
             )?;
         }
-        Commands::Add { title, description, json } => {
-            commands::add::run(config.as_ref().unwrap(), title.clone(), description.clone(), *json)?;
+        Commands::Add {
+            title,
+            description,
+            json,
+        } => {
+            commands::add::run(
+                config.as_ref().unwrap(),
+                title.clone(),
+                description.clone(),
+                *json,
+            )?;
         }
         Commands::Show { id, json } => {
             commands::show::run(config.as_ref().unwrap(), id.clone(), *json)?;
