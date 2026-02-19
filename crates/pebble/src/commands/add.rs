@@ -1,18 +1,20 @@
 use crate::commands::{get_git_config, get_store};
 use color_eyre::Result;
+use pebble::cli::OutputFormat;
 use pebble::config::Config;
 use pebble::id::generate_unique_id;
-
-pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
+pub fn run(
+    config: &Config,
+    title: String,
+    description: Option<String>,
+    format: OutputFormat,
+) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
 
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
 
-    // TODO(matt): Avoid full deserialization when only IDs/count are needed.
     // TODO(matt): Keep add resilient to malformed JSONL by tolerating bad lines.
-    let existing_issues = store.read_issues()?;
-    let existing_ids: std::collections::HashSet<String> =
-        existing_issues.into_iter().map(|i| i.id).collect();
+    let existing_ids = store.read_issue_ids()?;
 
     let suffix_length = pebble::recommended_id_length(existing_ids.len());
     let id = generate_unique_id(prefix, &existing_ids, suffix_length);
@@ -23,21 +25,31 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
 
     let issue = pebble::store::Issue {
         id: id.clone(),
-        title: title.clone(),
-        description: description.clone().unwrap_or_default(),
+        title,
+        description,
         status: "open".to_string(),
         priority: 0,
         issue_type: "task".to_string(),
-        owner: user_email,
+        owner: Some(user_email),
         created_at: now.clone(),
-        created_by: user_name,
+        created_by: Some(user_name),
         updated_at: now,
         closed_at: None,
         close_reason: None,
+        ..Default::default()
     };
 
     store.append_issue(&issue)?;
-    manager.commit_all(&format!("Add issue {}", id))?;
-    println!("Added issue {}", id);
+    let commit_message = format!("Add issue {}", id);
+    match format {
+        OutputFormat::Json => {
+            manager.commit_all_quiet(&commit_message)?;
+            println!("{}", serde_json::to_string_pretty(&issue)?);
+        }
+        OutputFormat::Human => {
+            manager.commit_all(&commit_message)?;
+            println!("Added issue {}", id);
+        }
+    }
     Ok(())
 }

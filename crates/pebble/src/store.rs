@@ -1,6 +1,7 @@
 use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -19,37 +20,79 @@ use std::path::Path;
 /// let issue = Issue {
 ///     id: "PROJECT-123".to_string(),
 ///     title: "Implement documentation".to_string(),
-///     description: "Add doc comments to public API".to_string(),
+///     description: Some("Add doc comments to public API".to_string()),
 ///     status: "open".to_string(),
 ///     priority: 1,
 ///     issue_type: "task".to_string(),
-///     owner: "alice@example.com".to_string(),
+///     owner: Some("alice@example.com".to_string()),
 ///     created_at: "2023-10-27T10:00:00Z".to_string(),
-///     created_by: "Alice".to_string(),
+///     created_by: Some("Alice".to_string()),
 ///     updated_at: "2023-10-27T10:00:00Z".to_string(),
 ///     closed_at: None,
 ///     close_reason: None,
+///     ..Default::default()
 /// };
 ///
 /// assert_eq!(issue.status, "open");
 /// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct IssueDependency {
+    pub issue_id: String,
+    pub depends_on_id: String,
+    #[serde(rename = "type")]
+    pub dependency_type: String,
+    pub created_at: String,
+    pub created_by: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct IssueComment {
+    pub id: i32,
+    pub issue_id: String,
+    pub author: String,
+    pub text: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct Issue {
     pub id: String,
     pub title: String,
-    #[serde(default)]
-    pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     pub status: String,
     pub priority: i32,
     pub issue_type: String,
-    #[serde(default)]
-    pub owner: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
     pub created_at: String,
-    #[serde(default)]
-    pub created_by: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_by: Option<String>,
     pub updated_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub close_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub acceptance_criteria: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<IssueComment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub defer_until: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delete_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<IssueDependency>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_type: Option<String>,
 }
 
 impl Issue {
@@ -67,31 +110,33 @@ impl Issue {
     /// let mut issue1 = Issue {
     ///     id: "1".to_string(),
     ///     title: "Old Title".to_string(),
-    ///     description: "Old Desc".to_string(),
+    ///     description: Some("Old Desc".to_string()),
     ///     status: "open".to_string(),
     ///     priority: 1,
     ///     issue_type: "bug".to_string(),
-    ///     owner: "me".to_string(),
+    ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// let issue2 = Issue {
     ///     id: "1".to_string(),
     ///     title: "New Title".to_string(),
-    ///     description: "New Desc".to_string(),
+    ///     description: Some("New Desc".to_string()),
     ///     status: "in_progress".to_string(),
     ///     priority: 2,
     ///     issue_type: "bug".to_string(),
-    ///     owner: "you".to_string(),
+    ///     owner: Some("you".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-02T00:00:00Z".to_string(), // Newer
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// issue1.merge(issue2);
@@ -110,8 +155,24 @@ impl Issue {
             self.updated_at = other.updated_at;
             self.closed_at = other.closed_at;
             self.close_reason = other.close_reason;
+            self.acceptance_criteria = other.acceptance_criteria;
+            self.comments = other.comments;
+            self.defer_until = other.defer_until;
+            self.delete_reason = other.delete_reason;
+            self.deleted_at = other.deleted_at;
+            self.deleted_by = other.deleted_by;
+            self.dependencies = other.dependencies;
+            self.labels = other.labels;
+            self.notes = other.notes;
+            self.original_type = other.original_type;
         }
     }
+}
+
+/// Helper struct for partial deserialization of issue IDs.
+#[derive(Deserialize)]
+struct IdOnly {
+    id: String,
 }
 
 /// A persistent store for managing issues in a JSON Lines (JSONL) file.
@@ -140,6 +201,17 @@ impl JsonlStore {
         Self {
             path: path.to_string(),
         }
+    }
+
+    /// Helper to open a buffered reader for the store file.
+    /// Returns `Ok(None)` if the file does not exist.
+    fn open_reader(&self) -> Result<Option<BufReader<File>>> {
+        let path = Path::new(&self.path);
+        if !path.exists() {
+            return Ok(None);
+        }
+        let file = File::open(path)?;
+        Ok(Some(BufReader::new(file)))
     }
 
     /// Reads and deserializes all issues from the store file.
@@ -178,14 +250,20 @@ impl JsonlStore {
             .with_context(|| format!("Failed to read issues from {}", self.path))
     }
 
-    fn read_issues_inner(&self) -> Result<Vec<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
+    /// Reads and returns only the IDs of all issues from the store.
+    ///
+    /// This method is optimized to avoid full deserialization of issues when only
+    /// the set of existing IDs is needed (e.g., for ID generation).
+    pub fn read_issue_ids(&self) -> Result<HashSet<String>> {
+        self.read_issue_ids_inner()
+            .with_context(|| format!("Failed to read issue IDs from {}", self.path))
+    }
 
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
+    fn read_issues_inner(&self) -> Result<Vec<Issue>> {
+        let Some(reader) = self.open_reader()? else {
+            return Ok(Vec::new());
+        };
+
         let mut issues = Vec::new();
 
         // Optimization: Stream JSON objects directly from reader to avoid allocating String for each line
@@ -196,6 +274,23 @@ impl JsonlStore {
         }
 
         Ok(issues)
+    }
+
+    fn read_issue_ids_inner(&self) -> Result<HashSet<String>> {
+        let Some(reader) = self.open_reader()? else {
+            return Ok(HashSet::new());
+        };
+
+        let mut ids = HashSet::new();
+
+        // Optimization: Stream JSON objects directly but only parse the ID field
+        let deserializer = serde_json::Deserializer::from_reader(reader);
+        for item in deserializer.into_iter::<IdOnly>() {
+            let item = item?;
+            ids.insert(item.id);
+        }
+
+        Ok(ids)
     }
 
     /// Overwrites the store file with the provided list of issues.
@@ -222,16 +317,17 @@ impl JsonlStore {
     /// let issue = Issue {
     ///     id: "1".to_string(),
     ///     title: "Test".to_string(),
-    ///     description: "Desc".to_string(),
+    ///     description: Some("Desc".to_string()),
     ///     status: "open".to_string(),
     ///     priority: 1,
     ///     issue_type: "task".to_string(),
-    ///     owner: "me".to_string(),
+    ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-01T00:00:00Z".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// store.write_issues(&[issue])?;
@@ -255,7 +351,11 @@ impl JsonlStore {
         let file = File::create(path)?;
         let mut writer = std::io::BufWriter::new(file);
 
-        for issue in issues {
+        // Sort issues by ID to ensure deterministic output
+        let mut sorted_issues: Vec<&Issue> = issues.iter().collect();
+        sorted_issues.sort_by_key(|issue| &issue.id);
+
+        for issue in sorted_issues {
             serde_json::to_writer(&mut writer, issue)?;
             writeln!(writer)?;
         }
@@ -287,16 +387,17 @@ impl JsonlStore {
     /// let issue = Issue {
     ///     id: "2".to_string(),
     ///     title: "New Issue".to_string(),
-    ///     description: "Description".to_string(),
+    ///     description: Some("Description".to_string()),
     ///     status: "open".to_string(),
     ///     priority: 1,
     ///     issue_type: "bug".to_string(),
-    ///     owner: "me".to_string(),
+    ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01".to_string(),
-    ///     created_by: "me".to_string(),
+    ///     created_by: Some("me".to_string()),
     ///     updated_at: "2023-01-01".to_string(),
     ///     closed_at: None,
     ///     close_reason: None,
+    ///     ..Default::default()
     /// };
     ///
     /// store.append_issue(&issue)?;
@@ -349,24 +450,63 @@ impl JsonlStore {
     /// This method is optimized for performance by reading the file line-by-line and
     /// partially deserializing only the `id` field first. It avoids full deserialization
     /// and allocation for non-matching records.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if a file I/O error occurs (e.g., permission denied, read failure)
+    /// or if a matching line cannot be fully deserialized as an [`Issue`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::store::{JsonlStore, Issue};
+    /// use std::io::Write;
+    ///
+    /// # fn main() -> color_eyre::Result<()> {
+    /// let dir = tempfile::tempdir()?;
+    /// let file_path = dir.path().join("issues.jsonl");
+    /// let mut file = std::fs::File::create(&file_path)?;
+    /// let json = r#"{"id":"1","title":"Test","status":"open","priority":1,"issue_type":"bug","created_at":"2023-01-01","updated_at":"2023-01-01","closed_at":null,"close_reason":null}"#;
+    /// writeln!(file, "{}", json)?;
+    ///
+    /// let store = JsonlStore::new(file_path.to_str().unwrap());
+    /// let issue = store.find_issue("1")?;
+    ///
+    /// assert!(issue.is_some());
+    /// assert_eq!(issue.unwrap().title, "Test");
+    ///
+    /// let not_found = store.find_issue("999")?;
+    /// assert!(not_found.is_none());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn find_issue(&self, id: &str) -> Result<Option<Issue>> {
-        self.find_issue_inner(id)
-            .with_context(|| format!("Failed to find issue {} in {}", id, self.path))
+        if let Some(line) = self
+            .find_line_by_id(id)
+            .with_context(|| format!("Failed to find issue {} in {}", id, self.path))?
+        {
+            let issue: Issue = serde_json::from_str(&line)?;
+            Ok(Some(issue))
+        } else {
+            Ok(None)
+        }
     }
 
-    fn find_issue_inner(&self, id: &str) -> Result<Option<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+    /// Checks if an issue exists by its ID without loading the entire file into memory.
+    ///
+    /// This method is optimized for existence checks (e.g., during ID generation)
+    /// and avoids allocating full Issue structs.
+    pub fn issue_exists(&self, id: &str) -> Result<bool> {
+        Ok(self
+            .find_line_by_id(id)
+            .with_context(|| format!("Failed to check existence of issue {} in {}", id, self.path))?
+            .is_some())
+    }
+
+    fn find_line_by_id(&self, id: &str) -> Result<Option<String>> {
+        let Some(reader) = self.open_reader()? else {
             return Ok(None);
-        }
-
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
+        };
 
         for line in reader.lines() {
             let line = line?;
@@ -376,44 +516,10 @@ impl JsonlStore {
 
             // Optimization: Parse only ID first to avoid full deserialization overhead
             if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
-                // Found the issue, now deserialize strictly/fully
-                let issue: Issue = serde_json::from_str(&line)?;
-                return Ok(Some(issue));
+                return Ok(Some(line));
             }
         }
 
         Ok(None)
-    }
-
-    /// Checks if an issue exists by its ID without loading the entire file into memory.
-    ///
-    /// This method is optimized for existence checks (e.g., during ID generation)
-    /// and avoids allocating full Issue structs.
-    pub fn issue_exists(&self, id: &str) -> Result<bool> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
-            return Ok(false);
-        }
-
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
-
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
-            }
-
-            if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
     }
 }
