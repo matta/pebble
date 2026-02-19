@@ -6,7 +6,8 @@ use std::path::Path;
 
 pub mod add;
 pub mod config_cmd;
-pub mod edit;
+pub mod update;
+pub mod search;
 pub mod import;
 pub mod init;
 pub mod list;

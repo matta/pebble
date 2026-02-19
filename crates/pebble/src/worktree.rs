@@ -157,9 +157,9 @@ impl<G: GitProvider> WorktreeManager<G> {
     pub fn commit_all(&self, message: &str) -> Result<()> {
         let path = self.get_worktree_path();
 
-        self.git.run(&[&"add", &"-A"], &path)?;
+        self.git.run_quiet(&[&"add", &"-A"], &path)?;
 
-        self.git.run(&[&"commit", &"-m", &message], &path)?;
+        self.git.run_quiet(&[&"commit", &"-m", &message], &path)?;
 
         Ok(())
     }

@@ -3,7 +3,7 @@ use color_eyre::Result;
 use pebble::config::Config;
 use pebble::id::generate_unique_id;
 
-pub fn run(config: &Config, title: String, description: Option<String>) -> Result<()> {
+pub fn run(config: &Config, title: String, description: Option<String>, json: bool) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
 
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
@@ -38,6 +38,10 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
 
     store.append_issue(&issue)?;
     manager.commit_all(&format!("Add issue {}", id))?;
-    println!("Added issue {}", id);
+    if json {
+        println!("{}", serde_json::to_string_pretty(&issue)?);
+    } else {
+        println!("Added issue {}", id);
+    }
     Ok(())
 }

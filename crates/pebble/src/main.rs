@@ -40,24 +40,47 @@ enum Commands {
     Sync,
     List {
         #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        owner: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+        #[arg(long)]
+        json: bool,
+    },
+    Search {
+        query: String,
+        #[arg(long)]
         json: bool,
     },
     Add {
         title: String,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long)]
+        json: bool,
     },
     Show {
         id: String,
         #[arg(long)]
         json: bool,
     },
-    Edit {
+    Update {
         id: String,
         #[arg(long)]
         title: Option<String>,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+        #[arg(long)]
+        owner: Option<String>,
+        #[arg(long)]
+        issue_type: Option<String>,
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -112,25 +135,49 @@ fn main() -> Result<()> {
         Commands::Sync => {
             commands::sync::run(config.as_ref().unwrap())?;
         }
-        Commands::List { json } => {
-            commands::list::run(config.as_ref().unwrap(), *json)?;
+        Commands::List {
+            status,
+            owner,
+            priority,
+            json,
+        } => {
+            commands::list::run(
+                config.as_ref().unwrap(),
+                status.clone(),
+                owner.clone(),
+                *priority,
+                *json,
+            )?;
         }
-        Commands::Add { title, description } => {
-            commands::add::run(config.as_ref().unwrap(), title.clone(), description.clone())?;
+        Commands::Add { title, description, json } => {
+            commands::add::run(config.as_ref().unwrap(), title.clone(), description.clone(), *json)?;
         }
         Commands::Show { id, json } => {
             commands::show::run(config.as_ref().unwrap(), id.clone(), *json)?;
         }
-        Commands::Edit {
+        Commands::Search { query, json } => {
+            commands::search::run(config.as_ref().unwrap(), query.clone(), *json)?;
+        }
+        Commands::Update {
             id,
             title,
             description,
+            status,
+            priority,
+            owner,
+            issue_type,
+            json,
         } => {
-            commands::edit::run(
+            commands::update::run(
                 config.as_ref().unwrap(),
                 id.clone(),
                 title.clone(),
                 description.clone(),
+                status.clone(),
+                *priority,
+                owner.clone(),
+                issue_type.clone(),
+                *json,
             )?;
         }
     }
