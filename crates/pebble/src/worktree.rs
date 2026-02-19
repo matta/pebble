@@ -168,6 +168,23 @@ impl<G: GitProvider> WorktreeManager<G> {
         generate_worktree_path(&self.repo_root, &self.sync_branch)
     }
 
+    /// Ensures that a local worktree for the sync branch exists and is ready for use.
+    ///
+    /// This method manages the lifecycle of the sync worktree. It performs the following steps:
+    /// 1. Checks if the worktree directory already exists.
+    /// 2. If not, creates the necessary parent directories.
+    /// 3. Checks if the sync branch exists locally.
+    /// 4. If not local, attempts to fetch it from the `origin` remote.
+    /// 5. If it doesn't exist remotely either, it initializes a new orphan branch.
+    /// 6. Creates a Git worktree at the target path, detached or checked out as appropriate.
+    ///
+    /// Returns a `PathBuf` pointing to the root of the initialized worktree.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if:
+    /// * File system operations fail (creating directories).
+    /// * Git commands fail (checking status, fetching, adding worktree).
     pub fn ensure_worktree(&self) -> Result<PathBuf> {
         let path = self.get_worktree_path();
         if path.exists() {
