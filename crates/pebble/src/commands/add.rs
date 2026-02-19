@@ -43,10 +43,16 @@ pub fn run(
     };
 
     store.append_issue(&issue)?;
-    manager.commit_all(&format!("Add issue {}", id))?;
+    let commit_message = format!("Add issue {}", id);
     match format {
-        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&issue)?),
-        OutputFormat::Human => println!("Added issue {}", id),
+        OutputFormat::Json => {
+            manager.commit_all_quiet(&commit_message)?;
+            println!("{}", serde_json::to_string_pretty(&issue)?);
+        }
+        OutputFormat::Human => {
+            manager.commit_all(&commit_message)?;
+            println!("Added issue {}", id);
+        }
     }
     Ok(())
 }

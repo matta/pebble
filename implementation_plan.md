@@ -90,3 +90,4 @@ Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 
 1. **One Fail at a Time**: don't write multiple failing tests.
 2. **Refactor**: Refactor after passing.
 3. **No Daemon**: Ensure no daemon logic creeps in.
+4. **Regular Gate**: Run `just check` and `just test` regularly to confirm the workspace stays green.

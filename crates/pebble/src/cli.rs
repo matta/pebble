@@ -14,10 +14,6 @@ impl OutputFormat {
     pub fn from_json_flag(json: bool) -> Self {
         if json { Self::Json } else { Self::Human }
     }
-
-    pub fn is_json(self) -> bool {
-        matches!(self, Self::Json)
-    }
 }
 
 #[derive(Debug)]

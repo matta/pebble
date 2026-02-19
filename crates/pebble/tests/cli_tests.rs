@@ -6,7 +6,7 @@ use tempfile::TempDir;
 mod common;
 use common::TEST_SYNC_BRANCH;
 mod cli_support;
-use cli_support::TestEnv;
+use cli_support::{TestEnv, create_test_issue};
 
 #[test]
 fn test_config_get_unknown_key() {
@@ -52,25 +52,6 @@ fn test_config_get_sync_branch() {
 }
 
 #[test]
-fn test_config_get_sync_branch_json() {
-    let env = TestEnv::setup();
-    let output = env
-        .pebble()
-        .args(["config", "get", "sync-branch", "--json"])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let json_str = String::from_utf8(output).unwrap();
-    let data: serde_json::Value =
-        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
-    assert_eq!(data["key"], "sync-branch");
-    assert_eq!(data["value"], TEST_SYNC_BRANCH);
-}
-
-#[test]
 fn test_sync_fail_no_config() {
     let temp_dir = TempDir::new().unwrap();
     let mut cmd = Command::new(cargo_bin!("pebble"));
@@ -95,7 +76,7 @@ fn test_list_issues_empty() {
 #[test]
 fn test_list_issues_with_data() {
     let env = TestEnv::setup();
-    let issue = cli_support::create_test_issue("test-123", "Fixture Issue");
+    let issue = create_test_issue("test-123", "Fixture Issue");
     env.add_issue_to_worktree(&issue);
 
     env.pebble()

@@ -6,9 +6,6 @@ use pebble::config::Config;
 pub fn run(config: &Config, format: OutputFormat) -> Result<()> {
     let (store, _, jsonl_path) = get_store(config)?;
 
-    if !format.is_json() {
-        eprintln!("Using database: {}", jsonl_path.display());
-    }
     let issues = store.read_issues()?;
 
     match format {
@@ -16,6 +13,7 @@ pub fn run(config: &Config, format: OutputFormat) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&issues)?);
         }
         OutputFormat::Human => {
+            eprintln!("Using database: {}", jsonl_path.display());
             if issues.is_empty() {
                 eprintln!("No issues found.");
             } else {

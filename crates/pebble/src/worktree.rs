@@ -161,6 +161,17 @@ impl<G: GitProvider> WorktreeManager<G> {
         Ok(())
     }
 
+    /// Stages all changes and commits them in the worktree without stdout noise.
+    pub fn commit_all_quiet(&self, message: &str) -> Result<()> {
+        let path = self.get_worktree_path();
+
+        self.git.run(&[&"add", &"-A"], &path)?;
+
+        self.git.run_quiet(&[&"commit", &"-m", &message], &path)?;
+
+        Ok(())
+    }
+
     pub fn get_worktree_path(&self) -> PathBuf {
         generate_worktree_path(&self.repo_root, &self.sync_branch)
     }

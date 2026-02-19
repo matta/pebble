@@ -38,9 +38,10 @@ pub fn run(config: &Config, path: PathBuf, format: OutputFormat) -> Result<()> {
 
     if updated_count > 0 || added_count > 0 {
         store.write_issues(&issues)?;
-        manager.commit_all(&format!("Imported data from {}", path.display()))?;
+        let commit_message = format!("Imported data from {}", path.display());
         match format {
             OutputFormat::Json => {
+                manager.commit_all_quiet(&commit_message)?;
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&serde_json::json!({
@@ -50,6 +51,7 @@ pub fn run(config: &Config, path: PathBuf, format: OutputFormat) -> Result<()> {
                 );
             }
             OutputFormat::Human => {
+                manager.commit_all(&commit_message)?;
                 println!(
                     "Import complete: {} added, {} updated.",
                     added_count, updated_count

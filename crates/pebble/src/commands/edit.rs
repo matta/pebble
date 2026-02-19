@@ -37,7 +37,15 @@ pub fn run(
 
     if changed {
         store.write_issues(&issues)?;
-        manager.commit_all(&format!("Edit issue {}", id))?;
+        let commit_message = format!("Edit issue {}", id);
+        match format {
+            OutputFormat::Json => {
+                manager.commit_all_quiet(&commit_message)?;
+            }
+            OutputFormat::Human => {
+                manager.commit_all(&commit_message)?;
+            }
+        }
     }
 
     let issue = &issues[index];
