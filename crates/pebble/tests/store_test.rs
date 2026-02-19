@@ -270,9 +270,11 @@ fn test_find_issue() {
     store.append_issue(&issue).expect("Failed to append issue");
 
     // Test finding existing issue
-    let found = store.find_issue("find-me").expect("Failed to find issue");
-    assert!(found.is_some());
-    assert_eq!(found.unwrap().title, "Find Me");
+    let found = store
+        .find_issue("find-me")
+        .expect("Failed to find issue")
+        .expect("Issue not found");
+    assert_eq!(found.title, "Find Me");
 
     // Test finding non-existing issue
     let not_found = store
