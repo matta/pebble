@@ -9,9 +9,7 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Implement command-line argument parsing (clap)
     - [x] Test `pebble --version`
     - [x] Test `pebble config get sync.branch`
-- [ ] Implement database connection (rusqlite)
-    - [ ] Test creating a fresh database
-    - [ ] Test applying migrations (schema creation)
+- [x] Confirm JSONL-only storage (no SQLite)
 
 ## Phase 1.5: Tooling & CI (Completed)
 - [x] Restructure workspace (pebble + xtask)
@@ -53,19 +51,43 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Update all code, comments, and tests to use `pebble` instead of `beads` where appropriate
 - [x] Preserve `.forbidden-word-whitelist` and `xtask check-forbidden-words` as per project requirements
 
-## Phase 6: Intelligent 3-Way Merge for Sync
-- [ ] Implement `pebble merge` command (internal tool for git merge driver)
-- [ ] Implement field-level 3-way merge algorithm (matching `beads` behavior)
-    - [ ] Match issues by (ID, CreatedAt, CreatedBy)
-    - [ ] Latest `updated_at` wins for `title` and `description`
-    - [ ] `closed` status wins over `open`
-    - [ ] Dependencies: removals are authoritative (3-way merge)
-    - [ ] Timestamps: `max(left, right)` for `updated_at`
-- [ ] Update `pebble sync` to handle merge conflicts
-    - [ ] Use `git merge` with custom merge driver if available, or manual 3-way merge logic
-- [ ] Add TDD tests for various merge scenarios (conflicts, additions, deletions)
+## Phase 6: Agent UX & Issue Lifecycle (MVP)
+Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 → P6-9 → P6-10
+- [ ] P6-1 Define CLI I/O contract: `stdout` data, `stderr` diagnostics, stable error codes, and exit code map (`0/1/2`).
+- [ ] P6-2 Implement `--json` on **all** commands (add/edit/update/search/list/show/sync/init/import/config).
+- [ ] P6-3 Add `--help-json` (or `pebble help --json`) with output schemas.
+- [ ] P6-4 Update `--help` with concrete examples for core workflows.
+- [ ] P6-5 Add list filters/sorting (`--status`, `--owner`, `--type`, `--priority`, `--updated`).
+- [ ] P6-6 Add `pebble search` (full-text + filters: status, owner, type, priority).
+- [ ] P6-7 Add `pebble update` for status/priority/owner/type/close fields.
+- [ ] P6-8 Remove interactive prompts; require `--yes` / `--force` for destructive ops.
+- [ ] P6-9 Disable color/formatting in structured mode; respect `NO_COLOR` and `isatty()`.
+- [ ] P6-10 Tests: idempotency, exit codes, and stdout/stderr separation.
+
+## Phase 7: Deterministic Merge & Storage Redesign (CRDT-Friendly)
+- [ ] Decide storage layout (no backward-compat required)
+    - [ ] Evaluate CRDT operation log vs. per-issue files vs. single JSONL snapshot
+    - [ ] Consider Markdown + YAML frontmatter for human-readable per-issue storage
+    - [ ] Pick one and document deterministic merge semantics
+- [ ] Define schema v2 (supports children + ordered checklists)
+- [ ] Implement conflict-free merge (no prompts)
+    - [ ] LWW for scalar fields with per-field timestamps
+    - [ ] OR-Set for sets (e.g., tags/children)
+    - [ ] Ordered list CRDT for checklists (RGA/Logoot-style)
+- [ ] Implement `pebble merge` command (git merge driver entrypoint)
+- [ ] Update `pebble sync` to use deterministic merge (no interactive editor)
+- [ ] TDD coverage for concurrent edits, adds, deletes, and checklist merges
+
+## Phase 8: Auto-Sync + Clean Worktree Invariant
+- [ ] Preflight: verify clean worktree or auto-commit before any write
+- [ ] Auto-sync on command entry/exit with debounce state file
+- [ ] Ensure **every** write path commits immediately to sync worktree
+- [ ] Atomic file writes (temp + rename) to avoid partial JSONL writes
+- [ ] File locking to prevent concurrent add/edit/update collisions
+- [ ] Crash recovery: detect dirty worktree and auto-repair on next run
 
 ## Rules
 1. **One Fail at a Time**: don't write multiple failing tests.
 2. **Refactor**: Refactor after passing.
 3. **No Daemon**: Ensure no daemon logic creeps in.
+4. **Regular Gate**: Run `just check` and `just test` regularly to confirm the workspace stays green.

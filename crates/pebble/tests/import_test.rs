@@ -87,3 +87,51 @@ fn test_import_basic() {
         .success()
         .stdout(predicates::str::contains("Imported Issue"));
 }
+
+#[test]
+fn test_import_basic_json() {
+    let temp_dir = TempDir::new().unwrap();
+    let root = temp_dir.path();
+    setup_pebble_repo(root);
+
+    let import_file = root.join("external.jsonl");
+    let issue = Issue {
+        id: "EXT-2".to_string(),
+        title: "Imported JSON Issue".to_string(),
+        description: "External desc".to_string(),
+        status: "open".to_string(),
+        priority: 1,
+        issue_type: "task".to_string(),
+        owner: "external@example.com".to_string(),
+        created_at: "2026-01-01T10:00:00Z".to_string(),
+        created_by: "External".to_string(),
+        updated_at: "2026-01-01T10:00:00Z".to_string(),
+        closed_at: None,
+        close_reason: None,
+    };
+    let json = serde_json::to_string(&issue).unwrap();
+    fs::write(
+        &import_file,
+        format!(
+            "{}
+",
+            json
+        ),
+    )
+    .unwrap();
+
+    let output = Command::new(cargo_bin!("pebble"))
+        .current_dir(root)
+        .args(["import", import_file.to_str().unwrap(), "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let data: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+    assert_eq!(data["added"], 1);
+    assert_eq!(data["updated"], 0);
+}

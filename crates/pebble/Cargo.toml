@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 description = "A distributed issue tracking system built on Git."
 
+[lints]
+workspace = true
+
 [dependencies]
 color-eyre.workspace = true
 chrono = "0.4.43"
