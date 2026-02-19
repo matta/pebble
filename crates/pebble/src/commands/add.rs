@@ -9,10 +9,10 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
 
     let existing_issues = store.read_issues()?;
-    let _existing_ids: std::collections::HashSet<&str> =
-        existing_issues.iter().map(|i| i.id.as_str()).collect();
+    let existing_ids: std::collections::HashSet<String> =
+        existing_issues.into_iter().map(|i| i.id).collect();
 
-    let suffix_length = pebble::recommended_id_length(existing_issues.len());
+    let suffix_length = pebble::recommended_id_length(existing_ids.len());
 
     let mut id;
     loop {
@@ -25,7 +25,7 @@ pub fn run(config: &Config, title: String, description: Option<String>) -> Resul
             .to_lowercase();
         id = format!("{}-{}", prefix, suffix);
 
-        if !store.issue_exists(&id)? {
+        if !existing_ids.contains(&id) {
             break;
         }
     }
