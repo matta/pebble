@@ -7,6 +7,7 @@ use pebble::cli::{EXIT_ERROR, EXIT_OK, EXIT_USAGE, OutputFormat, UsageError};
 use pebble::config::Config;
 
 mod commands;
+mod help_json;
 
 #[derive(Parser)]
 #[command(name = "pebble")]
@@ -88,6 +89,14 @@ enum ConfigCommands {
 fn main() {
     if let Err(err) = color_eyre::install() {
         eprintln!("Error: {}", err);
+    }
+
+    if std::env::args().any(|arg| arg == "--help-json") {
+        if let Err(err) = help_json::print() {
+            eprintln!("Error: {}", err);
+            std::process::exit(EXIT_ERROR);
+        }
+        std::process::exit(EXIT_OK);
     }
 
     let cli = match Cli::try_parse() {
