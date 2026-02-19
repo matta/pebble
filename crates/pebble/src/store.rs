@@ -1,6 +1,7 @@
 use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -178,6 +179,15 @@ impl JsonlStore {
             .with_context(|| format!("Failed to read issues from {}", self.path))
     }
 
+    /// Reads and returns only the IDs of all issues from the store.
+    ///
+    /// This method is optimized to avoid full deserialization of issues when only
+    /// the set of existing IDs is needed (e.g., for ID generation).
+    pub fn read_issue_ids(&self) -> Result<HashSet<String>> {
+        self.read_issue_ids_inner()
+            .with_context(|| format!("Failed to read issue IDs from {}", self.path))
+    }
+
     fn read_issues_inner(&self) -> Result<Vec<Issue>> {
         let path = Path::new(&self.path);
         if !path.exists() {
@@ -196,6 +206,31 @@ impl JsonlStore {
         }
 
         Ok(issues)
+    }
+
+    fn read_issue_ids_inner(&self) -> Result<HashSet<String>> {
+        let path = Path::new(&self.path);
+        if !path.exists() {
+            return Ok(HashSet::new());
+        }
+
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let mut ids = HashSet::new();
+
+        #[derive(Deserialize)]
+        struct IdOnly {
+            id: String,
+        }
+
+        // Optimization: Stream JSON objects directly but only parse the ID field
+        let deserializer = serde_json::Deserializer::from_reader(reader);
+        for item in deserializer.into_iter::<IdOnly>() {
+            let item = item?;
+            ids.insert(item.id);
+        }
+
+        Ok(ids)
     }
 
     /// Overwrites the store file with the provided list of issues.
