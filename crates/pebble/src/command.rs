@@ -132,25 +132,4 @@ mod tests {
                 .contains("Process exited with non-zero status code")
         );
     }
-
-    #[test]
-    fn test_check_output_stderr_ignored_on_success() {
-        // Verify that if the process exits successfully, content on stderr
-        // does not cause an error, and stdout is still captured.
-        // We use `sh` because it's standard in this environment (Linux/CI).
-        // If this were to run on Windows without sh, it would need a fallback (e.g. cmd /C).
-        let output = if cfg!(target_os = "windows") {
-            Command::new("cmd")
-                .args(["/C", "echo stdout output && echo stderr output 1>&2"])
-                .check_output()
-                .expect("Failed to run cmd")
-        } else {
-            Command::new("sh")
-                .args(["-c", "echo stdout output; echo stderr output >&2"])
-                .check_output()
-                .expect("Failed to run sh")
-        };
-
-        assert!(output.contains("stdout output"));
-    }
 }

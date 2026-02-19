@@ -3,7 +3,7 @@ use color_eyre::Result;
 use pebble::config::Config;
 
 pub fn run(config: &Config) -> Result<()> {
-    let manager = get_worktree_manager(config, std::env::current_dir()?)?;
+    let manager = get_worktree_manager(config)?;
 
     println!("Syncing...");
     manager.sync()?;

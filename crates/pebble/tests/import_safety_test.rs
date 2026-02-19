@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
-use pebble::DEFAULT_SYNC_BRANCH;
 use pebble::store::Issue;
 use std::fs;
 use std::process::Command as std_command;
@@ -47,7 +46,7 @@ fn test_import_refuses_dirty_worktree() {
     setup_pebble_repo(root);
 
     // Create a dirty file in the worktree
-    let worktree_path = pebble::worktree::generate_worktree_path(root, DEFAULT_SYNC_BRANCH);
+    let worktree_path = root.join(".git/x-pebble");
     fs::write(worktree_path.join("dirty.txt"), "dirty").unwrap();
 
     let import_file = root.join("external.jsonl");

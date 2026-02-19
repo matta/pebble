@@ -1,6 +1,5 @@
 pub mod command;
 pub mod config;
-pub mod git_provider;
 pub mod store;
 pub mod worktree;
 
@@ -43,6 +42,3 @@ pub fn recommended_id_length(current_population: usize) -> usize {
 
     length.ceil() as usize
 }
-
-pub const DEFAULT_SYNC_BRANCH: &str = "pebble-data";
-
