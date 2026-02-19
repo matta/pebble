@@ -1,6 +1,7 @@
 use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -114,6 +115,12 @@ impl Issue {
     }
 }
 
+/// Helper struct for partial deserialization of issue IDs.
+#[derive(Deserialize)]
+struct IdOnly {
+    id: String,
+}
+
 /// A persistent store for managing issues in a JSON Lines (JSONL) file.
 ///
 /// This struct handles reading and writing [`Issue`] records to a file at a specified path.
@@ -140,6 +147,17 @@ impl JsonlStore {
         Self {
             path: path.to_string(),
         }
+    }
+
+    /// Helper to open a buffered reader for the store file.
+    /// Returns `Ok(None)` if the file does not exist.
+    fn open_reader(&self) -> Result<Option<BufReader<File>>> {
+        let path = Path::new(&self.path);
+        if !path.exists() {
+            return Ok(None);
+        }
+        let file = File::open(path)?;
+        Ok(Some(BufReader::new(file)))
     }
 
     /// Reads and deserializes all issues from the store file.
@@ -178,14 +196,20 @@ impl JsonlStore {
             .with_context(|| format!("Failed to read issues from {}", self.path))
     }
 
-    fn read_issues_inner(&self) -> Result<Vec<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
+    /// Reads and returns only the IDs of all issues from the store.
+    ///
+    /// This method is optimized to avoid full deserialization of issues when only
+    /// the set of existing IDs is needed (e.g., for ID generation).
+    pub fn read_issue_ids(&self) -> Result<HashSet<String>> {
+        self.read_issue_ids_inner()
+            .with_context(|| format!("Failed to read issue IDs from {}", self.path))
+    }
 
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
+    fn read_issues_inner(&self) -> Result<Vec<Issue>> {
+        let Some(reader) = self.open_reader()? else {
+            return Ok(Vec::new());
+        };
+
         let mut issues = Vec::new();
 
         // Optimization: Stream JSON objects directly from reader to avoid allocating String for each line
@@ -196,6 +220,23 @@ impl JsonlStore {
         }
 
         Ok(issues)
+    }
+
+    fn read_issue_ids_inner(&self) -> Result<HashSet<String>> {
+        let Some(reader) = self.open_reader()? else {
+            return Ok(HashSet::new());
+        };
+
+        let mut ids = HashSet::new();
+
+        // Optimization: Stream JSON objects directly but only parse the ID field
+        let deserializer = serde_json::Deserializer::from_reader(reader);
+        for item in deserializer.into_iter::<IdOnly>() {
+            let item = item?;
+            ids.insert(item.id);
+        }
+
+        Ok(ids)
     }
 
     /// Overwrites the store file with the provided list of issues.
@@ -385,18 +426,9 @@ impl JsonlStore {
     }
 
     fn find_issue_inner(&self, id: &str) -> Result<Option<Issue>> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        let Some(reader) = self.open_reader()? else {
             return Ok(None);
-        }
-
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
+        };
 
         for line in reader.lines() {
             let line = line?;
@@ -420,18 +452,9 @@ impl JsonlStore {
     /// This method is optimized for existence checks (e.g., during ID generation)
     /// and avoids allocating full Issue structs.
     pub fn issue_exists(&self, id: &str) -> Result<bool> {
-        let path = Path::new(&self.path);
-        if !path.exists() {
+        let Some(reader) = self.open_reader()? else {
             return Ok(false);
-        }
-
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-
-        #[derive(Deserialize)]
-        struct IdOnly {
-            id: String,
-        }
+        };
 
         for line in reader.lines() {
             let line = line?;
