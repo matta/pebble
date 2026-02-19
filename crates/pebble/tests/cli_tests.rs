@@ -202,3 +202,13 @@ fn test_no_args_fails() {
             "Usage: pebble [OPTIONS] <COMMAND>",
         ));
 }
+
+#[test]
+fn test_help_includes_examples() {
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Examples:"))
+        .stdout(predicate::str::contains("pebble init"));
+}

@@ -12,6 +12,9 @@ mod help_json;
 #[derive(Parser)]
 #[command(name = "pebble")]
 #[command(version, about = "A distributed issue tracking system built on Git.", long_about = None)]
+#[command(
+    after_help = "Examples:\n  pebble init\n  pebble add \"Fix login\" --description \"Investigate session timeout\"\n  pebble list\n  pebble show issue-abc123\n  pebble edit issue-abc123 --title \"Fix login flow\"\n  pebble sync\n  pebble import issues.jsonl\n  pebble config get sync-branch"
+)]
 struct Cli {
     /// Change to this directory before doing anything else
     #[arg(short = 'C', long)]
@@ -35,6 +38,11 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Inspect or read configuration values
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
     /// Import issues from a JSONL file
     Import {
         /// Path to the JSONL file to import
@@ -42,18 +50,7 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
-    Config {
-        #[command(subcommand)]
-        command: ConfigCommands,
-    },
-    Sync {
-        #[arg(long)]
-        json: bool,
-    },
-    List {
-        #[arg(long)]
-        json: bool,
-    },
+    /// Add a new issue
     Add {
         title: String,
         #[arg(long)]
@@ -61,17 +58,29 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
-    Show {
-        id: String,
-        #[arg(long)]
-        json: bool,
-    },
+    /// Edit an existing issue
     Edit {
         id: String,
         #[arg(long)]
         title: Option<String>,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show a single issue
+    Show {
+        id: String,
+        #[arg(long)]
+        json: bool,
+    },
+    /// List issues in the data worktree
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Sync the data worktree with the remote
+    Sync {
         #[arg(long)]
         json: bool,
     },
