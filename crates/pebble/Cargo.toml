@@ -2,18 +2,19 @@
 name = "pebble"
 version = "0.1.0"
 edition = "2024"
+description = "A distributed issue tracking system built on Git."
 
 [dependencies]
-color-eyre = "0.6"
+color-eyre.workspace = true
 chrono = "0.4.43"
-clap = { version = "4.5.59", features = ["derive", "env"] }
-serde = { version = "1.0.228", features = ["derive"] }
+clap = { workspace = true, features = ["derive", "env"] }
+serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0.149"
-toml = "0.8"
+toml.workspace = true
 rand = "0.10.0"
 const_format = "0.2"
 
 [dev-dependencies]
 assert_cmd = "=2.1.2"
 predicates = "=3.1.4"
-tempfile = "=3.25.0"
+tempfile.workspace = true
