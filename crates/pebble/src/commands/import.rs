@@ -1,17 +1,17 @@
 use crate::commands::get_store;
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
+use pebble::cli::OutputFormat;
 use pebble::config::Config;
 use std::path::PathBuf;
 
-pub fn run(config: &Config, path: PathBuf) -> Result<()> {
+pub fn run(config: &Config, path: PathBuf, format: OutputFormat) -> Result<()> {
     let (store, manager, _jsonl_path) = get_store(config)?;
 
     if manager.is_dirty()? {
-        eprintln!(
+        return Err(eyre!(
             "Error: Pebble data worktree has uncommitted changes. Please commit or stash them before importing."
-        );
-        std::process::exit(1);
+        ));
     }
 
     let mut issues = store.read_issues()?;
@@ -38,13 +38,41 @@ pub fn run(config: &Config, path: PathBuf) -> Result<()> {
 
     if updated_count > 0 || added_count > 0 {
         store.write_issues(&issues)?;
-        manager.commit_all(&format!("Imported data from {}", path.display()))?;
-        println!(
-            "Import complete: {} added, {} updated.",
-            added_count, updated_count
-        );
+        let commit_message = format!("Imported data from {}", path.display());
+        match format {
+            OutputFormat::Json => {
+                manager.commit_all_quiet(&commit_message)?;
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "added": added_count,
+                        "updated": updated_count,
+                    }))?
+                );
+            }
+            OutputFormat::Human => {
+                manager.commit_all(&commit_message)?;
+                println!(
+                    "Import complete: {} added, {} updated.",
+                    added_count, updated_count
+                );
+            }
+        }
     } else {
-        println!("Import complete: No changes.");
+        match format {
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "added": 0,
+                        "updated": 0,
+                    }))?
+                );
+            }
+            OutputFormat::Human => {
+                println!("Import complete: No changes.");
+            }
+        }
     }
     Ok(())
 }
