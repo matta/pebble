@@ -157,9 +157,10 @@ impl<G: GitProvider> WorktreeManager<G> {
     pub fn commit_all(&self, message: &str) -> Result<()> {
         let path = self.get_worktree_path();
 
-        self.git.run(&[&"add", &"-A"], &path)?;
+        self.git.run_quiet(&[&"add", &"-A"], &path)?;
 
-        self.git.run(&[&"commit", &"-m", &message], &path)?;
+        self.git
+            .run_quiet(&[&"commit", &"-m", &message], &path)?;
 
         Ok(())
     }
@@ -257,7 +258,7 @@ impl<G: GitProvider> WorktreeManager<G> {
     fn commit_local_changes(&self, worktree_path: &Path) -> Result<()> {
         // Stage all changes (including new files)
         self.git
-            .run(&[&"add", &"."], worktree_path)
+            .run_quiet(&[&"add", &"."], worktree_path)
             .with_context(|| "Failed to stage changes")?;
 
         // Check if there are changes to commit
@@ -268,7 +269,7 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         if !status.trim().is_empty() {
             self.git
-                .run(
+                .run_quiet(
                     &[&"commit", &"--no-verify", &"-m", &"Auto-sync"],
                     worktree_path,
                 )
