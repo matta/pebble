@@ -100,25 +100,7 @@ Run the canary deploy pipeline against the `staging` cluster.
 **Cons:**
 - **Human Antagonistic:** Humans cannot read or edit JSONL manually. This violates the "degrade gracefully" principle if the CLI/UI is unavailable. Pull Request diffs for a JSONL state change are extremely difficult for human reviewers to parse.
 
-## 5. Implementation Language (Out of Scope)
-
-This RFC does **not** propose changing the implementation language. Pebble remains a Rust CLI; language alternatives are intentionally deferred.
-
-## 6. Re-imagining the Workflow & The Flawed Hybrid Paradigm
-
-### A Flawed Idea: The "Read-Model / Write-Model Projection"
-One brainstorming idea to resolve format friction was to separate presentation from storage:
-1. Store actual task data in a hidden SQLite or JSONL Worktree (Write-Model).
-2. Generate a `.pebble/` folder full of `.gitignore`'d Markdown files purely for the human UI (Read-Model).
-
-**Why this fails:**
-- **Agent Blindness:** Agent frameworks (Cursor, Copilot, Aider, etc.) are explicitly hard-coded to ignore `.gitignore` files. Generating ignored Markdown files means agents will completely ignore the UI you just built for them.
-- **Loss of Code Review:** Version control diffs and review tooling (like GitHub PR reviews) require the Markdown files to be committed. If they are `.gitignore`'d, you cannot comment on a task description change in a Pull Request.
-
-### The Honest Conclusion
-If we want the benefits of Git tooling (PR reviews, history, blame) and the benefits of AI Agents natively understanding the context files, **the files themselves must be committed to the main branch as plain text (Avenue A), and they must live in a visible directory in the source tree (not a hidden folder).**
-
-## 7. Decision & Recommendation
+## 5. Technical Specification
 
 **Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. Any caches or indexes are strictly derived and optional.
 
@@ -133,6 +115,28 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 - **Change in storage location:** `add`/`update`/`show`/`list` read and write Markdown files under the visible directory (default `docs/pebble/`).
 - **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
 - **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
+
+**CLI Command Surface (Authoritative)**
+**Global options**
+- `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
+- `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
+
+**Repository management**
+- `pebble init`: Bootstraps the environment and creates the tasks directory.
+
+**Query commands**
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (computed from `after`, shows only tasks where dependencies are not `done`).
+- `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
+- `pebble search <query>`: Full-text search across titles and Markdown bodies.
+
+**Mutation commands**
+- `pebble add <title>`: Generates the boilerplate `.md` file. Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`.
+- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter.
+- Users can edit Markdown bodies directly; no dedicated `edit` command is required.
+
+**Validation**
+- `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
+- `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 **Read/Write Policy**
 - **Read-only:** `list`, `show`, `search`, and `check` never modify files.
@@ -162,6 +166,51 @@ Intentionally omitted:
 Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
 
+**Frontmatter Format**
+- YAML frontmatter delimited by `---`.
+
+**Reference Rust Schema**
+```rust
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
+#[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "done", "canceled".
+pub enum TaskStatus {
+    Todo,
+    InProgress,
+    Done,
+    Canceled,
+}
+
+/// Represents the exact structure of the YAML front matter.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TaskFrontmatter {
+    pub id: String,
+    // Status strictly validated against the enum.
+    pub status: TaskStatus,
+    // Optional priority for ordering.
+    pub priority: Option<u8>,
+    pub parent: Option<String>,
+    pub created_at: DateTime<Utc>,
+    // Graph edges: empty arrays default nicely.
+    #[serde(default)]
+    pub after: Vec<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+/// The in-memory representation.
+/// This is what the CLI stores in its graph topology.
+#[derive(Debug, Clone)]
+pub struct TaskNode {
+    pub path: PathBuf,
+    pub frontmatter: TaskFrontmatter,
+    // Note: `description` is gone. This body captures the rest of the file.
+    pub body: String,
+}
+```
 **Rationale:** There is no concrete use case that requires these fields in the schema today. Adding them would introduce cost (parsing or updating on every write) without clear value. The fallback is Git history (`git log`, `git blame`) and, if needed later, a dedicated convenience command can compute and display recency metadata without making it canonical.
 
 **Timestamp Rules**
@@ -228,7 +277,7 @@ Computed:
 
 **Tooling Contract for File Layout**
 - The canonical identifier is the frontmatter `id`; filenames are advisory only.
-- The root directory defaults to `docs/pebble/` and is configurable, but must be visible in the repo.
+- The root directory defaults to `docs/pebble/` and is configurable; visibility (hidden directory, gitignored path, etc.) is a user choice.
 - The CLI treats every `*.md` file under the root as a task file.
 - The CLI never changes `id`. Users may edit it manually, but the `id` **must** be unique across the repo.
 - If two files share the same `id`, the CLI fails with a clear error and no writes.
@@ -274,125 +323,6 @@ Computed:
 - `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
 - Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
 - The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
-
-## 8. Recommendations & Discussion Points
-
-To retain the dual-audience goal while stripping away enterprise complexity, we should consider:
-
-1. **Embrace In-Band Synchronization:** Accept that tracking tasks with code is a feature. If you need an out-of-band bug filed, branch from `main`, add the Markdown file, and merge it. Enjoy the temporal consistency of checking out old Git refs and seeing the exact state of the project map.
-2. **Commit Markdown Natively:** Use Avenue A (Markdown + YAML Frontmatter) committed directly to the main branch in a visible directory like `docs/pebble/`. This provides instant, out-of-the-box UI on GitHub and native semantic understanding for Agents.
-3. **The CLI as a Cache/Accelerator:** The CLI's job isn't to hide the storage; it is to quickly parse the hundreds of Markdown files, build the dependency DAG, and answer questions like "What tasks are blocking X?" or serve that graph locally via MCP.
-
-## 9. Detailed Design Explorations & Open Decisions
-
-To fully realize the "Markdown Native" Avenue A paradigm, several technical details must be debated and finalized:
-
-- [x] **Frontmatter Format: YAML vs TOML**
-  While TOML is preferred for configuration in the Rust ecosystem, **YAML is the definitive recommendation here because of network effects.**
-  - **The YAML Network Effect:** YAML frontmatter bounded by `---` is recognized natively by GitHub, Obsidian, Hugo, Prettier, language servers, and nearly all IDEs. Choosing TOML (often bounded by `+++`) breaks this ecosystem interoperability, defeating a major benefit of Avenue A.
-  - **Mitigating YAML's Flaws in Rust:** YAML is infamous for type-inference quirks (the "Norway problem" where `no` becomes a boolean). However, in a Rust context using `serde_yml` (the community fork of `serde_yaml`), we can mitigate this entirely by defining a strictly typed `struct TaskFrontmatter`. If a user types `status: no` and the struct expects an enum, `serde_yml` will throw a clear validation error. We could also explore a "StrictYAML" parsing crate to intentionally reject complex, ambiguous YAML features.
-
-- [x] **Frontmatter Schema Design: Resolving Discrepancies**
-  Comparing the current Pebble `golden.jsonl` schema against the minimalist Rust schema proposed, there are several key discrepancies. Handling these one by one reveals the philosophical shifts of moving to a Markdown-native approach:
-
-  **1. The `description` field (In Pebble, missing from Snippet)**
-  - *Current:* Pebble stores the prose of the task inside a JSON string field (`description`).
-  - *Decision:* **Drop from Frontmatter.** The entire justification for Avenue A is that the Markdown body *is* the description. The frontmatter only handles metadata; the prose lives natively below the `---` delimiters.
-
-  **2. Graph Edges (`parent` and `after` vs complex `dependencies`)**
-  - *Current:* Pebble uses a complex `dependencies` array of objects (e.g., `[{"issue_id": "A", "depends_on_id": "B", "type": "parent-child", "created_at": "..."}]`) to track every edge and who created it.
-  - *Snippet:* Simplifies this to `parent: Option<String>` and `after: Vec<String>` with `before` computed as the inverse.
-  - *Decision:* **Store one direction only.** Tracking the `created_at` of an edge link is overkill for local-first single-repo development. Explicitly defining `parent` as a scalar makes tree traversal much faster and easier for humans to read and edit. `after` is stored; `before` is derived.
-
-  **3. `tags` (In Snippet, missing from Pebble)**
-  - *Current:* Pebble doesn't have a first-class `tags` string array in the examined golden schema.
-  - *Decision:* **Keep.** A `tags` array is highly idiomatic in Markdown frontmatter (Obsidian, Jekyll) and provides lightweight categorization without needing rigorous epic/parent linkage.
-
-  **4. `priority` (In Pebble, missing from Snippet)**
-  - *Current:* Pebble relies on an explicit integer `priority` (e.g., 0, 1, 2) which dictates sorting.
-  - *Decision:* **Requires Debate.** Does minimal single-repo development need explicit numerical priorities (P0, P1, P2), or is graph topology (what is blocking what) alongside `status` sufficient? For now, we should probably add `priority: Option<u8>` to the schema to maintain feature parity.
-
-  **5. Audit Trail (`owner`, `created_by`, `closed_at`, `close_reason`)**
-  - *Current:* Pebble tracks exhaustive audit metadata for every task closure.
-  - *Snippet:* Drops most of this, reducing to just `created_at`.
-  - *Decision:* **Delegate to Git.** In a repository-backed bug tracker, `git blame` natively tracks who created a task, who closed it, and when. Storing `owner` or `close_reason` in the file duplicates version control features. We should keep `created_at` for simple UI sorting, but drop `created_by`, `updated_at`, `closed_at`, and `owner` in favor of trusting `git log`.
-
-  **Proposed Final Rust Schema:**
-  ```rust
-  use chrono::{DateTime, Utc};
-  use serde::{Deserialize, Serialize};
-  use std::path::PathBuf;
-
-  #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-  #[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "done", "canceled".
-  pub enum TaskStatus {
-      Todo,
-      InProgress,
-      Done,
-      Canceled,
-  }
-
-  /// Represents the exact structure of the YAML front matter.
-  #[derive(Debug, Deserialize, Serialize, Clone)]
-  pub struct TaskFrontmatter {
-      pub id: String,
-      // Status strictly validated against the enum
-      pub status: TaskStatus,
-      
-      // Kept for parity, but kept optional if not strictly needed
-      pub priority: Option<u8>,
-      
-      pub parent: Option<String>,
-      pub created_at: DateTime<Utc>,
-      
-      // Graph edges: empty arrays default nicely.
-      #[serde(default)]
-      pub after: Vec<String>,
-      
-      #[serde(default)]
-      pub tags: Vec<String>,
-  }
-
-  /// The in-memory representation.
-  /// This is what the CLI stores in its graph topology.
-  #[derive(Debug, Clone)]
-  pub struct TaskNode {
-      pub path: PathBuf,
-      pub frontmatter: TaskFrontmatter,
-      // Note: `description` is gone. This body captures the rest of the file.
-      pub body: String,
-  }
-  ```
-
-- [x] **CLI Command Surface (Aligned with Pebble Contract)**
-  If the CLI is an accelerator rather than a database dictating access, its job is to make querying the DAG and bulk-mutating files effortless for humans and agents. The command surface below aligns with the existing CLI contract while switching storage to Markdown:
-
-  - **Global Options:**
-    - `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect.
-      - Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
-    - `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
-
-  - **Repository Management:**
-    - `pebble init`: Bootstraps the environment and creates the tasks directory.
-
-  - **Query Commands:**
-    - `pebble list` (alias: `ls`): Parses the directory and builds the DAG.
-      - Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (computed from `after`, shows only tasks where dependencies are not `done`).
-    - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
-    - `pebble search <query>`: Full-text search across titles and Markdown bodies.
-
-  - **Mutation Commands** (These modify the Markdown files directly):
-    - `pebble add <title>`: Generates the boilerplate `.md` file.
-      - Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`.
-    - `pebble update <id>`: Safely modifies the frontmatter.
-      - Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. (Adheres to the CLI contract for incremental list mutations).
-      - `--before` / `--add-before` / `--remove-before` are syntactic sugar: they update the referenced task(s)’ `after` lists to include or remove the current task’s `id`. No `before` field is stored in frontmatter.
-    - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
-
-  - **Validation:**
-    - `pebble check`: A strict linter that evaluates the `.md` database.
-      - Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
-    - `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 ## Appendix: Iterative Refinement
 
