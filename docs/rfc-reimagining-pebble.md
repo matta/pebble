@@ -27,7 +27,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
    - `canceled` means "not done and will never be done."
 2. **Hierarchy & Composition:** Epics and subtasks. A task can be heavily composed of smaller tasks (`parent/child`).
 3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; **readiness** is computed from whether all `after` prerequisites are `done` and the task is not `paused`.
-4. **Basic Metadata:** Time-based metadata is restricted to creation (`created_at`) and completion (`resolved_at`) timestamps. The `resolved_at` field enables querying completed work and powers the deterministic `archive` feature without relying on volatile filesystem `mtime` or requiring expensive Git history lookups. Audit trail (owner, closed_at, close_reason, updated_at) is intentionally omitted and delegated to Git history.
+4. **Basic Metadata:** Time-based metadata is restricted to creation (`created_at`), last modification (`modified_at`), and completion (`resolved_at`) timestamps. The `modified_at` field helps identify stalled or forgotten work (e.g., to review neglected tasks). The `resolved_at` field enables querying completed work and powers the deterministic `archive` feature without relying on volatile filesystem `mtime` or requiring expensive Git history lookups. Audit trail (owner, updated_at, closed_at, close_reason) is intentionally omitted and delegated to Git history.
 
 **Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
 
@@ -66,7 +66,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Mutation commands**
 - `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
-- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
+- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter.
 - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
 
@@ -95,6 +95,7 @@ Optional:
 - `after` (string array; multiple prerequisites allowed)
 - `tags` (string array)
 - `priority` (integer)
+- `modified_at` (RFC3339 string; automatically updated on modification)
 - `resolved_at` (RFC3339 string; automatically managed based on status)
 
 Intentionally omitted:
@@ -132,6 +133,7 @@ pub struct TaskFrontmatter {
     pub priority: Option<u8>,
     pub parent: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub modified_at: Option<DateTime<Utc>>,
     pub resolved_at: Option<DateTime<Utc>>,
     // Graph edges: empty arrays default nicely.
     #[serde(default)]
@@ -153,12 +155,14 @@ pub struct TaskNode {
 }
 ```
 **Rationale for Omitted Fields:** 
-- **Audit Metadata (`owner`, `updated_at`, etc):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value.
+- **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
 - **Task Types (`type`):** Generic tags (`tags` array) are sufficient for lightweight categorization. Supporting configurable type taxonomies introduces complexity counter to Pebble's minimalist goals.
 
 **Timestamp Rules**
 - `created_at` is required in frontmatter and must be RFC3339.
 - The CLI sets `created_at` on `add` to the current time in UTC.
+- `modified_at` is optional and must be RFC3339 if present.
+- The CLI automatically sets/updates `modified_at` to the current time in UTC during any `pebble update` operation.
 - `resolved_at` is optional and must be RFC3339 if present.
 - The CLI sets `resolved_at` to the current UTC time when updating a task's status to `done` or `canceled` (if not already set).
 - The CLI removes `resolved_at` when updating a task's status from `done` or `canceled` to any other status.
@@ -217,7 +221,7 @@ All `--json` output is a single JSON object printed to stdout per invocation.
 - **`config get --json`**: `{"key": "<key>", "value": "<value>"}`.
 
 A `TaskObject` includes:
-- All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `resolved_at`, `after`, `tags`).
+- All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `tags`).
 - Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` and status is `todo` or `in_progress`).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
 - `path`: the file path relative to `tasks-dir`.
