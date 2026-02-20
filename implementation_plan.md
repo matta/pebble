@@ -103,7 +103,7 @@ Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 
   - [x] Filters: status, owner, type, priority.
 - [ ] P6-7 Add `pebble update` for status/priority/owner/type/close fields.
   - [x] Update: status/priority/owner/type.
-  - [ ] Close behavior: `close_reason` validation + `closed_at` auto-set.
+  - [x] Close behavior: `close_reason` validation + `closed_at` auto-set.
 - [ ] P6-8 Remove interactive prompts; require `--yes` / `--force` for destructive ops.
 - [ ] P6-9 Disable color/formatting in structured mode; respect `NO_COLOR` and `isatty()`.
 - [ ] P6-10 Tests: idempotency, exit codes, and stdout/stderr separation.

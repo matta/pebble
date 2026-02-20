@@ -263,6 +263,8 @@ fn test_update_status_priority_owner() {
             id,
             "--status",
             "closed",
+            "--close-reason",
+            "Done",
             "--priority",
             "5",
             "--owner",
@@ -288,7 +290,139 @@ fn test_update_status_priority_owner() {
         serde_json::from_str(&json_str).expect("Failed to parse JSON output");
 
     assert_eq!(issue["status"], "closed");
+    assert_eq!(issue["close_reason"], "Done");
     assert_eq!(issue["priority"], 5);
     assert_eq!(issue["owner"], "new@example.com");
     assert_eq!(issue["issue_type"], "bug");
+}
+
+#[test]
+fn test_update_close_requires_reason() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Reason Required"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    env.pebble()
+        .args(["update", id, "--status", "closed"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("close_reason"));
+}
+
+#[test]
+fn test_update_close_reason_requires_closed_status() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Reason Needs Closed"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    env.pebble()
+        .args(["update", id, "--close-reason", "Done"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("close_reason"));
+}
+
+#[test]
+fn test_update_close_sets_closed_at() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Me"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    let output = env
+        .pebble()
+        .args([
+            "update",
+            id,
+            "--status",
+            "closed",
+            "--close-reason",
+            "Done",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let issue: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+
+    assert_eq!(issue["status"], "closed");
+    assert_eq!(issue["close_reason"], "Done");
+    assert!(issue["closed_at"].as_str().is_some());
+}
+
+#[test]
+fn test_update_close_reason_on_closed_issue() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Twice"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    env.pebble()
+        .args([
+            "update",
+            id,
+            "--status",
+            "closed",
+            "--close-reason",
+            "First",
+        ])
+        .assert()
+        .success();
+
+    let output = env
+        .pebble()
+        .args(["update", id, "--close-reason", "Second", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let issue: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+
+    assert_eq!(issue["status"], "closed");
+    assert_eq!(issue["close_reason"], "Second");
 }

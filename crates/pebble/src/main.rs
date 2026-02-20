@@ -116,6 +116,9 @@ enum Commands {
         /// New owner for the issue
         #[arg(long)]
         owner: Option<String>,
+        /// Close reason (required when closing)
+        #[arg(long)]
+        close_reason: Option<String>,
         /// New type for the issue
         #[arg(long = "type")]
         issue_type: Option<String>,
@@ -253,6 +256,7 @@ fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
             status,
             priority,
             owner,
+            close_reason,
             issue_type,
             json,
         } => {
@@ -262,6 +266,7 @@ fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
                 status,
                 priority,
                 owner,
+                close_reason,
                 issue_type,
             };
             run_update(require_config(config)?, id, fields, json)
