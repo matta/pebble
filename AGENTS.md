@@ -30,6 +30,10 @@ This project is a Rust re-implementation of the existing `beads` tool, with a dr
     - **Operations**: All `pebble` commands (read/write) must locate this worktree (default `.git/pebble-worktrees/<branch>`) and operate directly on the file within it.
     - **Sync Command**: `pebble sync` is strictly a wrapper for Git operations (`fetch`, `merge`, `push`) **within the worktree**. It does **not** copy files between the worktree and the main working directory.
 
+- **Merge Strategy: Deterministic LWW**:
+    - **Conflict Resolution**: The system uses a **Last-Write-Wins (LWW)** strategy based on the `updated_at` timestamp at the **Issue granularity**.
+    - See `DECISIONS.md` for full details.
+
 ## Data Model
 
 The `Issue` struct must strictly adhere to the following schema derived from `issues.jsonl`:
@@ -64,6 +68,7 @@ struct Issue {
 
 - [CLI I/O Contract](docs/cli-contract.md) - Defines stdout/stderr usage and exit code semantics.
 - [UX for Agents](docs/ux-for-agents.md) - Guidelines for designing the CLI for humans and agents.
+- [Decisions](DECISIONS.md) - Record of architectural decisions.
 
 ## Workflows
 

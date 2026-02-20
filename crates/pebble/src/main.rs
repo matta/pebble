@@ -9,6 +9,19 @@ use pebble::config::Config;
 mod commands;
 mod help_json;
 
+/// Pebble: A distributed issue tracking system built on Git.
+///
+/// # MVP Command Surface
+///
+/// The following commands constitute the MVP for daily use (see `DECISIONS.md`):
+/// - `add`: Create issues.
+/// - `list`: List issues with filters.
+/// - `show`: Display issue details.
+/// - `update`: Modify issues (LWW merge strategy).
+/// - `search`: Find issues by text.
+///
+/// All commands support `--json` output, and the global `--help-json` flag
+/// provides a schema dump for tool integration.
 #[derive(Parser)]
 #[command(name = "pebble")]
 #[command(version, about = "A distributed issue tracking system built on Git.", long_about = None)]
@@ -38,7 +51,7 @@ enum Commands {
         /// Name of the synchronization branch
         #[arg(long, default_value = pebble::DEFAULT_SYNC_BRANCH)]
         sync_branch: String,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
@@ -57,7 +70,7 @@ enum Commands {
     Import {
         /// Path to the JSONL file to import
         path: std::path::PathBuf,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
@@ -67,7 +80,7 @@ enum Commands {
     )]
     Search {
         query: String,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
@@ -79,7 +92,7 @@ enum Commands {
         title: String,
         #[arg(long)]
         description: Option<String>,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
@@ -101,7 +114,7 @@ enum Commands {
         owner: Option<String>,
         #[arg(long)]
         issue_type: Option<String>,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
@@ -111,7 +124,7 @@ enum Commands {
     )]
     Show {
         id: String,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
@@ -126,14 +139,14 @@ enum Commands {
         owner: Option<String>,
         #[arg(long)]
         priority: Option<i32>,
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },
     /// Sync the data worktree with the remote
     #[command(after_help = "Examples:\n  pebble sync\n  pebble sync --json")]
     Sync {
-        /// Output as JSON
+        /// Output as JSON (MVP)
         #[arg(long)]
         json: bool,
     },

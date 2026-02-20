@@ -85,11 +85,11 @@ pub struct Issue {
 }
 
 impl Issue {
-    /// Merges another issue into this one.
+    /// Merges another issue into this one using Last-Write-Wins (LWW).
     ///
-    /// This method updates mutable fields of the current issue if the `other` issue has
-    /// a more recent `updated_at` timestamp. This is primarily used for syncing
-    /// and importing data to resolve conflicts by taking the latest version.
+    /// This method implements the deterministic merge strategy described in `DECISIONS.md`.
+    /// It updates mutable fields of the current issue if the `other` issue has
+    /// a more recent `updated_at` timestamp.
     ///
     /// # Examples
     ///
