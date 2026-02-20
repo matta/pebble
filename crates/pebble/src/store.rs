@@ -35,6 +35,25 @@ use std::path::Path;
 ///
 /// assert_eq!(issue.status, "open");
 /// ```
+///
+/// Represents a dependency relationship between two issues.
+///
+/// This struct tracks the link between a source issue and a target issue (the dependency),
+/// including the type of dependency (e.g., "blocks", "relates_to").
+///
+/// # Examples
+///
+/// ```
+/// use pebble::store::IssueDependency;
+///
+/// let dependency = IssueDependency {
+///     issue_id: "PROJECT-123".to_string(),
+///     depends_on_id: "PROJECT-456".to_string(),
+///     dependency_type: "blocks".to_string(),
+///     created_at: "2023-10-27T10:00:00Z".to_string(),
+///     created_by: "Alice".to_string(),
+/// };
+/// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct IssueDependency {
     pub issue_id: String,
@@ -284,8 +303,10 @@ impl JsonlStore {
     /// Overwrites the store file with the provided list of issues.
     ///
     /// This method replaces the entire content of the file with the serialized JSON
-    /// representation of the given issues. If the file or its parent directories
-    /// do not exist, they will be created.
+    /// representation of the given issues. The issues are sorted by their ID before writing
+    /// to ensure deterministic output and minimize diffs in version control.
+    ///
+    /// If the file or its parent directories do not exist, they will be created.
     ///
     /// # Errors
     ///

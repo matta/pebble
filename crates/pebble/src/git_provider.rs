@@ -4,6 +4,12 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::process::Command;
 
+/// An abstraction for executing Git commands, allowing for testability and mocking.
+///
+/// This trait decouples the application logic from the actual Git command execution,
+/// enabling unit tests to verify Git interactions without needing a real Git repository.
+/// It provides methods for running commands, capturing output, and checking status,
+/// with support for suppressing stdout/stderr.
 pub trait GitProvider {
     fn run(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()>;
     fn run_quiet(&self, args: &[&dyn AsRef<OsStr>], current_dir: &Path) -> Result<()>;
