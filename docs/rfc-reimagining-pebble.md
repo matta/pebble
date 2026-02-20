@@ -16,98 +16,95 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `blocks` / `depends-on` relationships.
 4. **Basic Metadata:** Creation timestamps, resolution reasons, and perhaps basic assignment/ownership (useful when humans and agents collaborate).
 
-## 3. Storage Format Paradigms
+## 3. The "State Synchronization" Problem
 
-Since both humans and AIs interact with this system within a Git repository, the storage format is the most determinative architectural choice.
+Before discussing specific file formats, we must address the fundamental friction—or feature—of co-locating a task database with application code inside a version control system like Git.
+
+### The Problem: "The Bug Database Friction"
+If task state is tracked in the main branch (e.g., inside a `.pebble/` folder), it feels like it creates a workflow bottleneck:
+- **Tangent Discoveries:** A developer working on `feature-A` discovers a bug related to `feature-B`. If they create the task locally and commit it, it's not visible project-wide until `feature-A` is merged.
+- **Merge Conflicts on State:** Changing the status of an ongoing epic on multiple feature branches simultaneously can lead to merge conflicts simply trying to track *what* is being done.
+
+*This explains why most industry-standard bug trackers (Jira, Linear, GitHub Issues) exist completely "out-of-band" (hosted externally) rather than in the repository itself.*
+
+### The Counter-Argument: "In-Band Storage is a Feature, Not a Bug"
+Alternatively, tracking task states directly with the code is a massive benefit that out-of-band trackers lack:
+- **Temporal Consistency:** If you `git checkout` a release from 6 months ago, you see exactly what tasks were pending, blocked, or completed *at that exact moment in time*. The state of the project planner perfectly matches the state of the codebase.
+- **The Solution to Tangent Discoveries:** If a user needs to file an issue separate from their current development track, the solution isn't to build a complex global sync mechanism—they simply branch off `main`, commit the new task, and merge it quickly. It forces good hygiene.
+
+### Paradigm 1: The Out-of-Band Service (The External API)
+*Move state out of the repository entirely, relying on a lightweight backend service.*
+- **Pros:** Eliminates Git friction. Task status is instantly globally visible.
+- **Cons:** Violates the "local first, offline capable, single-repo" ethos. Introduces infrastructure overhead. Destroys temporal consistency with the codebase.
+
+### Paradigm 2: The In-Band Hidden Worktree (The Current Pebble Approach)
+*Store the data in the repository, but utilize a "hidden" Git branch (e.g., `pebble-data`) mounted via a Git worktree inside a `.git/` subdirectory.*
+- **Pros:** Maintains local-first offline capability. Tasks are instantly synced across feature branches because the worktree operates independently.
+- **Cons:** Extremely high complexity. `git worktree` commands are brittle to setup, difficult for agents to intuitively reason about, and create edge cases around `git push/pull`.
+
+### Paradigm 3: The SQLite / Local Database Approach
+*Store state in an un-tracked local `.pebble.sqlite` database file. Sync via a secondary mechanism.*
+- **Pros:** Immediate reads/writes. No git branch interference. Easy to query using SQL.
+- **Cons:** Merging binary SQLite dumps across branches is incredibly difficult. Natively unreadable by humans without dedicated tooling.
+
+## 4. Storage Format Considerations
+
+Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the hidden worktree and just committing tasks to the main branch), what format should the data take?
 
 ### Avenue A: The "Everything is a File" Markdown Approach
-*Store each task as a discrete Markdown file inside a `.pebble/` or `docs/tasks/` directory, using YAML frontmatter for metadata.*
-
-**Example `.pebble/tasks/proj-0kq.md`:**
-```markdown
----
-id: proj-0kq
-status: open
-parent: proj-epic1
-depends_on: [proj-1ab]
-created_at: 2026-01-15T10:30:00Z
----
-# Deploy staging environment
-
-Run the canary deploy pipeline against the `staging` cluster.
-```
+*Store each task as a discrete Markdown file inside a visible `.pebble/` directory, using YAML frontmatter for metadata. These files are committed to standard Git.*
 
 **Pros:**
-- **Ultimate Human Readability:** GitHub, GitLab, and local IDEs render these files perfectly. Humans can edit them natively without a CLI.
-- **Agent Friendly:** LLMs have profound native understanding of Markdown. RAG algorithms chunk Markdown naturally.
-- **Git Diffs:** Conflict resolution is trivial because files are separated. History per-task is just `git log <file>`.
+- **Ultimate Human Readability:** GitHub, GitLab, and local IDEs render these files perfectly natively.
+- **The Ultimate Code Review:** Because they are just text files in the main branch, changes to tasks show up in GitHub Pull Requests natively. You can comment on a task definition change just like a code change.
+- **Agent Friendly:** LLMs have profound native understanding of Markdown.
+- **Git Diffs:** Conflict resolution is trivial because files are separated.
 **Cons:**
 - **Graph Traversal:** Requires reading potentially hundreds of small files to build the dependency graph.
-- **Data Integrity:** Users can easily make typos in YAML frontmatter unless validated via a pre-commit hook or CLI.
 
-### Avenue B: The Single-File Human-Readable (TOML/YAML)
-*Store the entire state in a single `.pebble.toml` or `pebble.yaml` file at the repository root.*
-
-**Example `.pebble.toml`:**
-```toml
-[tasks.proj-0kq]
-title = "Deploy staging environment"
-status = "open"
-parent = "proj-epic1"
-depends_on = ["proj-1ab"]
-description = """
-Run the canary deploy pipeline against the `staging` cluster.
-"""
-```
+### Avenue B: The Append-Only Log (Refined JSONL)
+*Keep a JSONL event stream or state dump (similar to current `golden.jsonl`), heavily optimizing the CLI/MCP layer to hydrate the state.*
 
 **Pros:**
-- **Single Source of Truth:** Easy to parse in one go. Extremely easy for an MCP server or thin CLI to load.
-- **No Directory Clutter:** Just one file.
-- **Human Editable:** TOML is highly readable and editable by humans.
+- **Machine Native:** JSON is the lingua franca of LLMs.
+- **Git Friendly Appends:** Adding a line rarely conflicts with another added line.
 **Cons:**
-- **Merge Conflicts:** If multiple agents/humans work concurrently, a single file will suffer from merge conflicts much faster than discrete files.
-- **Scalability:** Editing a 2000-line TOML file becomes painful for humans.
+- **Human Antagonistic:** Humans cannot read or edit JSONL manually. This violates the "degrade gracefully" principle if the CLI/UI is unavailable. Pull Request diffs for a JSONL state change are extremely difficult for human reviewers to parse.
 
-### Avenue C: The Append-Only Log (Refined JSONL)
-*Keep a JSONL event stream or state dump (similar to current `golden.jsonl`), but heavily optimize the CLI/MCP layer to hide it from humans.*
+## 5. Implementation Language & Tooling
 
-**Pros:**
-- **Machine Native:** JSON is the lingua franca of LLM tool calls.
-- **Git Friendly Appends:** Adding a line never conflicts with another added line.
-**Cons:**
-- **Human Antagonistic:** Humans cannot easily read, re-order, or edit JSONL manually. They *must* use a UI or CLI. This violates the "degrade gracefully" principle if the CLI is unavailable.
-
-## 4. Implementation Language & Tooling
-
-If we assume a CLI or an agent tool is required to manage the data (enforce schemas, query the graph, etc.), the choice of language matters for distribution and integration.
+If we assume a CLI or an agent tool is required to enforce schemas, the choice of language matters for distribution and integration.
 
 ### Option 1: Rust (The Current Path)
-- **Why?** Blazing fast, type-safe, distributes as a single static binary. Excellent for a tool that runs on every `git commit` or is executed hundreds of times per minute by an agent.
-- **Drawback:** Higher barrier to entry for casual contributors to tweak the logic.
+- **Why?** Blazing fast, type-safe, distributes as a single static binary. Excellent for a tool that runs on every `git commit`.
 
-### Option 2: TypeScript / Node (With `npx` or `uv`/Python equivalent)
-- **Why?** The AI ecosystem is heavily skewed towards TS/Python. Building Model Context Protocol (MCP) servers locally is easiest in TypeScript.
-- **Distribution:** Can be executed via `npx pebble-cli` without explicit installation.
-- **Drawback:** Slower startup time than Rust (Node boot time).
+### Option 2: TypeScript / Node
+- **Why?** The AI ecosystem is heavily skewed towards TS/Python. Building Model Context Protocol (MCP) servers locally is easiest in TypeScript. Can be executed via `npx pebble-cli`.
 
 ### Option 3: Go (Golang)
-- **Why?** The sweet spot. Fast startup time like Rust, single binary distribution, but with a simpler concurrency model and arguably faster development velocity for lightweight CLI tools and JSON manipulation.
+- **Why?** Fast startup time like Rust, single binary distribution, but with a simpler concurrency model and arguably faster development velocity.
 
-## 5. Re-imagining the Workflow
+## 6. Re-imagining the Workflow & The Flawed Hybrid Paradigm
 
-If we adopt **Avenue A (Markdown + YAML)** alongside a **Go or Rust CLI**, the workflow transforms into a deeply collaborative human-agent experience:
+### A Flawed Idea: The "Read-Model / Write-Model Projection"
+One brainstorming idea to resolve format friction was to separate presentation from storage:
+1. Store actual task data in a hidden SQLite or JSONL Worktree (Write-Model).
+2. Generate a `.pebble/` folder full of `.gitignore`'d Markdown files purely for the human UI (Read-Model).
 
-1. **Creating a task:** A human just creates `new-feature.md` and writes their thoughts. The CLI/Agent detects it, generates an ID, and populates the frontmatter.
-2. **Reviewing State:** The agent can run `pebble list --json` to get the graph, but the human can just read the `.pebble/` folder or view the Kanban board dynamically rendered by an MCP extension in VSCode.
-3. **Closing Tasks:** The agent finishes a PR, adds `Closes proj-0kq` to the commit. A CI bot or pre-commit hook modifies the YAML frontmatter to `status: closed`.
+**Why this fails:**
+- **Agent Blindness:** Agent frameworks (Cursor, Copilot, Aider, etc.) are explicitly hard-coded to ignore `.gitignore` files. Generating ignored Markdown files means agents will completely ignore the UI you just built for them.
+- **Loss of Code Review:** Version control diffs and review tooling (like GitHub PR reviews) require the Markdown files to be committed. If they are `.gitignore`'d, you cannot comment on a task description change in a Pull Request.
 
-## 6. Recommendations & Discussion Points
+### The Honest Conclusion
+If we want the benefits of Git tooling (PR reviews, history, blame) and the benefits of AI Agents natively understanding the context files, **the files themselves must be committed to the main branch as plain text (Avenue A).**
+
+## 7. Recommendations & Discussion Points
 
 To retain the dual-audience goal while stripping away enterprise complexity, we should consider:
 
-1. **Transitioning to Markdown + YAML (Avenue A)** for storage. The readability benefits for humans and agents heavily outweigh the parsing overhead, especially for small-to-medium single-repo projects.
-2. **Abstracting the Graph:** The CLI's main job becomes parsing the metadata and answering structural questions: "What is blocking X?" or "What tasks are ready to work on?"
-3. **Lean into MCP:** Instead of a complex CLI with dozens of flags, provide a brilliant, read-only Markdown structure, a minimal CLI for mutations, and an MCP server that serves the graph dynamically to IDEs (for humans) and Agents (for coding).
+1. **Embrace In-Band Synchronization:** Accept that tracking tasks with code is a feature. If you need an out-of-band bug filed, branch from `main`, add the Markdown file, and merge it. Enjoy the temporal consistency of checking out old Git refs and seeing the exact state of the project map.
+2. **Commit Markdown Natively:** Use Avenue A (Markdown + YAML Frontmatter) committed directly to the main branch. This provides instant, out-of-the-box UI on GitHub and native semantic understanding for Agents.
+3. **The CLI as a Cache/Accelerator:** The CLI's job isn't to hide the storage; it is to quickly parse the hundreds of Markdown files, build the dependency DAG, and answer questions like "What tasks are blocking X?" or serve that graph locally via MCP.
 
 ---
-*Open for feedback: Which storage paradigm feels most aligned with the long-term vision of agent-human collaboration in this repository?*
+*Open for feedback: Does fully committing to Markdown files in the main branch (Option A) create too much directory clutter, or is the benefit of native GitHub PR capabilities worth the noise?*
