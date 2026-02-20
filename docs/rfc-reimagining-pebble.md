@@ -188,17 +188,33 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
   }
   ```
 
-- [ ] **CLI Command Surface**
-  If the CLI is an accelerator rather than a database dictating access, its job is to make querying the DAG and bulk-mutating files effortless for humans and agents.
+- [x] **CLI Command Surface: Reconciling with `trk` Concepts**
+  If the CLI is an accelerator rather than a database dictating access, its job is to make querying the DAG and bulk-mutating files effortless for humans and agents. Drawing inspiration from the `trk` CLI model, here is the reconciled, optimal command surface:
+
+  - **Global Options:**
+    - `--format <text|json|tree>`: Universal structured output flag (agents use `json`). Replaces command-specific `--json` flags.
+    - `--dir <PATH>`: Override the default tasks directory (e.g., `.pebble/` or `docs/tasks/`).
+
+  - **Repository Management:**
+    - `pebble init`: Bootstraps the environment, creates the tasks directory, and generates a `pebble.toml` configuration.
+
   - **Query Commands:**
-    - `pebble list [--status <status>] [--json]`: Parses the directory, builds the DAG, and renders a tree or flat list of actionable tasks. The `--json` flag emits machine-readable graph data.
-    - `pebble show <id> [--json]`: Prints the full details and graph-context of a specific task.
+    - `pebble list` (alias: `ls`): Parses the directory and builds the DAG.
+      - Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (shows only tasks where dependencies are not `done`).
+    - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
+
   - **Mutation Commands** (These modify the Markdown files directly):
-    - `pebble add <title> [--parent <id>]`: Generates the boilerplate `.md` file, auto-generating a unique ID and `created_at` timestamp.
-    - `pebble update <id> [--status <status>] [--add-depends-on <id>]`: Safely modifies the frontmatter of an existing task (vital for agents invoking tools without needing to write complex Regex/sed commands).
-    - `pebble edit <id>`: Locates the file and opens it in `$EDITOR`.
+    - `pebble new <title>` (alias: `add`, `create`): Generates the boilerplate `.md` file. 
+      - Options: `--parent <id>`, `--tag <tag>`, `--depends-on <id>`, `--no-edit` (crucial for agents to skip `$EDITOR`).
+    - `pebble update <id>`: Safely modifies the frontmatter and bumps the `updated_at` timestamp.
+      - Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-depends-on <id>`, `--remove-depends-on <id>`. (Adheres to the CLI contract for incremental list mutations).
+    - `pebble append <id> --message <text>`: Safely appends raw Markdown to the body without risking frontmatter parsing corruption. Excellent for agents adding notes.
+    - `pebble edit <id>`: Locates the file and opens it natively in `$EDITOR`.
+
   - **Validation:**
-    - `pebble validate`: A fast linter that checks the graph for circular dependencies, broken `depends_on` links, and checks all `.md` files against the frontmatter schema.
+    - `pebble check`: A strict linter that evaluates the `.md` database.
+      - Checks: ID collisions, broken `depends_on` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has `active` children).
+      - Options: `--fix` to automatically rectify safe, deterministic errors (e.g., sorting TOML/YAML keys, injecting missing timestamps).
 
 ---
 *Open for feedback: Does fully committing to Markdown files in the main branch (Option A) create too much directory clutter, or is the benefit of native GitHub PR capabilities worth the noise?*
