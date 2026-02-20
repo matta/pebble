@@ -1,18 +1,19 @@
-use crate::commands::get_store;
+use crate::commands::{IssueFilters, get_store};
 use color_eyre::Result;
 use pebble::cli::OutputFormat;
 use pebble::config::Config;
 
-pub fn run(
-    config: &Config,
-    status: Option<String>,
-    owner: Option<String>,
-    priority: Option<i32>,
-    format: OutputFormat,
-) -> Result<()> {
+pub fn run(config: &Config, filters: IssueFilters, format: OutputFormat) -> Result<()> {
     let (store, _, jsonl_path) = get_store(config)?;
 
     let issues = store.read_issues()?;
+
+    let IssueFilters {
+        status,
+        owner,
+        priority,
+        issue_type,
+    } = filters;
 
     let filtered_issues: Vec<_> = issues
         .into_iter()
@@ -30,6 +31,12 @@ pub fn run(
                 return false;
             }
             if priority.is_some_and(|p| issue.priority != p) {
+                return false;
+            }
+            if issue_type
+                .as_deref()
+                .is_some_and(|t| issue.issue_type.as_str() != t)
+            {
                 return false;
             }
             true

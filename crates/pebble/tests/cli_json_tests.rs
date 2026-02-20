@@ -1,7 +1,10 @@
 mod cli_support;
+#[path = "cli_support/issues.rs"]
+mod cli_support_issues;
 mod common;
 
-use cli_support::{TestEnv, create_test_issue};
+use cli_support::TestEnv;
+use cli_support_issues::{TestEnvIssues, create_test_issue};
 use common::TEST_SYNC_BRANCH;
 use tempfile::TempDir;
 

@@ -6,7 +6,7 @@ use tempfile::TempDir;
 mod common;
 use common::TEST_SYNC_BRANCH;
 mod cli_support;
-use cli_support::{TestEnv, create_test_issue};
+use cli_support::TestEnv;
 
 #[test]
 fn test_config_get_unknown_key() {
@@ -60,31 +60,6 @@ fn test_sync_fail_no_config() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."));
-}
-
-#[test]
-fn test_list_issues_empty() {
-    let env = TestEnv::setup();
-    env.pebble()
-        .arg("list")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Using database:"))
-        .stderr(predicate::str::contains("No issues found."));
-}
-
-#[test]
-fn test_list_issues_with_data() {
-    let env = TestEnv::setup();
-    let issue = create_test_issue("test-123", "Fixture Issue");
-    env.add_issue_to_worktree(&issue);
-
-    env.pebble()
-        .arg("list")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Using database:"))
-        .stdout(predicate::str::contains("test-123 [open] Fixture Issue"));
 }
 
 #[test]
@@ -233,45 +208,6 @@ fn test_help_includes_examples() {
 }
 
 #[test]
-fn test_search_issue() {
-    let env = TestEnv::setup();
-    let issue = create_test_issue("search-1", "Search Me Title");
-    env.add_issue_to_worktree(&issue);
-    let issue2 = create_test_issue("search-2", "Dont Find Me");
-    env.add_issue_to_worktree(&issue2);
-
-    env.pebble()
-        .args(["search", "Search Me"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("search-1"))
-        .stdout(predicate::str::contains("Search Me Title"))
-        .stdout(predicate::str::contains("search-2").not());
-}
-
-#[test]
-fn test_search_issue_json() {
-    let env = TestEnv::setup();
-    let issue = create_test_issue("search-json", "Search JSON Title");
-    env.add_issue_to_worktree(&issue);
-
-    let output = env
-        .pebble()
-        .args(["search", "Search JSON", "--json"])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let json_str = String::from_utf8(output).unwrap();
-    let issues: Vec<serde_json::Value> =
-        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
-    assert_eq!(issues.len(), 1);
-    assert_eq!(issues[0]["id"], "search-json");
-}
-
-#[test]
 fn test_update_issue_json() {
     let env = TestEnv::setup();
     // 1. Add issue
@@ -327,11 +263,13 @@ fn test_update_status_priority_owner() {
             id,
             "--status",
             "closed",
+            "--close-reason",
+            "Done",
             "--priority",
             "5",
             "--owner",
             "new@example.com",
-            "--issue-type",
+            "--type",
             "bug",
         ])
         .assert()
@@ -352,50 +290,139 @@ fn test_update_status_priority_owner() {
         serde_json::from_str(&json_str).expect("Failed to parse JSON output");
 
     assert_eq!(issue["status"], "closed");
+    assert_eq!(issue["close_reason"], "Done");
     assert_eq!(issue["priority"], 5);
     assert_eq!(issue["owner"], "new@example.com");
     assert_eq!(issue["issue_type"], "bug");
 }
 
 #[test]
-fn test_list_filters() {
+fn test_update_close_requires_reason() {
     let env = TestEnv::setup();
-    // Add multiple issues
-    let issue1 = create_test_issue("list-1", "Open Issue");
-    env.add_issue_to_worktree(&issue1); // status: open, priority: 0
+    let output = env
+        .pebble()
+        .args(["add", "Close Reason Required"])
+        .output()
+        .expect("Failed to run add");
 
-    let mut issue2 = create_test_issue("list-2", "Closed Issue");
-    issue2["status"] = serde_json::json!("closed");
-    issue2["priority"] = serde_json::json!(1);
-    env.add_issue_to_worktree(&issue2);
-
-    // Filter by status
-    env.pebble()
-        .args(["list", "--status", "closed"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("list-2"))
-        .stdout(predicate::str::contains("list-1").not());
-
-    // Filter by priority
-    env.pebble()
-        .args(["list", "--priority", "1"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("list-2"))
-        .stdout(predicate::str::contains("list-1").not());
-
-    // Filter by owner (default is test@example.com)
-    env.pebble()
-        .args(["list", "--owner", "test@example.com"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("list-1"))
-        .stdout(predicate::str::contains("list-2"));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
 
     env.pebble()
-        .args(["list", "--owner", "other@example.com"])
+        .args(["update", id, "--status", "closed"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("close_reason"));
+}
+
+#[test]
+fn test_update_close_reason_requires_closed_status() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Reason Needs Closed"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    env.pebble()
+        .args(["update", id, "--close-reason", "Done"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("close_reason"));
+}
+
+#[test]
+fn test_update_close_sets_closed_at() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Me"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    let output = env
+        .pebble()
+        .args([
+            "update",
+            id,
+            "--status",
+            "closed",
+            "--close-reason",
+            "Done",
+            "--json",
+        ])
         .assert()
         .success()
-        .stderr(predicate::str::contains("No issues found"));
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let issue: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+
+    assert_eq!(issue["status"], "closed");
+    assert_eq!(issue["close_reason"], "Done");
+    assert!(issue["closed_at"].as_str().is_some());
+}
+
+#[test]
+fn test_update_close_reason_on_closed_issue() {
+    let env = TestEnv::setup();
+    let output = env
+        .pebble()
+        .args(["add", "Close Twice"])
+        .output()
+        .expect("Failed to run add");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let id = stdout
+        .split_whitespace()
+        .last()
+        .expect("Failed to get ID from output");
+
+    env.pebble()
+        .args([
+            "update",
+            id,
+            "--status",
+            "closed",
+            "--close-reason",
+            "First",
+        ])
+        .assert()
+        .success();
+
+    let output = env
+        .pebble()
+        .args(["update", id, "--close-reason", "Second", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json_str = String::from_utf8(output).unwrap();
+    let issue: serde_json::Value =
+        serde_json::from_str(&json_str).expect("Failed to parse JSON output");
+
+    assert_eq!(issue["status"], "closed");
+    assert_eq!(issue["close_reason"], "Second");
 }

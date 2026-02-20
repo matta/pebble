@@ -44,10 +44,29 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Implement `pebble show` (reads from worktree)
 - [x] Implement `pebble update` (writes to worktree)
 
-## Phase 4.5: Extended Issue Fields (Next)
-- [ ] Define which new fields are **editable** via CLI vs. read-only (e.g., `created_at`, `updated_at`, `closed_at`, `deleted_at` are not user-editable).
+## Phase 4.5: Extended Issue Fields (In Progress)
+- [x] Consolidate mutations into `pebble update` (remove redundant edit command).
+- [x] Golden fixture: move to `crates/pebble/tests/fixtures/golden.jsonl` and add round-trip test.
+- [x] Forbidden-words xtask: ignore the golden fixture.
+- [x] Schema cleanup: remove `comments` and convert `notes` to a list of plain strings.
+- [x] Update help JSON schema for the `notes` list and `comments` removal.
+- [x] Codify list/set update semantics in `docs/cli-contract.md` (repeatable add/remove flags, explicit set).
+- [ ] Finalize remaining field decisions (dependency relation semantics, issue_type update).
+- [x] Ratified: `owner` settable via `add` and `update`.
+- [x] Ratified: `status` defaults to `open` on `add`; changes only via `update`.
+- [x] Ratified: `priority` settable via `add` and `update`.
+- [x] Ratified: `issue_type` defaults to `task`; `add` can override (update behavior TBD).
+- [x] Ratified: `close_reason` set via `update` when closing; `closed_at` auto-set (read-only).
+- [x] Ratified: `acceptance_criteria` supported via `add` and `update`.
+- [x] Ratified: `labels` supported via incremental flags.
+- [x] Ratified: `notes` is a list of plain strings.
+- [x] Ratified: `defer_until` supported via `add` and `update`.
+- [x] Ratified: `deleted_*` fields are read-only/internal.
+- [ ] Pending: dependency relation semantics and CLI shape.
+- [ ] Pending: confirm whether `issue_type` can be updated.
 - [ ] Add `pebble add` support for the chosen editable fields (flags + parsing + validation).
 - [ ] Add `pebble update` support for the chosen editable fields (flags + parsing + validation).
+- [ ] Implement incremental list/set flags in `update` for every list/set field (consistent `--add-*` / `--remove-*`).
 - [ ] Add tests that assert:
     - [ ] `pebble add` can set allowed fields.
     - [ ] `pebble add` rejects attempts to set read-only fields with a usage error (exit code 2).
@@ -59,8 +78,7 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [ ] Validate `pebble list` supports the new fields properly:
     - [ ] JSON output includes all stored fields.
     - [ ] Human output remains stable (or add a new “long”/expanded view if needed).
-- [ ] Update help JSON schema and CLI help/examples to reflect the supported new fields.
-- [ ] Resolve the forbidden-words check for the golden fixture (whitelist vs. sanitize) while preserving the golden test intent.
+- [ ] Update CLI help/examples to reflect the supported new fields.
 
 ## Phase 5: Renaming & Cleanup (Eliminate legacy naming where appropriate) (Completed)
 - [x] Rename `.beads` directory to `.pebble` (while maintaining fallback)
@@ -71,13 +89,21 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 
 ## Phase 6: Agent UX & Issue Lifecycle (MVP)
 Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 → P6-9 → P6-10
-- [ ] P6-1 Define CLI I/O contract: `stdout` data, `stderr` diagnostics, stable error codes, and exit code map (`0/1/2`).
-- [ ] P6-2 Implement `--json` on **all** commands (add/update/search/list/show/sync/init/import/config).
-- [ ] P6-3 Add `--help-json` (or `pebble help --json`) with output schemas.
-- [ ] P6-4 Update `--help` with concrete examples for core workflows.
+- [x] P6-1 Define CLI I/O contract: `stdout` data, `stderr` diagnostics, stable error codes, and exit code map (`0/1/2`).
+- [x] P6-2 Implement `--json` on **all** commands (add/update/search/list/show/sync/init/import/config).
+- [x] P6-3 Add `--help-json` (or `pebble help --json`) with output schemas.
+- [x] P6-4 Update `--help` with concrete examples for core workflows.
 - [ ] P6-5 Add list filters/sorting (`--status`, `--owner`, `--type`, `--priority`, `--updated`).
+  - [x] Filters: `--status`, `--owner`, `--priority`.
+  - [x] Filters: `--type`.
+  - [ ] Filters: `--updated`.
+  - [ ] Sorting.
 - [ ] P6-6 Add `pebble search` (full-text + filters: status, owner, type, priority).
+  - [x] Full-text search on title/description.
+  - [x] Filters: status, owner, type, priority.
 - [ ] P6-7 Add `pebble update` for status/priority/owner/type/close fields.
+  - [x] Update: status/priority/owner/type.
+  - [x] Close behavior: `close_reason` validation + `closed_at` auto-set.
 - [ ] P6-8 Remove interactive prompts; require `--yes` / `--force` for destructive ops.
 - [ ] P6-9 Disable color/formatting in structured mode; respect `NO_COLOR` and `isatty()`.
 - [ ] P6-10 Tests: idempotency, exit codes, and stdout/stderr separation.
