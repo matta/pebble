@@ -7,6 +7,21 @@ pub fn validate_branch_name(branch: &str) -> Result<()> {
     if branch.starts_with('-') {
         return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
     }
+    if branch.contains("..") {
+        return Err(color_eyre::eyre::eyre!(
+            "sync-branch cannot contain '..' for security reasons"
+        ));
+    }
+    if branch.starts_with('/') || branch.starts_with('\\') {
+        return Err(color_eyre::eyre::eyre!(
+            "sync-branch cannot be an absolute path"
+        ));
+    }
+    if branch.contains('\\') {
+        return Err(color_eyre::eyre::eyre!(
+            "sync-branch cannot contain backslashes"
+        ));
+    }
     Ok(())
 }
 

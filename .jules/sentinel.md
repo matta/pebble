@@ -4,3 +4,10 @@
 **Prevention:**
 1. Validate all user-supplied git refs (branches, tags) to ensure they do not start with `-`.
 2. Use `--` delimiter in git commands wherever supported (e.g., `git worktree add -- <branch>`).
+
+## 2025-01-22 - Path Traversal via Git Branch Names
+**Vulnerability:** The `sync-branch` configuration was used directly to construct a filesystem path for a Git worktree. A malicious branch name like `../../../hacked` allowed creating directories outside the repository root.
+**Learning:** Git branch names can contain characters like `/` (forward slash), which `PathBuf::join` treats as directory separators. While `..` is invalid in Git refs, validation must occur BEFORE passing the string to filesystem operations, especially when constructing paths. `Config::validate` is insufficient if internal APIs (`WorktreeManager`) are used directly without validation.
+**Prevention:**
+1. Validate all user-supplied paths/branches to ensure they do not contain `..` or absolute path indicators.
+2. Perform validation at the point of use (e.g., in `ensure_worktree`) rather than just at the configuration boundary, to protect internal APIs.

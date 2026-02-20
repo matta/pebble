@@ -1,4 +1,5 @@
 use crate::command::CommandExt;
+use crate::config::validate_branch_name;
 use crate::git_provider::{GitProvider, RealGit};
 use crate::{ISSUES_FILE, WORKTREE_DIR};
 use color_eyre::Result;
@@ -194,6 +195,8 @@ impl<G: GitProvider> WorktreeManager<G> {
     /// * File system operations fail (creating directories).
     /// * Git commands fail (checking status, fetching, adding worktree).
     pub fn ensure_worktree(&self) -> Result<PathBuf> {
+        validate_branch_name(&self.sync_branch)?;
+
         let path = self.get_worktree_path();
         if path.exists() {
             // Verify it's actually a worktree? For now just return path
