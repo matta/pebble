@@ -14,6 +14,30 @@ pub mod show;
 pub mod sync;
 pub mod update;
 
+#[derive(Debug, Default, Clone)]
+pub struct IssueFilters {
+    pub status: Option<String>,
+    pub owner: Option<String>,
+    pub priority: Option<i32>,
+    pub issue_type: Option<String>,
+}
+
+impl IssueFilters {
+    pub fn new(
+        status: Option<String>,
+        owner: Option<String>,
+        priority: Option<i32>,
+        issue_type: Option<String>,
+    ) -> Self {
+        Self {
+            status,
+            owner,
+            priority,
+            issue_type,
+        }
+    }
+}
+
 pub fn load_config(path: Option<&Path>) -> Result<Config> {
     let config_path = match path {
         Some(p) => std::path::PathBuf::from(p),

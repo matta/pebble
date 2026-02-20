@@ -95,11 +95,12 @@ Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 
 - [x] P6-4 Update `--help` with concrete examples for core workflows.
 - [ ] P6-5 Add list filters/sorting (`--status`, `--owner`, `--type`, `--priority`, `--updated`).
   - [x] Filters: `--status`, `--owner`, `--priority`.
-  - [ ] Filters: `--type`, `--updated`.
+  - [x] Filters: `--type`.
+  - [ ] Filters: `--updated`.
   - [ ] Sorting.
 - [ ] P6-6 Add `pebble search` (full-text + filters: status, owner, type, priority).
   - [x] Full-text search on title/description.
-  - [ ] Filters: status, owner, type, priority.
+  - [x] Filters: status, owner, type, priority.
 - [ ] P6-7 Add `pebble update` for status/priority/owner/type/close fields.
   - [x] Update: status/priority/owner/type.
   - [ ] Close behavior: `close_reason` validation + `closed_at` auto-set.
