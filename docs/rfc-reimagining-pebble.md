@@ -7,6 +7,7 @@ The goal of this RFC is to step back and re-imagine Pebble from the ground up. I
 While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects or for coordinating concurrently running autonomous AI agents, but for the simpler, single-repo projects common in open-source development and indie hacking.
 
 ## 2. Key Decisions (TL;DR)
+- Config lives in `.pebble/config.toml` (relative to the repository root).
 - Store tasks as Markdown files in a visible repo directory (default `docs/pebble/`).
 - YAML frontmatter defines metadata; the Markdown body is the description.
 - `id` is canonical and user-editable; the CLI never changes it.
@@ -62,7 +63,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
 
 **Mutation commands**
-- `pebble add <title>`: Generates the boilerplate `.md` file. Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`.
+- `pebble add <title>`: Generates the boilerplate `.md` file. Options: `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
 - `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` that have not been modified recently (e.g., git mtime > 30 days) into an `archive/` subdirectory to reduce IDE clutter.
 - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
@@ -281,7 +282,7 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
 - The initial suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox estimate).
 
 **Configuration Contract**
-- Config lives at `pebble.toml`.
+- Config lives at `.pebble/config.toml` (relative to the repository root).
 - Supported keys:
   - `issue-prefix` (string): prefix for new IDs (default: `issue`).
   - `tasks-dir` (string): path to task files (default: `docs/pebble/`).
@@ -290,9 +291,9 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
   - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
 
 **Configuration Lifecycle**
-- `pebble init` creates `pebble.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
+- `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
 - `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
-- Users may edit `pebble.toml` directly to change `issue-prefix` or `tasks-dir`.
+- Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
 - The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
 
 ## Appendix A: Alternatives Considered
