@@ -52,7 +52,23 @@ Alternatively, tracking task states directly with the code is a massive benefit 
 Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the hidden worktree and just committing tasks to the main branch), what format should the data take?
 
 ### Avenue A: The "Everything is a File" Markdown Approach
-*Store each task as a discrete Markdown file inside a visible `.pebble/` directory, using YAML frontmatter for metadata. These files are committed to standard Git.*
+*Store each task as a discrete Markdown file inside a visible directory in the source tree (e.g., `docs/pebble/` or `docs/tasks/`), using YAML frontmatter for metadata. These files are committed to standard Git.*
+
+**Example `docs/pebble/deploy-staging-environment.md`:**
+```markdown
+---
+id: proj-0kq
+status: open
+parent: proj-epic1
+depends_on: [proj-1ab]
+created_at: 2026-01-15T10:30:00Z
+---
+# Deploy staging environment
+
+Run the canary deploy pipeline against the `staging` cluster.
+```
+
+**Filename rules:** Filenames are human-readable and do **not** need to embed the `id`. The `id` lives in frontmatter; the filename is purely for human navigation.
 
 **Pros:**
 - **Ultimate Human Readability:** GitHub, GitLab, and local IDEs render these files perfectly natively.
@@ -96,17 +112,35 @@ One brainstorming idea to resolve format friction was to separate presentation f
 - **Loss of Code Review:** Version control diffs and review tooling (like GitHub PR reviews) require the Markdown files to be committed. If they are `.gitignore`'d, you cannot comment on a task description change in a Pull Request.
 
 ### The Honest Conclusion
-If we want the benefits of Git tooling (PR reviews, history, blame) and the benefits of AI Agents natively understanding the context files, **the files themselves must be committed to the main branch as plain text (Avenue A).**
+If we want the benefits of Git tooling (PR reviews, history, blame) and the benefits of AI Agents natively understanding the context files, **the files themselves must be committed to the main branch as plain text (Avenue A), and they must live in a visible directory in the source tree (not a hidden folder).**
 
-## 7. Recommendations & Discussion Points
+## 7. Decision & Recommendation
+
+**Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. A derived `issues.jsonl` index may be generated/maintained by the CLI for fast list/search, but it is not the canonical store.
+
+**Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while preserving fast query paths.
+
+**Non-Goals:** Not targeting enterprise-scale analytics or cross-repo issue federation.
+
+**Success Criteria:**
+1. Add/update/list/show remain under 200ms for 1k issues on a typical developer machine.
+2. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
+3. Agents can create/update issues without schema drift; human edits remain the source of truth.
+
+**Migration Plan:**
+1. `pebble import` reads legacy `issues.jsonl` and writes per-issue Markdown to `docs/pebble/`.
+2. `pebble export` regenerates `issues.jsonl` for compatibility/test fixtures.
+3. Provide a one-time `pebble migrate` command guarded by `--yes`.
+
+## 8. Recommendations & Discussion Points
 
 To retain the dual-audience goal while stripping away enterprise complexity, we should consider:
 
 1. **Embrace In-Band Synchronization:** Accept that tracking tasks with code is a feature. If you need an out-of-band bug filed, branch from `main`, add the Markdown file, and merge it. Enjoy the temporal consistency of checking out old Git refs and seeing the exact state of the project map.
-2. **Commit Markdown Natively:** Use Avenue A (Markdown + YAML Frontmatter) committed directly to the main branch. This provides instant, out-of-the-box UI on GitHub and native semantic understanding for Agents.
+2. **Commit Markdown Natively:** Use Avenue A (Markdown + YAML Frontmatter) committed directly to the main branch in a visible directory like `docs/pebble/`. This provides instant, out-of-the-box UI on GitHub and native semantic understanding for Agents.
 3. **The CLI as a Cache/Accelerator:** The CLI's job isn't to hide the storage; it is to quickly parse the hundreds of Markdown files, build the dependency DAG, and answer questions like "What tasks are blocking X?" or serve that graph locally via MCP.
 
-## 8. Detailed Design Explorations & Open Decisions
+## 9. Detailed Design Explorations & Open Decisions
 
 To fully realize the "Markdown Native" Avenue A paradigm, several technical details must be debated and finalized:
 
