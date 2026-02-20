@@ -62,6 +62,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 - `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
+- `pebble config get <key>`: Reads a configuration value. Supported keys: `issue-prefix`, `tasks-dir`. Also serves as a way for users and agents to discover the resolved config file location and effective values.
 
 **Mutation commands**
 - `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
