@@ -75,7 +75,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 - `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 **Read/Write Policy**
-- **Read-only:** `list`, `show`, `search`, and `check` never modify files.
+- **Read-only:** `list`, `show`, `search`, `config get`, and `check` never modify files.
 - **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
 
 **Command Deprecations & Removals**
@@ -209,6 +209,7 @@ All `--json` output is a single JSON object printed to stdout per invocation.
 - **Mutation commands** (`add`, `update`): Echo back the full `TaskObject` after the write.
 - **`check --json`**: `{"ok": bool, "errors": [{"file": "...", "line": N, "message": "..."}]}`.
 - **`archive --json`**: `{"archived": [{"id": "...", "moved_to": "..."}]}`.
+- **`config get --json`**: `{"key": "<key>", "value": "<value>"}`.
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `after`, `tags`).
