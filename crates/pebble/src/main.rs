@@ -185,10 +185,15 @@ fn run(cli: Cli) -> Result<()> {
         &cli.command,
         Commands::Init { .. } | Commands::Config { .. }
     );
-    if requires_init && !Config::is_initialized(&std::env::current_dir()?) {
-        return Err(eyre!(
-            "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
-        ));
+    if requires_init {
+        let current_dir = std::env::current_dir()?;
+        let repo_root =
+            pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+        if !Config::is_initialized(&repo_root) {
+            return Err(eyre!(
+                "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
+            ));
+        }
     }
 
     let config = if matches!(&cli.command, Commands::Init { .. }) {
