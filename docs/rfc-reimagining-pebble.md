@@ -6,22 +6,22 @@ The goal of this RFC is to step back and re-imagine Pebble from the ground up. I
 
 While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects or for coordinating concurrently running autonomous AI agents, but for the simpler, single-repo projects common in open-source development and indie hacking.
 
-## Key Decisions (TL;DR)
+## 2. Key Decisions (TL;DR)
 - Store tasks as Markdown files in a visible repo directory (default `docs/pebble/`).
 - YAML frontmatter defines metadata; the Markdown body is the description.
 - `id` is canonical and user-editable; the CLI never changes it.
 - Relationships: store `after` (prerequisites), compute `before` as inverse.
-- Status model: `todo`, `in_progress`, `done`, `canceled`.
+- Status model: `todo`, `in_progress`, `blocked`, `done`, `canceled`.
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - One-time migration via a throw-away script from the existing JSONL.
 
-## 2. Minimum Useful Feature Set
+## 3. Minimum Useful Feature Set
 
 Based on the `golden.jsonl` data and typical single-repo development flows, the essential feature set is surprisingly small:
 
 1. **Task Tracking:** Ability to define a task with an ID, title, description, and status.
-   - States: `todo`, `in_progress`, `done`, `canceled` (aligned with GitHub Projects terminology).
+   - States: `todo`, `in_progress`, `blocked`, `done`, `canceled` (aligned with GitHub Projects terminology).
    - `canceled` means "not done and will never be done."
 2. **Hierarchy & Composition:** Epics and subtasks. A task can be heavily composed of smaller tasks (`parent/child`).
 3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; "blocked" is derived from unmet `after` prerequisites.
@@ -30,7 +30,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 **Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
 
 
-## 3. Technical Specification
+## 4. Technical Specification
 
 **Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. Any caches or indexes are strictly derived and optional.
 
@@ -83,7 +83,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 **Frontmatter Contract (Required vs Optional)**
 Required:
 - `id` (string)
-- `status` (enum: `todo` | `in_progress` | `done` | `canceled`)
+- `status` (enum: `todo` | `in_progress` | `blocked` | `done` | `canceled`)
 - `created_at` (RFC3339 string)
 
 Optional:
@@ -108,10 +108,11 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "done", "canceled".
+#[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "blocked", "done", "canceled".
 pub enum TaskStatus {
     Todo,
     InProgress,
+    Blocked,
     Done,
     Canceled,
 }
@@ -160,7 +161,7 @@ pub struct TaskNode {
 **Ordering Semantics (after/before)**
 - `after` is the stored field and represents prerequisites.
 - `before` is computed as the inverse of `after`.
-- A task is **blocked** if any item in its `after` list is not `done`. (This includes `canceled` prerequisites.) The computed `before` list is the inverse and is not used to determine whether the task is blocked.
+- A task is considered **blocked** if its explicit status is set to `blocked` (for external blockers) OR if any item in its `after` list is not `done`. (This includes `canceled` prerequisites.) The computed `before` list is the inverse and is not used to determine whether the task is blocked.
 - Cycles are invalid and rejected by `pebble check`.
 
 Example:
@@ -342,6 +343,3 @@ You are a principle staff engineer that is in favor of the rfc-reimagining-pebbl
 Consider: removing unecessary complexity; editorial issues like section order, presentation language;  content improvements; missing gaps in the proposal; failures to consider every detail of the current pebble schema or command set; anything else you can think of.
 
 Pick the most important improvement you can think of, and propose it to me for implementation.
-
----
-*Open for feedback: Does fully committing to Markdown files in the main branch (Option A) create too much directory clutter, or is the benefit of native GitHub PR capabilities worth the noise?*
