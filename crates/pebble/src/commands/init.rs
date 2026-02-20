@@ -7,15 +7,17 @@ use pebble::config::Config;
 pub fn run(sync_branch: String, format: OutputFormat) -> Result<()> {
     pebble::config::validate_branch_name(&sync_branch)?;
 
-    let repo_root = std::env::current_dir()?;
+    let current_dir = std::env::current_dir()?;
 
     if !pebble::worktree::WorktreeManager::<pebble::git_provider::RealGit>::is_inside_git_repo(
-        &repo_root,
+        &current_dir,
     ) {
         return Err(eyre!(
             "Error: 'pebble init' must be run inside a Git repository."
         ));
     }
+
+    let repo_root = pebble::worktree::find_git_root(&current_dir)?;
 
     let manager =
         pebble::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());

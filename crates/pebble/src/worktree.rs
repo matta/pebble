@@ -12,6 +12,14 @@ pub fn generate_worktree_path(repo_root: &Path, sync_branch: &str) -> PathBuf {
     repo_root.join(WORKTREE_DIR).join(sync_branch)
 }
 
+/// Finds the root of the Git repository from the given path.
+pub fn find_git_root(path: &Path) -> Result<PathBuf> {
+    let output = RealGit
+        .output(&[&"rev-parse", &"--show-toplevel"], path)
+        .with_context(|| "Failed to find git root")?;
+    Ok(PathBuf::from(output.trim()))
+}
+
 #[derive(Debug)]
 pub struct WorktreeManager<G: GitProvider = RealGit> {
     repo_root: PathBuf,
