@@ -134,6 +134,10 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 - **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
 - **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
 
+**Read/Write Policy**
+- **Read-only:** `list`, `show`, `search`, and `check` never modify files.
+- **Write commands:** `add`, `update`, and `fix` are the only commands that mutate task files.
+
 **Command Deprecations & Removals**
 - `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
 - `sync-branch` configuration is removed.
@@ -159,6 +163,12 @@ Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
 
 **Rationale:** There is no concrete use case that requires these fields in the schema today. Adding them would introduce cost (parsing or updating on every write) without clear value. The fallback is Git history (`git log`, `git blame`) and, if needed later, a dedicated convenience command can compute and display recency metadata without making it canonical.
+
+**Timestamp Rules**
+- `created_at` is required in frontmatter and must be RFC3339.
+- The CLI sets `created_at` on `add` to the current time in UTC.
+- Users may edit `created_at` manually, but `pebble check` fails on invalid format.
+- If `created_at` is missing, `pebble fix` sets it to the current time in UTC.
 
 **Title & Body Contract**
 - The Markdown body must start with a single H1 title.
@@ -211,7 +221,7 @@ Computed:
    - *Mitigation:* Filenames are advisory only; `id` is canonical. On write, the CLI ensures uniqueness by suffixing `-2`, `-3`, etc. On read, `id` is authoritative.
 2. **Schema drift from manual edits**
    - *Risk:* Users edit frontmatter by hand and introduce invalid fields or types.
-   - *Mitigation:* CLI validates frontmatter strictly and reports precise errors (line/field), but never mutates content unless explicitly asked.
+   - *Mitigation:* CLI validates frontmatter strictly and reports precise errors (line/field). `pebble check` is read-only; `pebble fix` performs safe repairs.
 3. **Query performance (deferred)**
    - *Risk:* Large repos may need faster list/search than raw file scans provide.
    - *Mitigation:* Defer optimization until user reports demand. Architectural options include lazy caching, background file watchers, incremental indexing, and derived query indices (JSONL or SQLite) that are strictly non-canonical.
@@ -227,11 +237,43 @@ Computed:
 - If a user changes an `id`, they must update all references (`parent`, `after`) for consistency.
 - `pebble check` fails on duplicates or dangling references.
 
+**Filename Normalization Rules**
+- CLI generates filenames from the **task title provided at creation time** using a deterministic slug:
+  - lowercase
+  - ASCII only (strip/replace non-ASCII)
+  - whitespace → `-`
+  - remove punctuation
+  - collapse repeated `-`
+  - trim leading/trailing `-`
+- If the result is empty, use `task` and append a numeric suffix.
+- If the filename already exists, append `-2`, `-3`, etc.
+
 **Reference Resolution Rules**
 - `parent` and `after` must reference existing task IDs.
 - `pebble check` fails if any reference is missing.
 - `pebble add`/`update` fail fast when given non-existent IDs (default: strict).
 - `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
+
+**ID Generation Rules (Current Implementation)**
+- IDs are generated on `pebble add` and follow `<issue-prefix>-<suffix>`.
+- `issue-prefix` comes from config key `issue-prefix` (default: `issue` if unset).
+- The suffix uses the alphabet `a-z0-9` (36 characters).
+- The initial suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox estimate).
+
+**Configuration Contract**
+- Config lives at `.pebble/config.toml`.
+- Supported keys:
+  - `issue-prefix` (string): prefix for new IDs (default: `issue`).
+  - `tasks-dir` (string): path to task files (default: `docs/pebble/`).
+- Command-line flags:
+  - `--dir <PATH>` (on any command) overrides `tasks-dir`.
+  - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
+
+**Configuration Lifecycle**
+- `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
+- `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
+- Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
+- The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
 
 ## 8. Recommendations & Discussion Points
 
@@ -350,7 +392,7 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
   - **Validation:**
     - `pebble check`: A strict linter that evaluates the `.md` database.
       - Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
-      - Options: `--fix` to automatically rectify safe, deterministic errors (e.g., sorting YAML keys, normalizing whitespace).
+    - `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 ## Appendix: Iterative Refinement
 
