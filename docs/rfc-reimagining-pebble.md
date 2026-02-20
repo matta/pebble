@@ -116,21 +116,32 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 
 ## 7. Decision & Recommendation
 
-**Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. A derived `issues.jsonl` index may be generated/maintained by the CLI for fast list/search, but it is not the canonical store.
+**Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. Any caches or indexes are strictly derived and optional.
 
-**Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while preserving fast query paths.
+**Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while keeping the architecture simple.
 
 **Non-Goals:** Not targeting enterprise-scale analytics or cross-repo issue federation.
 
 **Success Criteria:**
-1. Add/update/list/show remain under 200ms for 1k issues on a typical developer machine.
-2. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
-3. Agents can create/update issues without schema drift; human edits remain the source of truth.
+1. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
+2. Agents can create/update issues without schema drift; human edits remain the source of truth.
+3. Performance is acceptable for small single-repo teams without premature optimization.
 
 **Migration Plan:**
-1. `pebble import` reads legacy `issues.jsonl` and writes per-issue Markdown to `docs/pebble/`.
-2. `pebble export` regenerates `issues.jsonl` for compatibility/test fixtures.
-3. Provide a one-time `pebble migrate` command guarded by `--yes`.
+1. There is exactly one existing database to migrate.
+2. Use a one-time throw-away script to transform the current JSONL into Markdown files under `docs/pebble/`.
+3. Validate the result manually and discard the script after migration.
+
+**Risks & Mitigations:**
+1. **Filename collisions / human-editable names**
+   - *Risk:* Two issues could map to the same filename, or renames could break links.
+   - *Mitigation:* Filenames are advisory only; `id` is canonical. On write, the CLI ensures uniqueness by suffixing `-2`, `-3`, etc. On read, `id` is authoritative.
+2. **Schema drift from manual edits**
+   - *Risk:* Users edit frontmatter by hand and introduce invalid fields or types.
+   - *Mitigation:* CLI validates frontmatter strictly and reports precise errors (line/field), but never mutates content unless explicitly asked.
+3. **Query performance (deferred)**
+   - *Risk:* Large repos may need faster list/search than raw file scans provide.
+   - *Mitigation:* Defer optimization until user reports demand. Architectural options include lazy caching, background file watchers, incremental indexing, and derived query indices (JSONL or SQLite) that are strictly non-canonical.
 
 ## 8. Recommendations & Discussion Points
 
