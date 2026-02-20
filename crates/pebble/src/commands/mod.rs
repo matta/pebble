@@ -19,8 +19,7 @@ pub fn load_config(path: Option<&Path>) -> Result<Config> {
         Some(p) => std::path::PathBuf::from(p),
         None => {
             let current_dir = std::env::current_dir()?;
-            let repo_root =
-                pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+            let repo_root = pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
             Config::default_path(&repo_root)
         }
     };

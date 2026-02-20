@@ -17,10 +17,7 @@ pub fn run(sync_branch: String, format: OutputFormat) -> Result<()> {
         ));
     }
 
-    let repo_root =
-        pebble::worktree::find_git_root(
-            &current_dir,
-        )?;
+    let repo_root = pebble::worktree::find_git_root(&current_dir)?;
 
     let manager =
         pebble::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());

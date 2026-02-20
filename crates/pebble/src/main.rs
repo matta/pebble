@@ -187,8 +187,7 @@ fn run(cli: Cli) -> Result<()> {
     );
     if requires_init {
         let current_dir = std::env::current_dir()?;
-        let repo_root =
-            pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+        let repo_root = pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
         if !Config::is_initialized(&repo_root) {
             return Err(eyre!(
                 "Error: Pebble is not initialized in this repository. Run 'pebble init' to get started."
