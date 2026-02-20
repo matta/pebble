@@ -291,6 +291,14 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
   - `--dir <PATH>` (on any command) overrides `tasks-dir`.
   - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
 
+**Path Resolution & Repo Root**
+- The CLI locates the repository root by walking up from the current working directory to the nearest parent containing `.git`.
+- If no `.git` directory is found, the CLI fails with a clear error.
+- `.pebble/config.toml` is always resolved relative to the repository root.
+- `tasks-dir` is resolved relative to the repository root when it is a relative path.
+- `--dir` overrides `tasks-dir` and is resolved relative to the repository root when it is a relative path.
+- Precedence: `--dir` > `tasks-dir` in config > default `docs/pebble/`.
+
 **Configuration Lifecycle**
 - `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
 - `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
