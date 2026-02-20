@@ -4,17 +4,29 @@
 
 The goal of this RFC is to step back and re-imagine Pebble from the ground up. Inspired by the legacy `bd` tool but now forging its own divergent path, the core mission remains unaltered: **provide a project task tracking system that is equally useful and delightful for both human developers and autonomous AI coding agents**.
 
-While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects, or for coordinating concurrently running autonomous AI agents,but for the simpler, single-repo projects common in open-source development and indie hacking.
+While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects or for coordinating concurrently running autonomous AI agents, but for the simpler, single-repo projects common in open-source development and indie hacking.
+
+## Key Decisions (TL;DR)
+- Store tasks as Markdown files in a visible repo directory (default `docs/pebble/`).
+- YAML frontmatter defines metadata; the Markdown body is the description.
+- `id` is canonical and user-editable; the CLI never changes it.
+- Relationships: store `after` (prerequisites), compute `before` as inverse.
+- Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history.
+- CLI reads/writes Markdown directly; no hidden worktrees.
+- One-time migration via a throw-away script from the existing JSONL.
 
 ## 2. Minimum Useful Feature Set
 
 Based on the `golden.jsonl` data and typical single-repo development flows, the essential feature set is surprisingly small:
 
 1. **Task Tracking:** Ability to define a task with an ID, title, description, and status.
-   - States: `open`, `in_progress`, `closed` (and potentially `tombstone` for deleted tasks).
+   - States: `todo`, `in_progress`, `done`, `canceled` (aligned with GitHub Projects terminology).
+   - `canceled` means "not done and will never be done."
 2. **Hierarchy & Composition:** Epics and Sub-tasks. A task can be heavily composed of smaller tasks (`parent-child`).
 3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships.
-4. **Basic Metadata:** Creation timestamps, resolution reasons, and perhaps basic assignment/ownership (useful when humans and agents collaborate).
+4. **Basic Metadata:** Creation timestamp (`created_at`) only. Audit trail (owner, closed_at, close_reason) is intentionally omitted and delegated to Git history.
+
+**Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
 
 ## 3. The "State Synchronization" Problem
 
@@ -58,7 +70,7 @@ Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the 
 ```markdown
 ---
 id: proj-0kq
-status: open
+status: todo
 parent: proj-epic1
 created_at: 2026-01-15T10:30:00Z
 ---
@@ -132,7 +144,7 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 **Frontmatter Contract (Required vs Optional)**
 Required:
 - `id` (string)
-- `status` (enum: `todo` | `active` | `blocked` | `done`)
+- `status` (enum: `todo` | `in_progress` | `done` | `canceled`)
 - `created_at` (RFC3339 string)
 
 Optional:
@@ -153,7 +165,7 @@ Computed:
 **Ordering Semantics (after/before)**
 - `after` is the stored field and represents prerequisites.
 - `before` is computed as the inverse of `after`.
-- A task is **blocked** if any item in its `after` list is not `done`. (The computed `before` list is the inverse and is not used to determine whether the task is blocked.)
+- A task is **blocked** if any item in its `after` list is not `done`. (This includes `canceled` prerequisites.) The computed `before` list is the inverse and is not used to determine whether the task is blocked.
 - Cycles are invalid and rejected by `pebble check`.
 
 Example:
@@ -266,12 +278,12 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
   use std::path::PathBuf;
 
   #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-  #[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "done" etc.
+  #[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "done", "canceled".
   pub enum TaskStatus {
       Todo,
-      Active, // AKA in_progress
-      Blocked,
+      InProgress,
       Done,
+      Canceled,
   }
 
   /// Represents the exact structure of the YAML front matter.
@@ -306,33 +318,46 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
   }
   ```
 
-- [x] **CLI Command Surface: Reconciling with `trk` Concepts**
-  If the CLI is an accelerator rather than a database dictating access, its job is to make querying the DAG and bulk-mutating files effortless for humans and agents. Drawing inspiration from the `trk` CLI model, here is the reconciled, optimal command surface:
+- [x] **CLI Command Surface (Aligned with Pebble Contract)**
+  If the CLI is an accelerator rather than a database dictating access, its job is to make querying the DAG and bulk-mutating files effortless for humans and agents. The command surface below aligns with the existing CLI contract while switching storage to Markdown:
 
   - **Global Options:**
-    - `--format <text|json|tree>`: Universal structured output flag (agents use `json`). Replaces command-specific `--json` flags.
-    - `--dir <PATH>`: Override the default tasks directory (e.g., `.pebble/` or `docs/tasks/`).
+    - `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect.
+      - Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
+    - `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
 
   - **Repository Management:**
-    - `pebble init`: Bootstraps the environment, creates the tasks directory, and generates a `pebble.toml` configuration.
+    - `pebble init`: Bootstraps the environment and creates the tasks directory.
 
   - **Query Commands:**
     - `pebble list` (alias: `ls`): Parses the directory and builds the DAG.
       - Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (computed from `after`, shows only tasks where dependencies are not `done`).
     - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
+    - `pebble search <query>`: Full-text search across titles and Markdown bodies.
 
   - **Mutation Commands** (These modify the Markdown files directly):
-    - `pebble new <title>` (alias: `add`, `create`): Generates the boilerplate `.md` file. 
-      - Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`, `--no-edit` (crucial for agents to skip `$EDITOR`).
+    - `pebble add <title>`: Generates the boilerplate `.md` file.
+      - Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`.
     - `pebble update <id>`: Safely modifies the frontmatter.
       - Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. (Adheres to the CLI contract for incremental list mutations).
-    - `pebble append <id> --message <text>`: Safely appends raw Markdown to the body without risking frontmatter parsing corruption. Excellent for agents adding notes.
-    - `pebble edit <id>`: Locates the file and opens it natively in `$EDITOR`.
+    - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
 
   - **Validation:**
     - `pebble check`: A strict linter that evaluates the `.md` database.
-      - Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has `active` children).
-      - Options: `--fix` to automatically rectify safe, deterministic errors (e.g., sorting TOML/YAML keys, injecting missing timestamps).
+      - Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
+      - Options: `--fix` to automatically rectify safe, deterministic errors (e.g., sorting YAML keys, normalizing whitespace).
+
+## Appendix: Iterative Refinement
+
+Suggested prompt: Read rfc-reimagining-pebble.md and do one iterative refinement.
+
+Consider this to be the iterative refinement prompt for this document:
+
+You are a principle staff engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape such that you'd be persuaded to approve it. Choose a concrete improvement to make to the document, propose it to me for implementation.
+
+Consider: editorial issues like section order, presentation language;  content improvements; missing gaps in the proposal; failures to consider every detail of the current pebble schema or command set; anything else you can think of.
+
+Pick the most important improvement you can think of, and propose it to me for implementation.
 
 ---
 *Open for feedback: Does fully committing to Markdown files in the main branch (Option A) create too much directory clutter, or is the benefit of native GitHub PR capabilities worth the noise?*
