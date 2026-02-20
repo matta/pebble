@@ -90,12 +90,19 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 ## Phase 6: Agent UX & Issue Lifecycle (MVP)
 Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 → P6-9 → P6-10
 - [x] P6-1 Define CLI I/O contract: `stdout` data, `stderr` diagnostics, stable error codes, and exit code map (`0/1/2`).
-- [ ] P6-2 Implement `--json` on **all** commands (add/update/search/list/show/sync/init/import/config).
-- [ ] P6-3 Add `--help-json` (or `pebble help --json`) with output schemas.
-- [ ] P6-4 Update `--help` with concrete examples for core workflows.
+- [x] P6-2 Implement `--json` on **all** commands (add/update/search/list/show/sync/init/import/config).
+- [x] P6-3 Add `--help-json` (or `pebble help --json`) with output schemas.
+- [x] P6-4 Update `--help` with concrete examples for core workflows.
 - [ ] P6-5 Add list filters/sorting (`--status`, `--owner`, `--type`, `--priority`, `--updated`).
+  - [x] Filters: `--status`, `--owner`, `--priority`.
+  - [ ] Filters: `--type`, `--updated`.
+  - [ ] Sorting.
 - [ ] P6-6 Add `pebble search` (full-text + filters: status, owner, type, priority).
+  - [x] Full-text search on title/description.
+  - [ ] Filters: status, owner, type, priority.
 - [ ] P6-7 Add `pebble update` for status/priority/owner/type/close fields.
+  - [x] Update: status/priority/owner/type.
+  - [ ] Close behavior: `close_reason` validation + `closed_at` auto-set.
 - [ ] P6-8 Remove interactive prompts; require `--yes` / `--force` for destructive ops.
 - [ ] P6-9 Disable color/formatting in structured mode; respect `NO_COLOR` and `isatty()`.
 - [ ] P6-10 Tests: idempotency, exit codes, and stdout/stderr separation.
