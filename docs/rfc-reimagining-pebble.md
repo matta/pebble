@@ -36,7 +36,9 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while keeping the architecture simple.
 
-**Non-Goals:** Not targeting enterprise-scale analytics or cross-repo issue federation.
+**Non-Goals:**
+- Not targeting enterprise-scale analytics or cross-repo issue federation.
+- **Model Context Protocol (MCP) Server:** Building an MCP server is explicitly a post-1.0/post-MVP decision. AI agents perform perfectly well interacting via a local CLI. 
 
 **Scope & Risk Profile:** There are currently zero active Pebble repositories. This pivot carries low operational risk and requires no staged rollout. Validation is limited to internal tests plus the one-time migration script.
 
@@ -91,7 +93,7 @@ Optional:
 - `priority` (integer)
 
 Intentionally omitted:
-- `updated_at`, `closed_at`, `owner`, `close_reason`, `created_by`
+- `updated_at`, `closed_at`, `owner`, `close_reason`, `created_by`, `type` (or `task_type`)
 
 Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
@@ -141,7 +143,9 @@ pub struct TaskNode {
     pub body: String,
 }
 ```
-**Rationale:** There is no concrete use case that requires these fields in the schema today. Adding them would introduce cost (parsing or updating on every write) without clear value. The fallback is Git history (`git log`, `git blame`) and, if needed later, a dedicated convenience command can compute and display recency metadata without making it canonical.
+**Rationale for Omitted Fields:** 
+- **Audit Metadata (`owner`, `updated_at`, etc):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value.
+- **Task Types (`type`):** Generic tags (`tags` array) are sufficient for lightweight categorization. Supporting configurable type taxonomies introduces complexity counter to Pebble's minimalist goals.
 
 **Timestamp Rules**
 - `created_at` is required in frontmatter and must be RFC3339.
