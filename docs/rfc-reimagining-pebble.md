@@ -150,6 +150,32 @@ Computed:
 
 **Rationale:** There is no concrete use case that requires these fields in the schema today. Adding them would introduce cost (parsing or updating on every write) without clear value. The fallback is Git history (`git log`, `git blame`) and, if needed later, a dedicated convenience command can compute and display recency metadata without making it canonical.
 
+**Ordering Semantics (after/before)**
+- `after` is the stored field and represents prerequisites.
+- `before` is computed as the inverse of `after`.
+- A task is **blocked** if any item in its `after` list is not `done`. (The computed `before` list is the inverse and is not used to determine whether the task is blocked.)
+- Cycles are invalid and rejected by `pebble check`.
+
+Example:
+```yaml
+# A.md
+id: A
+after: []
+
+# B.md
+id: B
+after: [A]
+
+# C.md
+id: C
+after: [B]
+```
+
+Computed:
+- `before(A) = [B]`
+- `before(B) = [C]`
+- `before(C) = []`
+
 **Success Criteria:**
 1. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
 2. Agents can create/update issues without schema drift; human edits remain the source of truth.
