@@ -17,7 +17,11 @@ pub mod update;
 pub fn load_config(path: Option<&Path>) -> Result<Config> {
     let config_path = match path {
         Some(p) => std::path::PathBuf::from(p),
-        None => Config::default_path(&std::env::current_dir()?),
+        None => {
+            let current_dir = std::env::current_dir()?;
+            let repo_root = pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+            Config::default_path(&repo_root)
+        }
     };
     let content = std::fs::read_to_string(&config_path)
         .with_context(|| format!("Failed to read config file at {}", config_path.display()))?;
@@ -48,7 +52,9 @@ pub fn get_store(
     pebble::worktree::WorktreeManager,
     std::path::PathBuf,
 )> {
-    let manager = get_worktree_manager(config, std::env::current_dir()?)?;
+    let current_dir = std::env::current_dir()?;
+    let repo_root = pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+    let manager = get_worktree_manager(config, repo_root)?;
     let jsonl_path = manager.get_absolute_jsonl_path()?;
     let store = pebble::store::JsonlStore::new(
         jsonl_path
