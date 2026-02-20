@@ -29,78 +29,8 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
 
-## 3. The "State Synchronization" Problem
 
-Before discussing specific file formats, we must address the fundamental friction—or feature—of co-locating a task database with application code inside a version control system like Git.
-
-### The Problem: "The Bug Database Friction"
-If task state is tracked in the main branch (e.g., inside `docs/pebble/`), it feels like it creates a workflow bottleneck:
-- **Tangent Discoveries:** A developer working on `feature-A` discovers a bug related to `feature-B`. If they create the task locally and commit it, it's not visible project-wide until `feature-A` is merged.
-- **Merge Conflicts on State:** Changing the status of an ongoing epic on multiple feature branches simultaneously can lead to merge conflicts simply trying to track *what* is being done.
-
-*This explains why most industry-standard bug trackers (Jira, Linear, GitHub Issues) exist completely "out-of-band" (hosted externally) rather than in the repository itself.*
-
-### The Counter-Argument: "In-Band Storage is a Feature, Not a Bug"
-Alternatively, tracking task states directly with the code is a massive benefit that out-of-band trackers lack:
-- **Temporal Consistency:** If you `git checkout` a release from 6 months ago, you see exactly what tasks were pending, blocked, or completed *at that exact moment in time*. The state of the project planner perfectly matches the state of the codebase.
-- **The Solution to Tangent Discoveries:** If a user needs to file an issue separate from their current development track, the solution isn't to build a complex global sync mechanism—they simply branch off `main`, commit the new task, and merge it quickly. It forces good hygiene.
-
-### Paradigm 1: The Out-of-Band Service (The External API)
-*Move state out of the repository entirely, relying on a lightweight backend service.*
-- **Pros:** Eliminates Git friction. Task status is instantly globally visible.
-- **Cons:** Violates the "local first, offline capable, single-repo" ethos. Introduces infrastructure overhead. Destroys temporal consistency with the codebase.
-
-### Paradigm 2: The In-Band Hidden Worktree (The Current Pebble Approach)
-*Store the data in the repository, but utilize a "hidden" Git branch (e.g., `pebble-data`) mounted via a Git worktree inside a `.git/` subdirectory.*
-- **Pros:** Maintains local-first offline capability. Tasks are instantly synced across feature branches because the worktree operates independently.
-- **Cons:** Extremely high complexity. `git worktree` commands are brittle to setup, difficult for agents to intuitively reason about, and create edge cases around `git push/pull`.
-
-### Paradigm 3: The SQLite / Local Database Approach
-*Store state in an un-tracked local `.pebble.sqlite` database file. Sync via a secondary mechanism.*
-- **Pros:** Immediate reads/writes. No git branch interference. Easy to query using SQL.
-- **Cons:** Merging binary SQLite dumps across branches is incredibly difficult. Natively unreadable by humans without dedicated tooling.
-
-## 4. Storage Format Considerations
-
-Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the hidden worktree and just committing tasks to the main branch), what format should the data take?
-
-### Avenue A: The "Everything is a File" Markdown Approach
-*Store each task as a discrete Markdown file inside a visible directory in the source tree (e.g., `docs/pebble/` or `docs/tasks/`), using YAML frontmatter for metadata. These files are committed to standard Git.*
-
-**Example `docs/pebble/deploy-staging-environment.md`:**
-```markdown
----
-id: proj-0kq
-status: todo
-parent: proj-epic1
-created_at: 2026-01-15T10:30:00Z
----
-# Deploy staging environment
-
-Run the canary deploy pipeline against the `staging` cluster.
-```
-
-**Filename rules:** Filenames are human-readable and do **not** need to embed the `id`. The `id` lives in frontmatter; the filename is purely for human navigation.
-
-**Pros:**
-- **Ultimate Human Readability:** GitHub, GitLab, and local IDEs render these files perfectly natively.
-- **The Ultimate Code Review:** Because they are just text files in the main branch, changes to tasks show up in GitHub Pull Requests natively. You can comment on a task definition change just like a code change.
-- **Agent Friendly:** LLMs have profound native understanding of Markdown.
-- **Git Diffs:** Conflict resolution is trivial because files are separated.
-
-**Cons:**
-- **Graph Traversal:** Requires reading potentially hundreds of small files to build the dependency graph.
-
-### Avenue B: The Append-Only Log (Refined JSONL)
-*Keep a JSONL event stream or state dump (similar to current `golden.jsonl`), heavily optimizing the CLI/MCP layer to hydrate the state.*
-
-**Pros:**
-- **Machine Native:** JSON is the lingua franca of LLMs.
-- **Git Friendly Appends:** Adding a line rarely conflicts with another added line.
-**Cons:**
-- **Human Antagonistic:** Humans cannot read or edit JSONL manually. This violates the "degrade gracefully" principle if the CLI/UI is unavailable. Pull Request diffs for a JSONL state change are extremely difficult for human reviewers to parse.
-
-## 5. Technical Specification
+## 3. Technical Specification
 
 **Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. Any caches or indexes are strictly derived and optional.
 
@@ -310,7 +240,7 @@ Computed:
 - The initial suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox estimate).
 
 **Configuration Contract**
-- Config lives at `.pebble/config.toml`.
+- Config lives at `pebble.toml`.
 - Supported keys:
   - `issue-prefix` (string): prefix for new IDs (default: `issue`).
   - `tasks-dir` (string): path to task files (default: `docs/pebble/`).
@@ -319,12 +249,85 @@ Computed:
   - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
 
 **Configuration Lifecycle**
-- `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
+- `pebble init` creates `pebble.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
 - `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
-- Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
+- Users may edit `pebble.toml` directly to change `issue-prefix` or `tasks-dir`.
 - The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
 
-## Appendix: Iterative Refinement
+## Appendix A: Alternatives Considered
+
+##### The "State Synchronization" Problem
+
+Before discussing specific file formats, we must address the fundamental friction—or feature—of co-locating a task database with application code inside a version control system like Git.
+
+##### The Problem: "The Bug Database Friction"
+If task state is tracked in the main branch (e.g., inside `docs/pebble/`), it feels like it creates a workflow bottleneck:
+- **Tangent Discoveries:** A developer working on `feature-A` discovers a bug related to `feature-B`. If they create the task locally and commit it, it's not visible project-wide until `feature-A` is merged.
+- **Merge Conflicts on State:** Changing the status of an ongoing epic on multiple feature branches simultaneously can lead to merge conflicts simply trying to track *what* is being done.
+
+*This explains why most industry-standard bug trackers (Jira, Linear, GitHub Issues) exist completely "out-of-band" (hosted externally) rather than in the repository itself.*
+
+##### The Counter-Argument: "In-Band Storage is a Feature, Not a Bug"
+Alternatively, tracking task states directly with the code is a massive benefit that out-of-band trackers lack:
+- **Temporal Consistency:** If you `git checkout` a release from 6 months ago, you see exactly what tasks were pending, blocked, or completed *at that exact moment in time*. The state of the project planner perfectly matches the state of the codebase.
+- **The Solution to Tangent Discoveries:** If a user needs to file an issue separate from their current development track, the solution isn't to build a complex global sync mechanism—they simply branch off `main`, commit the new task, and merge it quickly. It forces good hygiene.
+
+##### Paradigm 1: The Out-of-Band Service (The External API)
+*Move state out of the repository entirely, relying on a lightweight backend service.*
+- **Pros:** Eliminates Git friction. Task status is instantly globally visible.
+- **Cons:** Violates the "local first, offline capable, single-repo" ethos. Introduces infrastructure overhead. Destroys temporal consistency with the codebase.
+
+##### Paradigm 2: The In-Band Hidden Worktree (The Current Pebble Approach)
+*Store the data in the repository, but utilize a "hidden" Git branch (e.g., `pebble-data`) mounted via a Git worktree inside a `.git/` subdirectory.*
+- **Pros:** Maintains local-first offline capability. Tasks are instantly synced across feature branches because the worktree operates independently.
+- **Cons:** Extremely high complexity. `git worktree` commands are brittle to setup, difficult for agents to intuitively reason about, and create edge cases around `git push/pull`.
+
+##### Paradigm 3: The SQLite / Local Database Approach
+*Store state in an un-tracked local `.pebble.sqlite` database file. Sync via a secondary mechanism.*
+- **Pros:** Immediate reads/writes. No git branch interference. Easy to query using SQL.
+- **Cons:** Merging binary SQLite dumps across branches is incredibly difficult. Natively unreadable by humans without dedicated tooling.
+
+##### Storage Format Considerations
+
+Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the hidden worktree and just committing tasks to the main branch), what format should the data take?
+
+##### Avenue A: The "Everything is a File" Markdown Approach
+*Store each task as a discrete Markdown file inside a visible directory in the source tree (e.g., `docs/pebble/` or `docs/tasks/`), using YAML frontmatter for metadata. These files are committed to standard Git.*
+
+**Example `docs/pebble/deploy-staging-environment.md`:**
+```markdown
+---
+id: proj-0kq
+status: todo
+parent: proj-epic1
+created_at: 2026-01-15T10:30:00Z
+---
+# Deploy staging environment
+
+Run the canary deploy pipeline against the `staging` cluster.
+```
+
+**Filename rules:** Filenames are human-readable and do **not** need to embed the `id`. The `id` lives in frontmatter; the filename is purely for human navigation.
+
+**Pros:**
+- **Ultimate Human Readability:** GitHub, GitLab, and local IDEs render these files perfectly natively.
+- **The Ultimate Code Review:** Because they are just text files in the main branch, changes to tasks show up in GitHub Pull Requests natively. You can comment on a task definition change just like a code change.
+- **Agent Friendly:** LLMs have profound native understanding of Markdown.
+- **Git Diffs:** Conflict resolution is trivial because files are separated.
+
+**Cons:**
+- **Graph Traversal:** Requires reading potentially hundreds of small files to build the dependency graph.
+
+##### Avenue B: The Append-Only Log (Refined JSONL)
+*Keep a JSONL event stream or state dump (similar to current `golden.jsonl`), heavily optimizing the CLI/MCP layer to hydrate the state.*
+
+**Pros:**
+- **Machine Native:** JSON is the lingua franca of LLMs.
+- **Git Friendly Appends:** Adding a line rarely conflicts with another added line.
+**Cons:**
+- **Human Antagonistic:** Humans cannot read or edit JSONL manually. This violates the "degrade gracefully" principle if the CLI/UI is unavailable. Pull Request diffs for a JSONL state change are extremely difficult for human reviewers to parse.
+
+## Appendix B: Iterative Refinement
 
 DO NOT REMOVE THIS SECTION
 
