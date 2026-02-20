@@ -106,5 +106,99 @@ To retain the dual-audience goal while stripping away enterprise complexity, we 
 2. **Commit Markdown Natively:** Use Avenue A (Markdown + YAML Frontmatter) committed directly to the main branch. This provides instant, out-of-the-box UI on GitHub and native semantic understanding for Agents.
 3. **The CLI as a Cache/Accelerator:** The CLI's job isn't to hide the storage; it is to quickly parse the hundreds of Markdown files, build the dependency DAG, and answer questions like "What tasks are blocking X?" or serve that graph locally via MCP.
 
+## 8. Detailed Design Explorations & Open Decisions
+
+To fully realize the "Markdown Native" Avenue A paradigm, several technical details must be debated and finalized:
+
+- [x] **Frontmatter Format: YAML vs TOML**
+  While TOML is preferred for configuration in the Rust ecosystem, **YAML is the definitive recommendation here because of network effects.**
+  - **The YAML Network Effect:** YAML frontmatter bounded by `---` is recognized natively by GitHub, Obsidian, Hugo, Prettier, language servers, and nearly all IDEs. Choosing TOML (often bounded by `+++`) breaks this ecosystem interoperability, defeating a major benefit of Avenue A.
+  - **Mitigating YAML's Flaws in Rust:** YAML is infamous for type-inference quirks (the "Norway problem" where `no` becomes a boolean). However, in a Rust context using `serde_yml` (the community fork of `serde_yaml`), we can mitigate this entirely by defining a strictly typed `struct TaskFrontmatter`. If a user types `status: no` and the struct expects an enum, `serde_yml` will throw a clear validation error. We could also explore a "StrictYAML" parsing crate to intentionally reject complex, ambiguous YAML features.
+
+- [x] **Frontmatter Schema Design: Resolving Discrepancies**
+  Comparing the current Pebble `golden.jsonl` schema against the minimalist Rust schema proposed, there are several key discrepancies. Handling these one by one reveals the philosophical shifts of moving to a Markdown-native approach:
+
+  **1. The `description` field (In Pebble, missing from Snippet)**
+  - *Current:* Pebble stores the prose of the task inside a JSON string field (`description`).
+  - *Decision:* **Drop from Frontmatter.** The entire justification for Avenue A is that the Markdown body *is* the description. The frontmatter only handles metadata; the prose lives natively below the `---` delimiters.
+
+  **2. Graph Edges (`parent` and `depends_on` vs complex `dependencies`)**
+  - *Current:* Pebble uses a complex `dependencies` array of objects (e.g., `[{"issue_id": "A", "depends_on_id": "B", "type": "parent-child", "created_at": "..."}]`) to track every edge and who created it.
+  - *Snippet:* Simplifies this to `parent: Option<String>` and `depends_on: Vec<String>`.
+  - *Decision:* **Adopt the Snippet.** Tracking the `created_at` of an edge link is overkill for local-first single-repo development. Explicitly defining `parent` as a scalar makes tree traversal much faster and easier for humans to read and edit.
+
+  **3. `tags` (In Snippet, missing from Pebble)**
+  - *Current:* Pebble doesn't have a first-class `tags` string array in the examined golden schema.
+  - *Decision:* **Keep.** A `tags` array is highly idiomatic in Markdown frontmatter (Obsidian, Jekyll) and provides lightweight categorization without needing rigorous epic/parent linkage.
+
+  **4. `priority` (In Pebble, missing from Snippet)**
+  - *Current:* Pebble relies on an explicit integer `priority` (e.g., 0, 1, 2) which dictates sorting.
+  - *Decision:* **Requires Debate.** Does minimal single-repo development need explicit numerical priorities (P0, P1, P2), or is graph topology (what is blocking what) alongside `status` sufficient? For now, we should probably add `priority: Option<u8>` to the schema to maintain feature parity.
+
+  **5. Audit Trail (`owner`, `created_by`, `closed_at`, `close_reason`)**
+  - *Current:* Pebble tracks exhaustive audit metadata for every task closure.
+  - *Snippet:* Drops most of this, reducing to just `created_at` and `updated_at`.
+  - *Decision:* **Delegate to Git.** In a repository-backed bug tracker, `git blame` natively tracks who created a task, who closed it, and when. Storing `owner` or `close_reason` in the file duplicates version control features. We should keep `created_at` for simple UI sorting, but drop `created_by`, `updated_at`, `closed_at`, and `owner` in favor of trusting `git log`.
+
+  **Proposed Final Rust Schema:**
+  ```rust
+  use chrono::{DateTime, Utc};
+  use serde::{Deserialize, Serialize};
+  use std::path::PathBuf;
+
+  #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
+  #[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "done" etc.
+  pub enum TaskStatus {
+      Todo,
+      Active, // AKA in_progress
+      Blocked,
+      Done,
+  }
+
+  /// Represents the exact structure of the YAML front matter.
+  #[derive(Debug, Deserialize, Serialize, Clone)]
+  pub struct TaskFrontmatter {
+      pub id: String,
+      // Status strictly validated against the enum
+      pub status: TaskStatus,
+      
+      // Kept for parity, but kept optional if not strictly needed
+      pub priority: Option<u8>,
+      
+      pub parent: Option<String>,
+      pub created_at: DateTime<Utc>,
+      pub updated_at: Option<DateTime<Utc>>,
+      
+      // Graph edges: empty arrays default nicely.
+      #[serde(default)]
+      pub depends_on: Vec<String>,
+      
+      #[serde(default)]
+      pub tags: Vec<String>,
+  }
+
+  /// The in-memory representation.
+  /// This is what the CLI stores in its graph topology.
+  #[derive(Debug, Clone)]
+  pub struct TaskNode {
+      pub path: PathBuf,
+      pub frontmatter: TaskFrontmatter,
+      // Note: `description` is gone. This body captures the rest of the file.
+      pub body: String,
+  }
+  ```
+
+- [ ] **CLI Command Surface**
+  If the CLI is an accelerator rather than a database dictating access, its job is to make querying the DAG and bulk-mutating files effortless for humans and agents.
+  - **Query Commands:**
+    - `pebble list [--status <status>] [--json]`: Parses the directory, builds the DAG, and renders a tree or flat list of actionable tasks. The `--json` flag emits machine-readable graph data.
+    - `pebble show <id> [--json]`: Prints the full details and graph-context of a specific task.
+  - **Mutation Commands** (These modify the Markdown files directly):
+    - `pebble add <title> [--parent <id>]`: Generates the boilerplate `.md` file, auto-generating a unique ID and `created_at` timestamp.
+    - `pebble update <id> [--status <status>] [--add-depends-on <id>]`: Safely modifies the frontmatter of an existing task (vital for agents invoking tools without needing to write complex Regex/sed commands).
+    - `pebble edit <id>`: Locates the file and opens it in `$EDITOR`.
+  - **Validation:**
+    - `pebble validate`: A fast linter that checks the graph for circular dependencies, broken `depends_on` links, and checks all `.md` files against the frontmatter schema.
+
 ---
 *Open for feedback: Does fully committing to Markdown files in the main branch (Option A) create too much directory clutter, or is the benefit of native GitHub PR capabilities worth the noise?*
