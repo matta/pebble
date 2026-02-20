@@ -64,6 +64,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 **Mutation commands**
 - `pebble add <title>`: Generates the boilerplate `.md` file. Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`.
 - `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter.
+- `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` that have not been modified recently (e.g., git mtime > 30 days) into an `archive/` subdirectory to reduce IDE clutter.
 - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
 
 **Validation**
@@ -72,7 +73,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Read/Write Policy**
 - **Read-only:** `list`, `show`, `search`, and `check` never modify files.
-- **Write commands:** `add`, `update`, and `fix` are the only commands that mutate task files.
+- **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
 
 **Command Deprecations & Removals**
 - `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
@@ -189,6 +190,11 @@ Computed:
 2. Agents can create/update issues without schema drift; human edits remain the source of truth.
 3. Performance is acceptable for small single-repo teams without premature optimization.
 
+**Archival & Organization Strategy:**
+Because the `id` within the YAML frontmatter is the canonical identifier, the physical file path of a task Markdown file is strictly advisory. The CLI scans the `tasks-dir` **recursively**, meaning files can be moved without breaking graph links.
+
+- **Automated Lifecycle Archiving:** To prevent long-term repository bloat and IDE search pollution, Pebble provides a `pebble archive` command. This command scans the repository for `done` or `canceled` tasks whose Git modification date is older than a threshold (e.g., 30 days) and automatically moves them into an `archive/` subdirectory (e.g., `docs/pebble/archive/2026/`). Since the CLI recursively scans the base directory, these archived tasks remain part of the project history and graph but are visually moved out of active working directories.
+
 **Migration Plan:**
 1. There is exactly one existing database to migrate.
 2. Use a one-time throw-away script to transform the current JSONL into Markdown files under `docs/pebble/`.
@@ -213,7 +219,7 @@ Computed:
 **Tooling Contract for File Layout**
 - The canonical identifier is the frontmatter `id`; filenames are advisory only.
 - The root directory defaults to `docs/pebble/` and is configurable; visibility (hidden directory, gitignored path, etc.) is a user choice.
-- The CLI treats every `*.md` file under the root as a task file.
+- The CLI **recursively** treats every `*.md` file under the root as a task file.
 - The CLI never changes `id`. Users may edit it manually, but the `id` **must** be unique across the repo.
 - If two files share the same `id`, the CLI fails with a clear error and no writes.
 - When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
@@ -331,6 +337,12 @@ Run the canary deploy pipeline against the `staging` cluster.
 - **Git Friendly Appends:** Adding a line rarely conflicts with another added line.
 **Cons:**
 - **Human Antagonistic:** Humans cannot read or edit JSONL manually. This violates the "degrade gracefully" principle if the CLI/UI is unavailable. Pull Request diffs for a JSONL state change are extremely difficult for human reviewers to parse.
+
+##### Semantic Subdirectories (Visual Organization)
+*Manually organizing active tasks into nested folders (e.g., `docs/pebble/frontend/` or `docs/pebble/epics/epic-1/`) just to group them visually.*
+
+- **Pros:** Makes reading the raw file tree theoretically easier for humans.
+- **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`parent`/`after`), reserving the recursive directory scan feature purely for automated lifecycle `archive` sorting.
 
 ## Appendix B: Iterative Refinement
 
