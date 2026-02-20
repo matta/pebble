@@ -164,8 +164,18 @@ pub struct TaskNode {
 **Ordering Semantics (after/before)**
 - `after` is the stored field and represents prerequisites.
 - `before` is computed as the inverse of `after`.
-- A task is considered **blocked** if its explicit status is set to `blocked` (for external blockers) OR if any item in its `after` list is not `done`. (This includes `canceled` prerequisites.) The computed `before` list is the inverse and is not used to determine whether the task is blocked.
 - Cycles are invalid and rejected by `pebble check`.
+
+**Blocking: Two Independent Signals**
+
+A task can be blocked in two independent ways:
+
+1. **Graph-blocked:** Any task in `after` has a status other than `done`. This is computed automatically and clears automatically when prerequisites complete. The user does not need to take any action.
+2. **Externally blocked:** The user explicitly sets `status: blocked` to indicate a blocker outside the Pebble graph (e.g., waiting on a vendor, an approval process, a hardware shipment). This is a manual signal and only clears when the user changes the status.
+
+The `--is-blocked` filter on `list` matches tasks that are blocked by *either* signal. In `--json` output, `TaskObject` includes a computed boolean `is_blocked` (true if graph-blocked OR `status: blocked`) so agents can filter without understanding the distinction.
+
+**Rationale for `blocked` as a stored status:** Without it, the only way to represent an external blocker is to create a dummy prerequisite task (e.g., "Wait for Apple review") — a non-actionable task that pollutes the tracker purely to manipulate graph state. `status: blocked` avoids this antipattern. The staleness risk (user forgets to un-block after the external condition resolves) is a user discipline problem common to every task tracker; `pebble list --status blocked` serves as the periodic review queue.
 
 Example:
 ```yaml
@@ -199,7 +209,7 @@ All `--json` output is a single JSON object printed to stdout per invocation.
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `after`, `tags`).
-- Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo).
+- Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo), `is_blocked` (boolean; true if graph-blocked or `status: blocked`).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
 - `path`: the file path relative to `tasks-dir`.
 
