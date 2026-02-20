@@ -206,9 +206,16 @@ Computed:
 - The canonical identifier is the frontmatter `id`; filenames are advisory only.
 - The root directory defaults to `docs/pebble/` and is configurable, but must be visible in the repo.
 - The CLI treats every `*.md` file under the root as a task file.
+- The CLI never changes `id`. Users may edit it manually, but the `id` **must** be unique across the repo.
 - If two files share the same `id`, the CLI fails with a clear error and no writes.
 - When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
 - Renaming or moving a file does not change the `id` and does not break references.
+
+**Identifier Stability & Rename Semantics**
+- `id` is user-editable, but the CLI never changes it.
+- `id` **must** be unique across the repo.
+- If a user changes an `id`, they must update all references (`parent`, `after`) for consistency.
+- `pebble check` fails on duplicates or dangling references.
 
 ## 8. Recommendations & Discussion Points
 
