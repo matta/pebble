@@ -11,7 +11,7 @@ It is aligned with `docs/ux-for-agents.md` and the current implementation plan.
 - Every command has a **clear, distinct purpose**. Avoid redundant commands that do the same thing.
 - All commands that produce output **must** support `--json`.
 - No interactive prompts. If confirmation is needed, require `--yes` / `--force` or fail with a usage error.
-- Use ubiquitous language: **one concept, one word**. Do not abbreviate. Use the same term consistently (e.g., always `dependency`, never `dependencies` or `dep`).
+- Use ubiquitous language: **one concept, one word** for both nouns and verbs. Do not abbreviate. Use the same term consistently (e.g., always `dependency`, never `dependencies` or `dep`; pick one verb such as `remove` or `delete` and use it everywhere).
 
 ## Exit Codes
 - `0`: Success.

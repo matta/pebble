@@ -206,7 +206,7 @@ fn issue_schema() -> serde_json::Value {
                 }
             },
             "labels": {"type": "array", "items": {"type": "string"}},
-            "notes": {"type": "string"},
+            "notes": {"type": "array", "items": {"type": "string"}},
             "original_type": {"type": "string"}
         },
         "required": [

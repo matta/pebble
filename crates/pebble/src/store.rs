@@ -78,8 +78,8 @@ pub struct Issue {
     pub dependencies: Vec<IssueDependency>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub labels: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub original_type: Option<String>,
 }
