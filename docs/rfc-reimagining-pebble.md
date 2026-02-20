@@ -12,7 +12,8 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - YAML frontmatter defines metadata; the Markdown body is the description.
 - `id` is canonical and user-editable; the CLI never changes it.
 - Relationships: store `after` (prerequisites), compute `before` as inverse.
-- Status model: `todo`, `in_progress`, `blocked`, `done`, `canceled`.
+- Status model: `todo`, `in_progress`, `paused`, `done`, `canceled`.
+- Readiness is computed: a task is `ready` when prerequisites are satisfied and the status is actionable (not `paused`, `done`, or `canceled`).
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - One-time migration via a throw-away script from the existing JSONL.
@@ -22,10 +23,10 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 Based on the `golden.jsonl` data and typical single-repo development flows, the essential feature set is surprisingly small:
 
 1. **Task Tracking:** Ability to define a task with an ID, title, description, and status.
-   - States: `todo`, `in_progress`, `blocked`, `done`, `canceled` (aligned with GitHub Projects terminology).
+   - States: `todo`, `in_progress`, `paused`, `done`, `canceled` (core states align with GitHub Projects; `paused` is Pebble-specific).
    - `canceled` means "not done and will never be done."
 2. **Hierarchy & Composition:** Epics and subtasks. A task can be heavily composed of smaller tasks (`parent/child`).
-3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; "blocked" is derived from unmet `after` prerequisites.
+3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; **readiness** is computed from whether all `after` prerequisites are `done` and the task is not `paused`.
 4. **Basic Metadata:** Creation timestamp (`created_at`) only. Audit trail (owner, closed_at, close_reason) is intentionally omitted and delegated to Git history.
 
 **Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
@@ -58,12 +59,12 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 - `pebble init`: Bootstraps the environment and creates the tasks directory.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (computed from `after`, shows only tasks where dependencies are not `done`).
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
 
 **Mutation commands**
-- `pebble add <title>`: Generates the boilerplate `.md` file. Options: `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
+- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
 - `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` that have not been modified recently (e.g., git mtime > 30 days) into an `archive/` subdirectory to reduce IDE clutter.
 - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
@@ -85,7 +86,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 **Frontmatter Contract (Required vs Optional)**
 Required:
 - `id` (string)
-- `status` (enum: `todo` | `in_progress` | `blocked` | `done` | `canceled`)
+- `status` (enum: `todo` | `in_progress` | `paused` | `done` | `canceled`)
 - `created_at` (RFC3339 string)
 
 Optional:
@@ -110,11 +111,11 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "blocked", "done", "canceled".
+#[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "paused", "done", "canceled".
 pub enum TaskStatus {
     Todo,
     InProgress,
-    Blocked,
+    Paused,
     Done,
     Canceled,
 }
@@ -167,16 +168,16 @@ pub struct TaskNode {
 - `before` is computed as the inverse of `after`.
 - Cycles are invalid and rejected by `pebble check`.
 
-**Blocking: Two Independent Signals**
+**Ready and Paused: Two Independent Concepts**
 
-A task can be blocked in two independent ways:
+A task has two independent concepts:
 
-1. **Graph-blocked:** Any task in `after` has a status other than `done`. This is computed automatically and clears automatically when prerequisites complete. The user does not need to take any action.
-2. **Externally blocked:** The user explicitly sets `status: blocked` to indicate a blocker outside the Pebble graph (e.g., waiting on a vendor, an approval process, a hardware shipment). This is a manual signal and only clears when the user changes the status.
+1. **Ready (computed):** A task is `ready` when all `after` prerequisites are `done` and its status is actionable (`todo` or `in_progress`). Tasks with status `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
+2. **Paused (explicit):** The user sets `status: paused` to represent an external hold not captured in the graph (e.g., waiting on a vendor, approval, or shipment). This is manual and only clears when the user changes the status.
 
-The `--is-blocked` filter on `list` matches tasks that are blocked by *either* signal. In `--json` output, `TaskObject` includes a computed boolean `is_blocked` (true if graph-blocked OR `status: blocked`) so agents can filter without understanding the distinction.
+The `--is-ready` filter on `list` matches tasks that are `ready`. In `--json` output, `TaskObject` includes a computed boolean `is_ready` so agents can filter without re-deriving readiness.
 
-**Rationale for `blocked` as a stored status:** Without it, the only way to represent an external blocker is to create a dummy prerequisite task (e.g., "Wait for Apple review") — a non-actionable task that pollutes the tracker purely to manipulate graph state. `status: blocked` avoids this antipattern. The staleness risk (user forgets to un-block after the external condition resolves) is a user discipline problem common to every task tracker; `pebble list --status blocked` serves as the periodic review queue.
+**Rationale for `paused` as a stored status:** Without it, the only way to represent an external hold is to create a dummy prerequisite task (e.g., "Wait for Apple review") — a non-actionable task that pollutes the tracker purely to manipulate graph state. `status: paused` avoids this antipattern. The staleness risk (user forgets to un-pause after the external condition resolves) is a user discipline problem common to every task tracker; `pebble list --status paused` serves as the periodic review queue.
 
 Example:
 ```yaml
@@ -210,7 +211,7 @@ All `--json` output is a single JSON object printed to stdout per invocation.
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `after`, `tags`).
-- Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo), `is_blocked` (boolean; true if graph-blocked or `status: blocked`).
+- Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` and status is `todo` or `in_progress`).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
 - `path`: the file path relative to `tasks-dir`.
 
@@ -311,7 +312,7 @@ If task state is tracked in the main branch (e.g., inside `docs/pebble/`), it fe
 
 ##### The Counter-Argument: "In-Band Storage is a Feature, Not a Bug"
 Alternatively, tracking task states directly with the code is a massive benefit that out-of-band trackers lack:
-- **Temporal Consistency:** If you `git checkout` a release from 6 months ago, you see exactly what tasks were pending, blocked, or completed *at that exact moment in time*. The state of the project planner perfectly matches the state of the codebase.
+- **Temporal Consistency:** If you `git checkout` a release from 6 months ago, you see exactly what tasks were pending, paused, or completed *at that exact moment in time*. The state of the project planner perfectly matches the state of the codebase.
 - **The Solution to Tangent Discoveries:** If a user needs to file an issue separate from their current development track, the solution isn't to build a complex global sync mechanism—they simply branch off `main`, commit the new task, and merge it quickly. It forces good hygiene.
 
 ##### Paradigm 1: The Out-of-Band Service (The External API)
