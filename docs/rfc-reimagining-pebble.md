@@ -11,6 +11,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - YAML frontmatter defines metadata; the Markdown body is the description.
 - `id` is canonical and user-editable; the CLI never changes it.
 - Relationships: store `after` (prerequisites), compute `before` as inverse.
+- Status model: `todo`, `in_progress`, `done`, `canceled`.
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - One-time migration via a throw-away script from the existing JSONL.
@@ -22,8 +23,8 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 1. **Task Tracking:** Ability to define a task with an ID, title, description, and status.
    - States: `todo`, `in_progress`, `done`, `canceled` (aligned with GitHub Projects terminology).
    - `canceled` means "not done and will never be done."
-2. **Hierarchy & Composition:** Epics and Sub-tasks. A task can be heavily composed of smaller tasks (`parent-child`).
-3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships.
+2. **Hierarchy & Composition:** Epics and subtasks. A task can be heavily composed of smaller tasks (`parent/child`).
+3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; "blocked" is derived from unmet `after` prerequisites.
 4. **Basic Metadata:** Creation timestamp (`created_at`) only. Audit trail (owner, closed_at, close_reason) is intentionally omitted and delegated to Git history.
 
 **Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
@@ -33,7 +34,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 Before discussing specific file formats, we must address the fundamental friction—or feature—of co-locating a task database with application code inside a version control system like Git.
 
 ### The Problem: "The Bug Database Friction"
-If task state is tracked in the main branch (e.g., inside a `.pebble/` folder), it feels like it creates a workflow bottleneck:
+If task state is tracked in the main branch (e.g., inside `docs/pebble/`), it feels like it creates a workflow bottleneck:
 - **Tangent Discoveries:** A developer working on `feature-A` discovers a bug related to `feature-B`. If they create the task locally and commit it, it's not visible project-wide until `feature-A` is merged.
 - **Merge Conflicts on State:** Changing the status of an ongoing epic on multiple feature branches simultaneously can lead to merge conflicts simply trying to track *what* is being done.
 
@@ -86,6 +87,7 @@ Run the canary deploy pipeline against the `staging` cluster.
 - **The Ultimate Code Review:** Because they are just text files in the main branch, changes to tasks show up in GitHub Pull Requests natively. You can comment on a task definition change just like a code change.
 - **Agent Friendly:** LLMs have profound native understanding of Markdown.
 - **Git Diffs:** Conflict resolution is trivial because files are separated.
+
 **Cons:**
 - **Graph Traversal:** Requires reading potentially hundreds of small files to build the dependency graph.
 
@@ -98,18 +100,9 @@ Run the canary deploy pipeline against the `staging` cluster.
 **Cons:**
 - **Human Antagonistic:** Humans cannot read or edit JSONL manually. This violates the "degrade gracefully" principle if the CLI/UI is unavailable. Pull Request diffs for a JSONL state change are extremely difficult for human reviewers to parse.
 
-## 5. Implementation Language & Tooling
+## 5. Implementation Language (Out of Scope)
 
-If we assume a CLI or an agent tool is required to enforce schemas, the choice of language matters for distribution and integration.
-
-### Option 1: Rust (The Current Path)
-- **Why?** Blazing fast, type-safe, distributes as a single static binary. Excellent for a tool that runs on every `git commit`.
-
-### Option 2: TypeScript / Node
-- **Why?** The AI ecosystem is heavily skewed towards TS/Python. Building Model Context Protocol (MCP) servers locally is easiest in TypeScript. Can be executed via `npx pebble-cli`.
-
-### Option 3: Go (Golang)
-- **Why?** Fast startup time like Rust, single binary distribution, but with a simpler concurrency model and arguably faster development velocity.
+This RFC does **not** propose changing the implementation language. Pebble remains a Rust CLI; language alternatives are intentionally deferred.
 
 ## 6. Re-imagining the Workflow & The Flawed Hybrid Paradigm
 
@@ -141,6 +134,12 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 - **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
 - **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
 
+**Command Deprecations & Removals**
+- `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
+- `sync-branch` configuration is removed.
+- `pebble import` is removed. The one-time JSONL → Markdown migration is handled by a throw-away script (e.g., Python) that invokes the new `pebble` CLI.
+- `pebble init` only creates the tasks directory and config; it no longer creates a worktree.
+
 **Frontmatter Contract (Required vs Optional)**
 Required:
 - `id` (string)
@@ -148,7 +147,6 @@ Required:
 - `created_at` (RFC3339 string)
 
 Optional:
-- `title` (string) — if omitted, derived from the H1 title
 - `parent` (string)
 - `after` (string array; multiple prerequisites allowed)
 - `tags` (string array)
@@ -161,6 +159,10 @@ Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
 
 **Rationale:** There is no concrete use case that requires these fields in the schema today. Adding them would introduce cost (parsing or updating on every write) without clear value. The fallback is Git history (`git log`, `git blame`) and, if needed later, a dedicated convenience command can compute and display recency metadata without making it canonical.
+
+**Title & Body Contract**
+- The Markdown body must start with a single H1 title.
+- `title` is not stored in frontmatter; the H1 is the sole title source.
 
 **Ordering Semantics (after/before)**
 - `after` is the stored field and represents prerequisites.
@@ -222,12 +224,14 @@ Computed:
 - If two files share the same `id`, the CLI fails with a clear error and no writes.
 - When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
 - Renaming or moving a file does not change the `id` and does not break references.
-
-**Identifier Stability & Rename Semantics**
-- `id` is user-editable, but the CLI never changes it.
-- `id` **must** be unique across the repo.
 - If a user changes an `id`, they must update all references (`parent`, `after`) for consistency.
 - `pebble check` fails on duplicates or dangling references.
+
+**Reference Resolution Rules**
+- `parent` and `after` must reference existing task IDs.
+- `pebble check` fails if any reference is missing.
+- `pebble add`/`update` fail fast when given non-existent IDs (default: strict).
+- `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
 
 ## 8. Recommendations & Discussion Points
 
@@ -340,6 +344,7 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
       - Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`.
     - `pebble update <id>`: Safely modifies the frontmatter.
       - Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. (Adheres to the CLI contract for incremental list mutations).
+      - `--before` / `--add-before` / `--remove-before` are syntactic sugar: they update the referenced task(s)’ `after` lists to include or remove the current task’s `id`. No `before` field is stored in frontmatter.
     - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
 
   - **Validation:**
@@ -349,13 +354,13 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
 
 ## Appendix: Iterative Refinement
 
-Suggested prompt: Read rfc-reimagining-pebble.md and do one iterative refinement.
+DO NOT REMOVE THIS SECTION
 
-Consider this to be the iterative refinement prompt for this document:
+Use the following as an agent prompt for iterative refinement:
 
 You are a principle staff engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape such that you'd be persuaded to approve it. Choose a concrete improvement to make to the document, propose it to me for implementation.
 
-Consider: editorial issues like section order, presentation language;  content improvements; missing gaps in the proposal; failures to consider every detail of the current pebble schema or command set; anything else you can think of.
+Consider: removing unecessary complexity; editorial issues like section order, presentation language;  content improvements; missing gaps in the proposal; failures to consider every detail of the current pebble schema or command set; anything else you can think of.
 
 Pick the most important improvement you can think of, and propose it to me for implementation.
 
