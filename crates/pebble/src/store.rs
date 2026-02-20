@@ -163,6 +163,12 @@ struct IdOnly {
     id: String,
 }
 
+/// Helper struct for zero-copy partial deserialization of issue IDs.
+#[derive(Deserialize)]
+struct IdOnlyBorrowed<'a> {
+    id: &'a str,
+}
+
 /// A persistent store for managing issues in a JSON Lines (JSONL) file.
 ///
 /// This struct handles reading and writing [`Issue`] records to a file at a specified path.
@@ -492,20 +498,20 @@ impl JsonlStore {
     }
 
     fn find_line_by_id(&self, id: &str) -> Result<Option<String>> {
-        let Some(reader) = self.open_reader()? else {
+        let Some(mut reader) = self.open_reader()? else {
             return Ok(None);
         };
 
-        for line in reader.lines() {
-            let line = line?;
-            if line.trim().is_empty() {
-                continue;
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            if !line.trim().is_empty() {
+                // Optimization: Parse only ID first to avoid full deserialization overhead
+                // Use IdOnlyBorrowed to avoid allocating String for the ID
+                if serde_json::from_str::<IdOnlyBorrowed>(&line).is_ok_and(|item| item.id == id) {
+                    return Ok(Some(line));
+                }
             }
-
-            // Optimization: Parse only ID first to avoid full deserialization overhead
-            if serde_json::from_str::<IdOnly>(&line).is_ok_and(|item| item.id == id) {
-                return Ok(Some(line));
-            }
+            line.clear();
         }
 
         Ok(None)
