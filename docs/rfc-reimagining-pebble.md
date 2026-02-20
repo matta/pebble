@@ -4,7 +4,7 @@
 
 The goal of this RFC is to step back and re-imagine Pebble from the ground up. Inspired by the legacy `bd` tool but now forging its own divergent path, the core mission remains unaltered: **provide a project task tracking system that is equally useful and delightful for both human developers and autonomous AI coding agents**.
 
-While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects, but for the simpler, single-repo projects common in open-source development and indie hacking.
+While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects, or for coordinating concurrently running autonomous AI agents,but for the simpler, single-repo projects common in open-source development and indie hacking.
 
 ## 2. Minimum Useful Feature Set
 
@@ -13,7 +13,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 1. **Task Tracking:** Ability to define a task with an ID, title, description, and status.
    - States: `open`, `in_progress`, `closed` (and potentially `tombstone` for deleted tasks).
 2. **Hierarchy & Composition:** Epics and Sub-tasks. A task can be heavily composed of smaller tasks (`parent-child`).
-3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `blocks` / `depends-on` relationships.
+3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships.
 4. **Basic Metadata:** Creation timestamps, resolution reasons, and perhaps basic assignment/ownership (useful when humans and agents collaborate).
 
 ## 3. The "State Synchronization" Problem
@@ -60,7 +60,6 @@ Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the 
 id: proj-0kq
 status: open
 parent: proj-epic1
-depends_on: [proj-1ab]
 created_at: 2026-01-15T10:30:00Z
 ---
 # Deploy staging environment
@@ -122,6 +121,35 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 
 **Non-Goals:** Not targeting enterprise-scale analytics or cross-repo issue federation.
 
+**Scope & Risk Profile:** There are currently zero active Pebble repositories. This pivot carries low operational risk and requires no staged rollout. Validation is limited to internal tests plus the one-time migration script.
+
+**CLI Behavior Changes**
+- **Unchanged:** `list`, `show`, `search` remain the primary read commands.
+- **Change in storage location:** `add`/`update`/`show`/`list` read and write Markdown files under the visible directory (default `docs/pebble/`).
+- **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
+- **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
+
+**Frontmatter Contract (Required vs Optional)**
+Required:
+- `id` (string)
+- `status` (enum: `todo` | `active` | `blocked` | `done`)
+- `created_at` (RFC3339 string)
+
+Optional:
+- `title` (string) — if omitted, derived from the H1 title
+- `parent` (string)
+- `after` (string array; multiple prerequisites allowed)
+- `tags` (string array)
+- `priority` (integer)
+
+Intentionally omitted:
+- `updated_at`, `closed_at`, `owner`, `close_reason`, `created_by`
+
+Computed:
+- `before` (derived as the inverse of `after` across the repo; set/list of IDs)
+
+**Rationale:** There is no concrete use case that requires these fields in the schema today. Adding them would introduce cost (parsing or updating on every write) without clear value. The fallback is Git history (`git log`, `git blame`) and, if needed later, a dedicated convenience command can compute and display recency metadata without making it canonical.
+
 **Success Criteria:**
 1. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
 2. Agents can create/update issues without schema drift; human edits remain the source of truth.
@@ -131,6 +159,11 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
 1. There is exactly one existing database to migrate.
 2. Use a one-time throw-away script to transform the current JSONL into Markdown files under `docs/pebble/`.
 3. Validate the result manually and discard the script after migration.
+
+**Compatibility & Data Loss**
+- The Markdown schema intentionally drops: `owner`, `created_by`, `updated_at`, `closed_at`, and `close_reason`.
+- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`, `dependencies[].type`). It will preserve the logical graph as `parent` and `after` (with `before` computed).
+- Rationale: there is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
 
 **Risks & Mitigations:**
 1. **Filename collisions / human-editable names**
@@ -175,10 +208,10 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
   - *Current:* Pebble stores the prose of the task inside a JSON string field (`description`).
   - *Decision:* **Drop from Frontmatter.** The entire justification for Avenue A is that the Markdown body *is* the description. The frontmatter only handles metadata; the prose lives natively below the `---` delimiters.
 
-  **2. Graph Edges (`parent` and `depends_on` vs complex `dependencies`)**
+  **2. Graph Edges (`parent` and `after` vs complex `dependencies`)**
   - *Current:* Pebble uses a complex `dependencies` array of objects (e.g., `[{"issue_id": "A", "depends_on_id": "B", "type": "parent-child", "created_at": "..."}]`) to track every edge and who created it.
-  - *Snippet:* Simplifies this to `parent: Option<String>` and `depends_on: Vec<String>`.
-  - *Decision:* **Adopt the Snippet.** Tracking the `created_at` of an edge link is overkill for local-first single-repo development. Explicitly defining `parent` as a scalar makes tree traversal much faster and easier for humans to read and edit.
+  - *Snippet:* Simplifies this to `parent: Option<String>` and `after: Vec<String>` with `before` computed as the inverse.
+  - *Decision:* **Store one direction only.** Tracking the `created_at` of an edge link is overkill for local-first single-repo development. Explicitly defining `parent` as a scalar makes tree traversal much faster and easier for humans to read and edit. `after` is stored; `before` is derived.
 
   **3. `tags` (In Snippet, missing from Pebble)**
   - *Current:* Pebble doesn't have a first-class `tags` string array in the examined golden schema.
@@ -190,7 +223,7 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
 
   **5. Audit Trail (`owner`, `created_by`, `closed_at`, `close_reason`)**
   - *Current:* Pebble tracks exhaustive audit metadata for every task closure.
-  - *Snippet:* Drops most of this, reducing to just `created_at` and `updated_at`.
+  - *Snippet:* Drops most of this, reducing to just `created_at`.
   - *Decision:* **Delegate to Git.** In a repository-backed bug tracker, `git blame` natively tracks who created a task, who closed it, and when. Storing `owner` or `close_reason` in the file duplicates version control features. We should keep `created_at` for simple UI sorting, but drop `created_by`, `updated_at`, `closed_at`, and `owner` in favor of trusting `git log`.
 
   **Proposed Final Rust Schema:**
@@ -220,11 +253,10 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
       
       pub parent: Option<String>,
       pub created_at: DateTime<Utc>,
-      pub updated_at: Option<DateTime<Utc>>,
       
       // Graph edges: empty arrays default nicely.
       #[serde(default)]
-      pub depends_on: Vec<String>,
+      pub after: Vec<String>,
       
       #[serde(default)]
       pub tags: Vec<String>,
@@ -253,20 +285,20 @@ To fully realize the "Markdown Native" Avenue A paradigm, several technical deta
 
   - **Query Commands:**
     - `pebble list` (alias: `ls`): Parses the directory and builds the DAG.
-      - Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (shows only tasks where dependencies are not `done`).
+      - Filters: `--status`, `--tag`, `--parent`, `--is-blocked` (computed from `after`, shows only tasks where dependencies are not `done`).
     - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
 
   - **Mutation Commands** (These modify the Markdown files directly):
     - `pebble new <title>` (alias: `add`, `create`): Generates the boilerplate `.md` file. 
-      - Options: `--parent <id>`, `--tag <tag>`, `--depends-on <id>`, `--no-edit` (crucial for agents to skip `$EDITOR`).
-    - `pebble update <id>`: Safely modifies the frontmatter and bumps the `updated_at` timestamp.
-      - Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-depends-on <id>`, `--remove-depends-on <id>`. (Adheres to the CLI contract for incremental list mutations).
+      - Options: `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`, `--no-edit` (crucial for agents to skip `$EDITOR`).
+    - `pebble update <id>`: Safely modifies the frontmatter.
+      - Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. (Adheres to the CLI contract for incremental list mutations).
     - `pebble append <id> --message <text>`: Safely appends raw Markdown to the body without risking frontmatter parsing corruption. Excellent for agents adding notes.
     - `pebble edit <id>`: Locates the file and opens it natively in `$EDITOR`.
 
   - **Validation:**
     - `pebble check`: A strict linter that evaluates the `.md` database.
-      - Checks: ID collisions, broken `depends_on` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has `active` children).
+      - Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has `active` children).
       - Options: `--fix` to automatically rectify safe, deterministic errors (e.g., sorting TOML/YAML keys, injecting missing timestamps).
 
 ---
