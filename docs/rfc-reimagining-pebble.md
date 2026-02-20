@@ -143,6 +143,14 @@ If we want the benefits of Git tooling (PR reviews, history, blame) and the bene
    - *Risk:* Large repos may need faster list/search than raw file scans provide.
    - *Mitigation:* Defer optimization until user reports demand. Architectural options include lazy caching, background file watchers, incremental indexing, and derived query indices (JSONL or SQLite) that are strictly non-canonical.
 
+**Tooling Contract for File Layout**
+- The canonical identifier is the frontmatter `id`; filenames are advisory only.
+- The root directory defaults to `docs/pebble/` and is configurable, but must be visible in the repo.
+- The CLI treats every `*.md` file under the root as a task file.
+- If two files share the same `id`, the CLI fails with a clear error and no writes.
+- When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
+- Renaming or moving a file does not change the `id` and does not break references.
+
 ## 8. Recommendations & Discussion Points
 
 To retain the dual-audience goal while stripping away enterprise complexity, we should consider:
