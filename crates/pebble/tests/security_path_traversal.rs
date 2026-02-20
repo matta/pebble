@@ -45,13 +45,23 @@ fn test_worktree_path_traversal_via_sync_branch() {
     let result = manager.ensure_worktree();
 
     // Assert that it returns an error
-    assert!(result.is_err(), "ensure_worktree should fail for invalid branch name");
+    assert!(
+        result.is_err(),
+        "ensure_worktree should fail for invalid branch name"
+    );
 
     let error_message = result.unwrap_err().to_string();
-    assert!(error_message.contains("sync-branch cannot contain '..'"), "Unexpected error message: {}", error_message);
+    assert!(
+        error_message.contains("sync-branch cannot contain '..'"),
+        "Unexpected error message: {}",
+        error_message
+    );
 
     let hacked_path = temp_dir.path().join("hacked");
 
     // Assert that the directory does NOT exist.
-    assert!(!hacked_path.exists(), "Directory created outside of expected location! Vulnerability confirmed.");
+    assert!(
+        !hacked_path.exists(),
+        "Directory created outside of expected location! Vulnerability confirmed."
+    );
 }
