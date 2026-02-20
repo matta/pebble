@@ -111,7 +111,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "lowercase")] // Ensures YAML matches exactly "todo", "in_progress", "paused", "done", "canceled".
+#[serde(rename_all = "snake_case")] // Ensures YAML matches exactly "todo", "in_progress", "paused", "done", "canceled".
 pub enum TaskStatus {
     Todo,
     InProgress,
