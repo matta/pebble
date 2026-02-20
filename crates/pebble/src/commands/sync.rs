@@ -9,11 +9,11 @@ pub fn run(config: &Config, format: OutputFormat) -> Result<()> {
     match format {
         OutputFormat::Human => {
             println!("Syncing...");
-            manager.sync()?;
+            manager.sync(false)?;
             println!("Sync complete.");
         }
         OutputFormat::Json => {
-            manager.sync_quiet()?;
+            manager.sync(true)?;
             println!(
                 "{}",
                 serde_json::to_string_pretty(&serde_json::json!({

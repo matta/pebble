@@ -130,7 +130,7 @@ echo '{"id":"1","title":"Title Resolved","status":"open"}' > "$1"
     // 5. Commit merge.
     // 6. Push.
 
-    let result = manager_b.sync();
+    let result = manager_b.sync(false);
 
     assert!(result.is_ok(), "Sync failed: {:?}", result.err());
 

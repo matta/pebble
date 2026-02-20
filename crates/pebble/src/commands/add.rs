@@ -43,11 +43,11 @@ pub fn run(
     let commit_message = format!("Add issue {}", id);
     match format {
         OutputFormat::Json => {
-            manager.commit_all_quiet(&commit_message)?;
+            manager.commit_all(&commit_message, true)?;
             println!("{}", serde_json::to_string_pretty(&issue)?);
         }
         OutputFormat::Human => {
-            manager.commit_all(&commit_message)?;
+            manager.commit_all(&commit_message, false)?;
             println!("Added issue {}", id);
         }
     }

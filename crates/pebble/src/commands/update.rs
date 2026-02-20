@@ -70,11 +70,11 @@ pub fn run(config: &Config, id: String, fields: UpdateFields, format: OutputForm
         let commit_message = format!("Update issue {}", id);
         match format {
             OutputFormat::Json => {
-                manager.commit_all_quiet(&commit_message)?;
+                manager.commit_all(&commit_message, true)?;
                 println!("{}", serde_json::to_string_pretty(&issues[idx])?);
             }
             OutputFormat::Human => {
-                manager.commit_all(&commit_message)?;
+                manager.commit_all(&commit_message, false)?;
                 println!("Updated issue {}", id);
             }
         }

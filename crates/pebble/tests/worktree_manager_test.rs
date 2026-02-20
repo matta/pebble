@@ -113,7 +113,7 @@ fn test_sync_command_operations() {
     execute_git(&["checkout", "main"], &local_root);
 
     let manager = WorktreeManager::new(local_root.clone(), "pebble-sync".to_string());
-    manager.sync().expect("Sync failed");
+    manager.sync(false).expect("Sync failed");
 
     let worktree_path = manager.get_worktree_path();
     assert!(worktree_path.exists());
@@ -150,7 +150,7 @@ fn test_sync_branch_argument_injection_prevention() {
     let malicious_branch = "--unknown-option".to_string();
     let manager = WorktreeManager::new(repo_root.clone(), malicious_branch);
 
-    let result = manager.sync();
+    let result = manager.sync(false);
     assert!(result.is_err());
     let debug_msg = format!("{:?}", result.unwrap_err());
 
@@ -240,7 +240,7 @@ fn test_sync_failure_fetch() {
 
     let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
 
-    let result = manager.sync();
+    let result = manager.sync(false);
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.to_string().contains("Failed to execute git fetch"));
@@ -256,7 +256,7 @@ fn test_sync_failure_merge() {
 
     let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
 
-    let result = manager.sync();
+    let result = manager.sync(false);
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.to_string().contains("Failed to execute git merge"));
@@ -272,7 +272,7 @@ fn test_sync_failure_push() {
 
     let manager = WorktreeManager::new_with_git(repo_root, "sync-branch".to_string(), mock_git);
 
-    let result = manager.sync();
+    let result = manager.sync(false);
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.to_string().contains("Failed to execute git push"));

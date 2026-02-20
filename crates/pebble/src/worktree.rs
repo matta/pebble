@@ -151,23 +151,16 @@ impl<G: GitProvider> WorktreeManager<G> {
     }
 
     /// Stages all changes and commits them in the worktree.
-    pub fn commit_all(&self, message: &str) -> Result<()> {
+    pub fn commit_all(&self, message: &str, quiet: bool) -> Result<()> {
         let path = self.get_worktree_path();
 
-        self.git.run_quiet(&[&"add", &"-A"], &path)?;
-
-        self.git.run_quiet(&[&"commit", &"-m", &message], &path)?;
-
-        Ok(())
-    }
-
-    /// Stages all changes and commits them in the worktree without stdout noise.
-    pub fn commit_all_quiet(&self, message: &str) -> Result<()> {
-        let path = self.get_worktree_path();
-
-        self.git.run(&[&"add", &"-A"], &path)?;
-
-        self.git.run_quiet(&[&"commit", &"-m", &message], &path)?;
+        if quiet {
+            self.git.run_quiet(&[&"add", &"-A"], &path)?;
+            self.git.run_quiet(&[&"commit", &"-m", &message], &path)?;
+        } else {
+            self.git.run(&[&"add", &"-A"], &path)?;
+            self.git.run(&[&"commit", &"-m", &message], &path)?;
+        }
 
         Ok(())
     }
@@ -279,11 +272,17 @@ impl<G: GitProvider> WorktreeManager<G> {
         Ok(worktree_path.join(ISSUES_FILE))
     }
 
-    fn commit_local_changes(&self, worktree_path: &Path) -> Result<()> {
+    fn commit_local_changes(&self, worktree_path: &Path, quiet: bool) -> Result<()> {
         // Stage all changes (including new files)
-        self.git
-            .run_quiet(&[&"add", &"."], worktree_path)
-            .with_context(|| "Failed to stage changes")?;
+        if quiet {
+            self.git
+                .run_quiet(&[&"add", &"."], worktree_path)
+                .with_context(|| "Failed to stage changes")?;
+        } else {
+            self.git
+                .run(&[&"add", &"."], worktree_path)
+                .with_context(|| "Failed to stage changes")?;
+        }
 
         // Check if there are changes to commit
         let status = self
@@ -292,33 +291,21 @@ impl<G: GitProvider> WorktreeManager<G> {
             .with_context(|| "Failed to check status")?;
 
         if !status.trim().is_empty() {
-            self.git
-                .run_quiet(
-                    &[&"commit", &"--no-verify", &"-m", &"Auto-sync"],
-                    worktree_path,
-                )
-                .with_context(|| "Failed to commit changes")?;
-        }
-        Ok(())
-    }
-
-    fn commit_local_changes_quiet(&self, worktree_path: &Path) -> Result<()> {
-        self.git
-            .run_quiet(&[&"add", &"."], worktree_path)
-            .with_context(|| "Failed to stage changes")?;
-
-        let status = self
-            .git
-            .output(&[&"status", &"--porcelain"], worktree_path)
-            .with_context(|| "Failed to check status")?;
-
-        if !status.trim().is_empty() {
-            self.git
-                .run_quiet(
-                    &[&"commit", &"--no-verify", &"-m", &"Auto-sync"],
-                    worktree_path,
-                )
-                .with_context(|| "Failed to commit changes")?;
+            if quiet {
+                self.git
+                    .run_quiet(
+                        &[&"commit", &"--no-verify", &"-m", &"Auto-sync"],
+                        worktree_path,
+                    )
+                    .with_context(|| "Failed to commit changes")?;
+            } else {
+                self.git
+                    .run(
+                        &[&"commit", &"--no-verify", &"-m", &"Auto-sync"],
+                        worktree_path,
+                    )
+                    .with_context(|| "Failed to commit changes")?;
+            }
         }
         Ok(())
     }
@@ -407,31 +394,45 @@ impl<G: GitProvider> WorktreeManager<G> {
     /// );
     ///
     /// // Requires a valid git environment and remote
-    /// if let Err(e) = manager.sync() {
+    /// if let Err(e) = manager.sync(false) {
     ///     eprintln!("Sync failed: {}", e);
     /// }
     /// ```
-    pub fn sync(&self) -> Result<()> {
+    pub fn sync(&self, quiet: bool) -> Result<()> {
         let worktree_path = self.ensure_worktree()?;
 
         // 1. Commit any local changes first (required for 3-way merge)
-        self.commit_local_changes(&worktree_path)
+        self.commit_local_changes(&worktree_path, quiet)
             .with_context(|| "Failed to commit local changes before sync")?;
 
         // 2. git fetch origin <sync_branch>
-        self.git
-            .run(
-                &[&"fetch", &"origin", &"--", &self.sync_branch],
-                &worktree_path,
-            )
-            .with_context(|| "Failed to execute git fetch")?;
+        if quiet {
+            self.git
+                .run_quiet(
+                    &[&"fetch", &"origin", &"--", &self.sync_branch],
+                    &worktree_path,
+                )
+                .with_context(|| "Failed to execute git fetch")?;
+        } else {
+            self.git
+                .run(
+                    &[&"fetch", &"origin", &"--", &self.sync_branch],
+                    &worktree_path,
+                )
+                .with_context(|| "Failed to execute git fetch")?;
+        }
 
         // 3. git merge origin/<sync_branch> (3-way)
         let merge_ref = format!("origin/{}", self.sync_branch);
-        let merge_status = self
-            .git
-            .status(&[&"merge", &merge_ref], &worktree_path)
-            .with_context(|| "Failed to execute git merge command")?;
+        let merge_status = if quiet {
+            self.git
+                .status_silent(&[&"merge", &merge_ref], &worktree_path)
+                .with_context(|| "Failed to execute git merge command")?
+        } else {
+            self.git
+                .status(&[&"merge", &merge_ref], &worktree_path)
+                .with_context(|| "Failed to execute git merge command")?
+        };
 
         if !merge_status.success() {
             if merge_status.code() == Some(1) {
@@ -447,45 +448,15 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         // 4. git push origin HEAD:<sync_branch>
         let push_ref = format!("HEAD:{}", self.sync_branch);
-        self.git
-            .run(&[&"push", &"origin", &"--", &push_ref], &worktree_path)
-            .with_context(|| "Failed to execute git push")?;
-
-        Ok(())
-    }
-
-    pub fn sync_quiet(&self) -> Result<()> {
-        let worktree_path = self.ensure_worktree()?;
-
-        self.commit_local_changes_quiet(&worktree_path)
-            .with_context(|| "Failed to commit local changes before sync")?;
-
-        self.git
-            .run_silent(
-                &[&"fetch", &"origin", &"--", &self.sync_branch],
-                &worktree_path,
-            )
-            .with_context(|| "Failed to execute git fetch")?;
-
-        let merge_ref = format!("origin/{}", self.sync_branch);
-        let merge_status = self
-            .git
-            .status_silent(&[&"merge", &merge_ref], &worktree_path)
-            .with_context(|| "Failed to execute git merge command")?;
-
-        if !merge_status.success() {
-            if merge_status.code() == Some(1) {
-                self.resolve_conflicts(&worktree_path)
-                    .with_context(|| "Failed to execute git merge")?;
-            } else {
-                return Err(eyre!("Git merge failed with status: {}", merge_status));
-            }
+        if quiet {
+            self.git
+                .run_quiet(&[&"push", &"origin", &"--", &push_ref], &worktree_path)
+                .with_context(|| "Failed to execute git push")?;
+        } else {
+            self.git
+                .run(&[&"push", &"origin", &"--", &push_ref], &worktree_path)
+                .with_context(|| "Failed to execute git push")?;
         }
-
-        let push_ref = format!("HEAD:{}", self.sync_branch);
-        self.git
-            .run_silent(&[&"push", &"origin", &"--", &push_ref], &worktree_path)
-            .with_context(|| "Failed to execute git push")?;
 
         Ok(())
     }
