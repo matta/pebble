@@ -141,7 +141,9 @@ pub struct TaskFrontmatter {
 pub struct TaskNode {
     pub path: PathBuf,
     pub frontmatter: TaskFrontmatter,
-    // Note: `description` is gone. This body captures the rest of the file.
+    /// Extracted from the first H1 heading in `body`. Computed, never stored.
+    pub title: String,
+    /// Raw Markdown content after the frontmatter delimiter, including the H1.
     pub body: String,
 }
 ```
@@ -184,6 +186,24 @@ Computed:
 - `before(A) = [B]`
 - `before(B) = [C]`
 - `before(C) = []`
+
+**JSON Output Contract**
+
+All `--json` output is a single JSON object printed to stdout per invocation.
+
+- **Query commands** (`list`, `search`): `{"tasks": [<TaskObject>, ...]}`.
+- **`show --json`**: A single unwrapped `TaskObject`.
+- **Mutation commands** (`add`, `update`): Echo back the full `TaskObject` after the write.
+- **`check --json`**: `{"ok": bool, "errors": [{"file": "...", "line": N, "message": "..."}]}`.
+- **`archive --json`**: `{"archived": [{"id": "...", "moved_to": "..."}]}`.
+
+A `TaskObject` includes:
+- All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `after`, `tags`).
+- Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo).
+- `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
+- `path`: the file path relative to `tasks-dir`.
+
+Rationale: `title` and `before` are computed convenience fields, analogous to each other—derived from the file on read, never stored. `body` is a faithful reproduction of the file content; the CLI does not strip or transform it. This means `title` appears twice in JSON output (once as a top-level key, once inside `body` as the H1). This minor redundancy is an acceptable tradeoff: agents get a structured `title` for filtering and display without parsing Markdown, while `body` remains a lossless round-trip representation of the file.
 
 **Success Criteria:**
 1. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
