@@ -13,7 +13,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - `id` is canonical and user-editable; the CLI never changes it.
 - Relationships: store `after` (prerequisites), compute `before` as inverse. Store `related` (symmetric cross-references).
 - Status model: `todo`, `in_progress`, `paused`, `done`, `canceled`.
-- Readiness is computed: a task is `ready` when prerequisites are satisfied and the status is actionable (not `paused`, `done`, or `canceled`).
+- Readiness is computed: a task is `ready` when prerequisites are satisfied and its `effective_status` is actionable (not `paused`, `done`, or `canceled`).
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - `pebble next` is a convenience command that returns the highest-priority ready task.
@@ -91,7 +91,7 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
 - The root directory defaults to `docs/pebble/` and is configurable; visibility (hidden directory, gitignored path, etc.) is a user choice.
 - The CLI **recursively** treats every `*.md` file under the root as a task file.
 - The CLI never changes `id`. Users may edit it manually, but the `id` **must** be unique across the repo.
-- If two files share the same `id`, the CLI fails with a clear error and no writes.
+- If multiple files share the same `id`, read commands treat this as a Schema Error (logging a warning and skipping all files with that ID), while write commands targeting the duplicated ID fail with a clear error.
 - When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
 - Renaming or moving a file does not change the `id` and does not break references.
 - If a user changes an `id` or deletes a file, references to the old `id` become dangling. They can be cleaned up manually or automatically via `pebble fix`.
@@ -114,7 +114,7 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
 - Graph constraints (missing referenced IDs or asymmetric `related` links) do not invalidate the task. For missing references, the CLI gracefully drops the invalid edge in-memory (e.g., ignoring a missing prerequisite so it does not block readiness). For asymmetric `related` links between two existing tasks, the CLI "self-heals" the graph in-memory by synthesizing the missing bi-directional link. Both cases issue a warning.
 - `pebble check` fails if any reference is missing or if `related` is asymmetric.
 - `pebble add`/`update` fail fast when given non-existent IDs to prevent creating invalid state through the CLI.
-- `list`/`show` should surface missing or asymmetric references in output (human) and include them explicitly in `--json`.
+- `list`/`show` output (human and `--json`) reflects the repaired in-memory graph (dropping missing references and symmetrizing `related`), i.e., as if `pebble fix` had been run. Warnings are still emitted to `stderr`.
 
 **ID Generation Rules**
 - IDs are generated on `pebble add` and follow `<issue-prefix>-<suffix>`.
@@ -163,6 +163,7 @@ Intentionally omitted:
 Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
 - `effective_priority` (integer or null; dynamically computed to prevent starvation by inheriting the highest priority from dependents)
+- `effective_status` (enum: `todo` | `in_progress` | `paused` | `done` | `canceled`; matches the explicit `status` unless overridden to `paused` by an inherited blockage from an ancestor)
 
 > **Rationale for Omitted Fields:**
 > - **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
@@ -245,7 +246,7 @@ pub struct TaskNode {
 **Hierarchy Semantics (parent/child)**
 - `parent` defines hierarchy only; there is no separate epic type. A parent can be actionable.
 - For execution semantics, each child is an implicit prerequisite of its parent. Parents are not ready until all children are `done` or `canceled`, and topological ordering places children before their parent.
-- Prerequisites are inherited downward: if a parent has `after` prerequisites, all descendants treat those as prerequisites for readiness. This prevents subtasks of blocked parents from appearing ready.
+- Blockages are inherited downward: if a parent has `after` prerequisites, all descendants treat those as prerequisites for readiness. Similarly, if a parent has a `status` of `paused`, all descendants are treated as implicitly paused. This prevents subtasks of blocked or paused parents from appearing ready.
 - Inherited prerequisites and implicit child → parent edges are computed; they are not stored in frontmatter.
 
 **Related Tasks (related)**
@@ -265,10 +266,10 @@ To prevent high-priority tasks from being starved by lower-priority prerequisite
 
 **Ready and Paused: Two Independent Concepts**
 
-A task has two independent concepts:
+A task's state is heavily influenced by graph computations:
 
-1. **Ready (computed):** A task is `ready` when its status is actionable (`todo` or `in_progress`), all explicit and inherited `after` prerequisites are `done` or `canceled`, and all children (if any) are `done` or `canceled`. Tasks with status `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
-2. **Paused (explicit):** The user sets `status: paused` to represent an external hold not captured in the graph (e.g., waiting on a vendor, approval, or shipment). This is manual and only clears when the user changes the status.
+1. **Ready (computed boolean):** A task is `ready` when its `effective_status` is actionable (`todo` or `in_progress`), all explicit and inherited `after` prerequisites are `done` or `canceled`, and all children (if any) are `done` or `canceled`. Tasks with an `effective_status` of `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
+2. **Paused (explicit vs effective_status):** The user sets `status: paused` to represent an external hold not captured in the graph (e.g., waiting on a vendor, approval, or shipment). This explicit status is manual and only clears when the user changes it. However, because blockages inherit downward, any descendant of a paused task evaluates its `effective_status` as `paused` (regardless of its explicitly set status). This `effective_status` directly prevents descendants from being returned by `pebble next`.
 
 The `--is-ready` filter on `list` matches tasks that are `ready`. In `--json` output, `TaskObject` includes a computed boolean `is_ready` so agents can filter without re-deriving readiness.
 
@@ -315,7 +316,7 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 - `pebble init`: Bootstraps the environment, creates the tasks directory, creates `.pebble/AGENTS.md` (see §4.8), and prints a message advising the user to include it in their project's agent configuration.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` or `canceled` and whose status is actionable). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` or `canceled` and whose `effective_status` is actionable). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
 - `pebble next`: Convenience command equivalent to `pebble list --is-ready --limit 1`. Returns the single highest-priority actionable task. Accepts `--json`. This is the canonical "what should I work on?" entry point for agents and humans alike.
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task. `--path-only` prints only the file path (relative to `tasks-dir`) and nothing else — useful for agents and scripts that want to read the file directly.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
@@ -327,6 +328,7 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 - Results are returned in the default list order.
 
 **MVP filter semantics**
+- `--status <status>` matches tasks whose `effective_status` equals `<status>`. The flag is repeatable; multiple values are OR'ed.
 - `--priority <N>` matches tasks whose `effective_priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `effective_priority` never match `--priority`.
 
 **Default Sort Order**
@@ -337,7 +339,7 @@ The default sort order for `pebble list` (and by extension `pebble next`) is det
 2. **Priority** ascending (lower number = higher priority), using `effective_priority`. Tasks with no `effective_priority` sort after all prioritized tasks.
 3. **`created_at`** ascending (oldest first) as the final tiebreaker.
 
-The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `effective_priority`), `created_at`, `modified_at`, `status`, `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `paused`, `done`, `canceled`.
+The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `effective_priority`), `created_at`, `modified_at`, `status` (which sorts by `effective_status`), `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `paused`, `done`, `canceled`.
 
 Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done` or `canceled`), so the topological component of the default sort has no effect and the order is effectively priority → created_at.
 
@@ -346,7 +348,7 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 
 **Mutation commands**
 - `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text becomes the Markdown body of the file.
-- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>`, `--parent <id>`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
+- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>`, `--clear-priority`, `--parent <id>`, `--remove-parent`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. To unset optional singular fields, use `--clear-priority` or `--remove-parent`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter. If a filename collision occurs, the CLI appends a numeric suffix to the archived filename.
 - Agents and users are encouraged to edit Markdown bodies directly — this is a core benefit of the Markdown-native model. The CLI also provides `--body` and `--append-body` on `pebble update` for simple cases.
 
@@ -363,7 +365,7 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
 - `show` **must** scan the full `tasks-dir` and build the complete graph. This is required to compute `before` (reverse dependencies) and to ensure `is_ready` is accurate for the returned `TaskObject`.
 - For `list`, `next`, `search`, and `show`, validation errors are explicitly bifurcated to prioritize graceful degradation:
-  - **Unparseable / Schema Errors** (e.g., malformed YAML, missing required `id` field, invalid status enum): The CLI logs a warning to `stderr`, completely skips the invalid file, and continues.
+  - **Unparseable / Schema Errors** (e.g., malformed YAML, missing required `id` field, invalid status enum, duplicate IDs across multiple files): The CLI logs a warning to `stderr`, completely skips the invalid file(s) (in the case of duplicates, all files sharing the ID are skipped), and continues.
   - **Graph / Constraint Errors** (e.g., missing references in `parent` or `after`, asymmetric `related` edges): The CLI logs a warning to `stderr` and resolves the constraint in-memory (e.g., dropping missing references, or "self-healing" asymmetric `related` links by synthesizing the missing edge), keeping the task fully visible and processable in the graph. This prevents a task from vanishing from the tracker due to a typo in a cross-reference.
   - **Cyclic Dependencies:** Treated as Graph / Constraint Errors. If a cycle in `after` relationships is detected during graph traversal, the CLI deterministically breaks the cycle in-memory by traversing the graph (e.g., by visiting children in deterministic ID-sorted order) and dropping the `after` edge that closes the loop. It emits a warning to `stderr`, continues the topological sort, and evaluates `is_ready` on the resulting DAG, ensuring all tasks remain visible.
 - If the target task for `show` has an Unparseable / Schema Error, `show` fails with a non-zero exit code and a clear error message. Graph / Constraint errors follow the warning-and-drop behavior above.
@@ -391,7 +393,7 @@ On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-rea
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `title`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `related`, `tags`).
-- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` or `canceled` and status is `todo` or `in_progress`), `effective_priority` (integer or null; reflects priority inheritance, always present in JSON).
+- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` or `canceled` and `effective_status` is `todo` or `in_progress`), `effective_priority` (integer or null; reflects priority inheritance, always present in JSON), `effective_status` (string; reflects whether the task inherits a `paused` state, always present in JSON).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim.
 - `path`: the file path relative to `tasks-dir`.
 

@@ -108,6 +108,10 @@ fn should_skip_forbidden_check(path: &Path, relative_path: &str) -> bool {
         return true;
     }
 
+    if path.extension().is_some_and(|ext| ext == "md") {
+        return true;
+    }
+
     const BINARY_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "ico", "pdf", "bin"];
     path.extension()
         .is_some_and(|ext| BINARY_EXTENSIONS.iter().any(|&b| ext == b))
