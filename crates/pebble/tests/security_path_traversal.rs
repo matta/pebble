@@ -57,5 +57,8 @@ fn test_ensure_worktree_path_traversal() {
     );
 
     // BUT CRITICALLY: It should NOT have created the directory
-    assert!(!malicious_dir.exists(), "Worktree directory was created despite invalid branch name! Path traversal vulnerability confirmed.");
+    assert!(
+        !malicious_dir.exists(),
+        "Worktree directory was created despite invalid branch name! Path traversal vulnerability confirmed."
+    );
 }
