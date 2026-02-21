@@ -550,7 +550,7 @@ Run the canary deploy pipeline against the `staging` cluster.
 - **Pros:** Makes reading the raw file tree theoretically easier for humans.
 - **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`parent`/`after`), reserving the recursive directory scan feature purely for automated lifecycle `archive` sorting.
 
-## Appendix C: Migration Field Mapping
+## Appendix B: Migration Field Mapping
 
 This is the authoritative and exhaustive mapping used by the one-time migration script. Every field present in the JSONL schema is listed below with its disposition. Any JSONL field not listed here is a migration error — the script must fail rather than silently drop data.
 
@@ -612,8 +612,8 @@ Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The
 - `pebble sync` and `sync-branch` config are removed (see "Command Deprecations & Removals").
 - `pebble list/show/search/add/update` remain, but operate on Markdown files in `tasks-dir`.
 
-## Appendix D: Iterative Refinement
+## Appendix C: Iterative Refinement
 
 DO NOT REMOVE THIS SECTION
 
-You are a principle staff engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape. Are there any concrete, blocking, issues that prevent you from approving the document and allowing implementation planning to begin? If so, please list them.
+You are a principle staff engineer considering docs/rfc-reimagining-pebble.md for approval. Are there any concrete, blocking, issues that prevent you from approving the document and allowing implementation planning to begin? If so, please list them.
