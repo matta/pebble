@@ -277,7 +277,7 @@ Computed:
 
 **CLI Behavior Changes**
 - **Unchanged:** `list`, `show`, `search` remain the primary read commands.
-- **Change in storage location:** `add`/`update`/`show`/`list` read and write Markdown files under the visible directory (default `docs/pebble/`).
+- **Change in storage location:** `add`/`update`/`show`/`list` read and write Markdown files under `tasks-dir` (default `docs/pebble/`).
 - **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
 - **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
 
@@ -341,7 +341,7 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 
 **JSON Output Contract**
 
-All `--json` output is a single JSON object printed to stdout per invocation.
+All `--json` output is a single JSON value printed to stdout per invocation.
 On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-readable error message, and the exit code is non-zero.
 
 - **Query commands** (`list`, `search`): `{"tasks": [<TaskObject>, ...]}`.

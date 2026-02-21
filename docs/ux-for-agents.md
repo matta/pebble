@@ -143,9 +143,9 @@ $ pebble list
 ```
 $ pebble list --json
 {"tasks":[
-  {"id":"proj-0kq","status":"open","title":"Deploy staging environment"},
-  {"id":"proj-1ab","status":"closed","title":"Fix login timeout"},
-  {"id":"proj-2cd","status":"open","title":"Add rate limiting"}
+  {"id":"proj-0kq","status":"todo","title":"Deploy staging environment"},
+  {"id":"proj-1ab","status":"done","title":"Fix login timeout"},
+  {"id":"proj-2cd","status":"todo","title":"Add rate limiting"}
 ]}
 ```
 
