@@ -7,6 +7,14 @@ pub fn validate_branch_name(branch: &str) -> Result<()> {
     if branch.starts_with('-') {
         return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
     }
+    if branch.contains("..") {
+        return Err(color_eyre::eyre::eyre!("sync-branch cannot contain '..'"));
+    }
+    if branch.chars().any(|c| c == '/' || c == '\\') {
+        return Err(color_eyre::eyre::eyre!(
+            "sync-branch cannot contain path separators ('/' or '\\')"
+        ));
+    }
     Ok(())
 }
 
@@ -69,6 +77,27 @@ mod tests {
     #[test]
     fn test_config_sync_branch_starts_with_dash() {
         let content = "sync-branch = \"-bad\"\n";
+        let config: Config = toml::from_str(content).expect("Failed to parse config");
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_config_sync_branch_path_traversal() {
+        let content = "sync-branch = \"../bad\"\n";
+        let config: Config = toml::from_str(content).expect("Failed to parse config");
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_config_sync_branch_absolute_path() {
+        let content = "sync-branch = \"/bad\"\n";
+        let config: Config = toml::from_str(content).expect("Failed to parse config");
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_config_sync_branch_contains_separators() {
+        let content = "sync-branch = \"folder/branch\"\n";
         let config: Config = toml::from_str(content).expect("Failed to parse config");
         assert!(config.validate().is_err());
     }

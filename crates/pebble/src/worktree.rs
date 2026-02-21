@@ -1,4 +1,5 @@
 use crate::command::CommandExt;
+use crate::config::validate_branch_name;
 use crate::git_provider::{GitProvider, RealGit};
 use crate::{ISSUES_FILE, WORKTREE_DIR};
 use color_eyre::Result;
@@ -64,6 +65,8 @@ impl<G: GitProvider> WorktreeManager<G> {
 
     /// Creates an orphaned branch for synchronization with no shared history.
     pub fn create_orphaned_sync_branch(&self) -> Result<()> {
+        validate_branch_name(&self.sync_branch)?;
+
         // git checkout --orphan <sync_branch>
         // We do this by creating a temp directory to avoid messing with the current worktree
         // Actually, we can use a more efficient approach with plumbing commands or just work with current worktree if it's clean enough
@@ -124,6 +127,8 @@ impl<G: GitProvider> WorktreeManager<G> {
 
     /// Initializes a worktree at the given path linked to the sync branch.
     pub fn init_worktree(&self, path: &std::path::Path) -> Result<()> {
+        validate_branch_name(&self.sync_branch)?;
+
         if path.exists() {
             return Err(eyre!("Worktree path {:?} already exists", path));
         }
@@ -202,6 +207,8 @@ impl<G: GitProvider> WorktreeManager<G> {
     /// * File system operations fail (creating directories).
     /// * Git commands fail (checking status, fetching, adding worktree).
     pub fn ensure_worktree(&self) -> Result<PathBuf> {
+        validate_branch_name(&self.sync_branch)?;
+
         let path = self.get_worktree_path();
         if path.exists() {
             // Verify it's actually a worktree? For now just return path
