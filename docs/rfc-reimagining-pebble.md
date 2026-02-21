@@ -30,7 +30,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
    - States: `todo`, `in_progress`, `paused`, `done`, `canceled` (core states align with GitHub Projects; `paused` is Pebble-specific).
    - `canceled` means "not done and will never be done."
 2. **Hierarchy & Composition:** Epics and subtasks. A task can be heavily composed of smaller tasks (`parent/child`).
-3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; **readiness** is computed from whether all `after` prerequisites are `done` and the task is not `paused`.
+3. **Ordering & Dependencies:** Execution ordering. Knowing what to do *next* is critical for agents. We need `before` / `after` relationships; **readiness** is computed from whether all `after` prerequisites are `done` or `canceled` and the task is not `paused`.
 4. **Basic Metadata:** Time-based metadata is restricted to creation (`created_at`), last modification (`modified_at`), and completion (`resolved_at`) timestamps. The `modified_at` field helps identify stalled or forgotten work (e.g., to review neglected tasks). The `resolved_at` field enables querying completed work and powers the deterministic `archive` feature without relying on volatile filesystem `mtime` or requiring expensive Git history lookups. Audit trail (owner, `updated_at`, `closed_at`, `close_reason`) is intentionally omitted and delegated to Git history. **Decision:** the schema uses `modified_at` (not `updated_at`); `updated_at` is legacy and appears only in migration mapping.
 
 **Notes in Markdown:** Users and agents are free to include checklists in the Markdown body. We should consider future support for task ID auto-discovery in the body (e.g., `proj-123`) to enable "related to" queries or semantic linking without expanding frontmatter.
@@ -252,7 +252,7 @@ pub struct TaskNode {
 
 A task has two independent concepts:
 
-1. **Ready (computed):** A task is `ready` when its status is actionable (`todo` or `in_progress`), all explicit and inherited `after` prerequisites are `done`, and all children (if any) are `done` or `canceled`. Tasks with status `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
+1. **Ready (computed):** A task is `ready` when its status is actionable (`todo` or `in_progress`), all explicit and inherited `after` prerequisites are `done` or `canceled`, and all children (if any) are `done` or `canceled`. Tasks with status `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
 2. **Paused (explicit):** The user sets `status: paused` to represent an external hold not captured in the graph (e.g., waiting on a vendor, approval, or shipment). This is manual and only clears when the user changes the status.
 
 The `--is-ready` filter on `list` matches tasks that are `ready`. In `--json` output, `TaskObject` includes a computed boolean `is_ready` so agents can filter without re-deriving readiness.
@@ -300,7 +300,7 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 - `pebble init`: Bootstraps the environment, creates the tasks directory, creates `.pebble/AGENTS.md` (see §4.8), and prints a message advising the user to include it in their project's agent configuration.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` or `canceled` and whose status is actionable). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
 - `pebble next`: Convenience command equivalent to `pebble list --is-ready --limit 1`. Returns the single highest-priority actionable task. Accepts `--json`. This is the canonical "what should I work on?" entry point for agents and humans alike.
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task. `--path-only` prints only the file path (relative to `tasks-dir`) and nothing else — useful for agents and scripts that want to read the file directly.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
@@ -324,7 +324,7 @@ The default sort order for `pebble list` (and by extension `pebble next`) is det
 
 The `--sort <field>` flag overrides this default. Supported fields: `priority`, `created_at`, `modified_at`, `status`, `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `paused`, `done`, `canceled`.
 
-Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done`), so the topological component of the default sort has no effect and the order is effectively priority → created_at.
+Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done` or `canceled`), so the topological component of the default sort has no effect and the order is effectively priority → created_at.
 
 **Future direction for retrieval**
 - Keep simple flags for common cases, and add a small, explicit query language only if needed. A future `--filter <expr>` (or a dedicated `pebble query`) can provide compound conditions and ranges for both humans and agents without re-inventing SQL.
@@ -374,7 +374,7 @@ On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-rea
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `title`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `related`, `tags`).
-- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` and status is `todo` or `in_progress`).
+- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` or `canceled` and status is `todo` or `in_progress`).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim.
 - `path`: the file path relative to `tasks-dir`.
 
