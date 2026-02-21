@@ -362,9 +362,8 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
 
 **Strictness & Failure Modes (Read Commands)**
-- All commands that read tasks (`list`, `next`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
-- `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
-- `show` **must** scan the full `tasks-dir` and build the complete graph. This is required to compute `before` (reverse dependencies) and to ensure `is_ready` is accurate for the returned `TaskObject`.
+- **General Invariant (Full Graph Scanning):** Read commands that evaluate graph topology (`list`, `next`, `show`, `search`, `check`) **must** perform a full recursive folder scan and build the complete in-memory graph. This is required to compute `is_ready`, `before`, and `effective_priority` deterministically.
+- During this full scan, these commands validate all scanned files and then apply the warning/skip policy below (i.e., validation is strict but non-fatal for read commands).
 - For `list`, `next`, `search`, and `show`, validation errors are explicitly bifurcated to prioritize graceful degradation:
   - **Unparseable / Schema Errors** (e.g., malformed YAML, missing required `id` field, invalid status enum, duplicate IDs across multiple files): The CLI logs a warning to `stderr`, completely skips the invalid file(s) (in the case of duplicates, all files sharing the ID are skipped), and continues.
   - **Graph / Constraint Errors** (e.g., missing references in `parent` or `after`, asymmetric `related` edges): The CLI logs a warning to `stderr` and resolves the constraint in-memory (e.g., dropping missing references, or "self-healing" asymmetric `related` links by synthesizing the missing edge), keeping the task fully visible and processable in the graph. This prevents a task from vanishing from the tracker due to a typo in a cross-reference.
@@ -570,7 +569,7 @@ Run the canary deploy pipeline against the `staging` cluster.
 *Manually organizing active tasks into nested folders (e.g., `docs/pebble/frontend/` or `docs/pebble/epics/epic-1/`) just to group them visually.*
 
 - **Pros:** Makes reading the raw file tree theoretically easier for humans.
-- **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`parent`/`after`), reserving the recursive directory scan feature purely for automated lifecycle `archive` sorting.
+- **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`parent`/`after`), using directory structure and paths purely for automated lifecycle `archive` sorting.
 
 ## Appendix B: Migration Field Mapping
 
