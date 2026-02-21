@@ -8,7 +8,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 
 ## 2. Key Decisions (TL;DR)
 - Config lives in `.pebble/config.toml` (relative to the repository root).
-- Store tasks as Markdown files in a visible repo directory (default `docs/pebble/`).
+- Store tasks as Markdown files in `tasks-dir` (default `docs/pebble/`).
 - YAML frontmatter defines metadata; the Markdown body is free-form description.
 - `id` is canonical and user-editable; the CLI never changes it.
 - Relationships: store `after` (prerequisites), compute `before` as inverse. Store `related` (symmetric cross-references).
@@ -17,7 +17,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - `pebble next` is a convenience command that returns the highest-priority ready task.
-- Default list order: topological (respecting `after`), then `priority`, then `created_at`.
+- Default list order: topological (respecting `after`), then `effective_priority`, then `created_at`.
 - Agents MAY read and edit task bodies directly (a core benefit); frontmatter mutations SHOULD use the CLI.
 - `.pebble/AGENTS.md` provides agent bootstrapping instructions; `pebble init` creates it.
 - One-time migration via a throw-away script from the existing JSONL.
@@ -45,7 +45,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 **Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while keeping the architecture simple.
 
 **Design Philosophy: Forgiving Reads, Strict Writes**
-Pebble embraces the fluid, unstructured nature of Markdown by treating manual inconsistencies—like dangling references from hand-deleted files—gracefully during read operations. When the CLI encounters such inconsistencies, it **should log a clear warning to the user** but then continue as if the missing data doesn't exist, rather than holding the graph hostage. However, **the CLI must never be the source of invalid state**. It should be impossible to author an inconsistency (such as linking a non-existent ID or generating a schema violation) using `pebble` commands. You can break things using `rm` or `vim`, but never through `pebble`.
+Pebble embraces the fluid, unstructured nature of Markdown by treating manual inconsistencies—like dangling references from hand-deleted files—gracefully during read operations. When the CLI encounters such inconsistencies, it **should log a clear warning to the user** but then continue as if the missing data doesn't exist, rather than holding the graph hostage. However, **the CLI must never be the source of invalid state**. It should be impossible to author an inconsistency (such as linking a non-existent ID, introducing a dependency cycle, or generating a schema violation) using `pebble` commands. You can break things using `rm` or `vim`, but never through `pebble`.
 
 **Non-Goals:**
 - Not targeting enterprise-scale analytics or cross-repo issue federation.
@@ -110,10 +110,10 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
 - Updating a task title never renames the file. Filenames are stable unless moved explicitly by `pebble archive`.
 
 **Reference Resolution Rules**
-- `parent`, `after`, and `related` must reference existing task IDs.
+- `parent`, `after`, and `related` must reference existing task IDs for a valid dataset. The read path tolerates violations and repairs them in-memory.
 - Graph constraints (missing referenced IDs or asymmetric `related` links) do not invalidate the task. For missing references, the CLI gracefully drops the invalid edge in-memory (e.g., ignoring a missing prerequisite so it does not block readiness). For asymmetric `related` links between two existing tasks, the CLI "self-heals" the graph in-memory by synthesizing the missing bi-directional link. Both cases issue a warning.
 - `pebble check` fails if any reference is missing or if `related` is asymmetric.
-- `pebble add`/`update` fail fast when given non-existent IDs to prevent creating invalid state through the CLI.
+- `pebble add`/`update` fail fast when given non-existent IDs or when a mutation would introduce a dependency cycle. The CLI must evaluate the proposed graph state in-memory before writing; if a cycle is detected, the write is aborted to permanently prevent structural defects from being authored via the CLI.
 - `list`/`show` output (human and `--json`) reflects the repaired in-memory graph (dropping missing references and symmetrizing `related`), i.e., as if `pebble fix` had been run. Warnings are still emitted to `stderr`.
 
 **ID Generation Rules**
@@ -162,7 +162,7 @@ Intentionally omitted:
 
 Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
-- `effective_priority` (integer or null; dynamically computed to prevent starvation by inheriting the highest priority from dependents)
+- `effective_priority` (integer or null; dynamically computed to prevent starvation by inheriting the highest priority from dependents whose `effective_status` is actionable)
 - `effective_status` (enum: `todo` | `in_progress` | `paused` | `done` | `canceled`; matches the explicit `status` unless overridden to `paused` by an inherited blockage from an ancestor)
 
 > **Rationale for Omitted Fields:**
@@ -259,7 +259,7 @@ pub struct TaskNode {
 To prevent high-priority tasks from being starved by lower-priority prerequisites, priority is transitive.
 - A task's `effective_priority` is computed dynamically as the highest (numerically lowest) priority among:
   1. Its own explicitly set `priority`.
-  2. The `effective_priority` of any task that explicitly or implicitly depends on it (i.e., tasks in its `before` chain, and any parent tasks for which it is a child).
+  2. The `effective_priority` of any task that explicitly or implicitly depends on it (i.e., tasks in its `before` chain, and any parent tasks for which it is a child) whose `effective_status` is still actionable (`todo`, `in_progress`).
 - Tasks with no `priority` set, and with no dependents possessing a priority, have no `effective_priority` (treated as the lowest possible priority).
 - This computation happens purely in memory during the read path. The explicitly set `priority` in the YAML frontmatter is never mutated automatically.
 - `effective_priority` MUST be visible in human output modes only when it differs from the explicitly set `priority`, to reduce visual noise. In `--json` output, `effective_priority` MUST always be present so agents and scripts can consume a single definitive field for their logic.
@@ -316,7 +316,7 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 - `pebble init`: Bootstraps the environment, creates the tasks directory, creates `.pebble/AGENTS.md` (see §4.8), and prints a message advising the user to include it in their project's agent configuration.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` or `canceled` and whose `effective_status` is actionable). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. By default, tasks with an `effective_status` of `done` or `canceled` are implicitly filtered out. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` or `canceled` and whose `effective_status` is actionable), `--all` (bypass default omission to include `done` and `canceled` tasks). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
 - `pebble next`: Convenience command equivalent to `pebble list --is-ready --limit 1`. Returns the single highest-priority actionable task. Accepts `--json`. This is the canonical "what should I work on?" entry point for agents and humans alike.
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task. `--path-only` prints only the file path (relative to `tasks-dir`) and nothing else — useful for agents and scripts that want to read the file directly.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
@@ -328,8 +328,9 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 - Results are returned in the default list order.
 
 **MVP filter semantics**
-- `--status <status>` matches tasks whose `effective_status` equals `<status>`. The flag is repeatable; multiple values are OR'ed.
+- `--status <status>` matches tasks whose `effective_status` equals `<status>`. The flag is repeatable; multiple values are OR'ed. Explicitly requesting `--status done` or `--status canceled` guarantees those tasks are included, overriding the default omission.
 - `--priority <N>` matches tasks whose `effective_priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `effective_priority` never match `--priority`.
+- `--all` disables the default omission, ensuring `done` and `canceled` tasks are evaluated alongside actionable ones.
 
 **Default Sort Order**
 
@@ -367,12 +368,18 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - For `list`, `next`, `search`, and `show`, validation errors are explicitly bifurcated to prioritize graceful degradation:
   - **Unparseable / Schema Errors** (e.g., malformed YAML, missing required `id` field, invalid status enum, duplicate IDs across multiple files): The CLI logs a warning to `stderr`, completely skips the invalid file(s) (in the case of duplicates, all files sharing the ID are skipped), and continues.
   - **Graph / Constraint Errors** (e.g., missing references in `parent` or `after`, asymmetric `related` edges): The CLI logs a warning to `stderr` and resolves the constraint in-memory (e.g., dropping missing references, or "self-healing" asymmetric `related` links by synthesizing the missing edge), keeping the task fully visible and processable in the graph. This prevents a task from vanishing from the tracker due to a typo in a cross-reference.
-  - **Cyclic Dependencies:** Treated as Graph / Constraint Errors. If a cycle in `after` relationships is detected during graph traversal, the CLI deterministically breaks the cycle in-memory by traversing the graph (e.g., by visiting children in deterministic ID-sorted order) and dropping the `after` edge that closes the loop. It emits a warning to `stderr`, continues the topological sort, and evaluates `is_ready` on the resulting DAG, ensuring all tasks remain visible.
+  - **Cyclic Dependencies:** Treated as Graph / Constraint Errors. If a cycle is detected during graph traversal (whether formed entirely by `after` relationships, entirely by `parent` hierarchy, or a mix of both), the CLI deterministically breaks the cycle in-memory by traversing the graph (e.g., by visiting nodes in deterministic ID-sorted order) and dropping the edge (either an `after` prerequisite or a `parent` claim) that closes the loop. It emits a warning to `stderr`, continues the topological sort, and evaluates `is_ready` on the resulting DAG, ensuring all tasks remain visible.
 - If the target task for `show` has an Unparseable / Schema Error, `show` fails with a non-zero exit code and a clear error message. Graph / Constraint errors follow the warning-and-drop behavior above.
 - Unknown frontmatter keys are treated as Schema Errors (schema is strict). In read commands, they trigger the skip-file warning behavior described above.
 - In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
 - `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`; it fails on any validation error.
 - Structured validation errors are available only via `pebble check --json`.
+
+**Strictness & Failure Modes (Write Commands)**
+- Write commands (`add`, `update`) MUST validate the proposed graph before persisting any changes.
+- If a proposed mutation would introduce a cyclic dependency (via `after` or `parent` edges), the command MUST fail-fast with a non-zero exit code and log a clear error terminating the operation. The file must not be written.
+- If a proposed mutation references a non-existent ID for `parent`, `after`, or `before`/`related`, the command MUST fail-fast with a non-zero exit code.
+- By performing cycle-detection and reference-checking on the write path, the CLI permanently shields the read path from accumulating structural defects.
 
 **Future performance note**
 - If full scans become a bottleneck, add a cached index as a strictly derived (non-canonical) optimization. The MVP assumes full scans are acceptable for single-repo scale.
@@ -400,7 +407,7 @@ A `TaskObject` includes:
 **Command Deprecations & Removals**
 - `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
 - `sync-branch` configuration is removed.
-- `pebble import` is removed. The one-time JSONL → Markdown migration is handled by a throw-away script (e.g., Python) that invokes the new `pebble` CLI.
+- `pebble import` is removed. The one-time JSONL → Markdown migration is handled by a throw-away script (e.g., Python) that invokes the new `pebble` CLI. The legacy IDs are not preserved; the script maintains an in-memory mapping from legacy IDs to the new, CLI-generated IDs to correctly translate cross-references (`parent`, `after`, `related`).
 - `pebble init` only creates the tasks directory and config; it no longer creates a worktree.
 
 ### 4.7 Migration
@@ -576,7 +583,7 @@ This is the authoritative and exhaustive mapping used by the one-time migration 
 > **Rationale:** There is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
 
 **Field mapping (exhaustive)**
-- `id` → frontmatter `id` (unchanged).
+- `id` → dropped. The migration script uses the newly generated ID from `pebble add` and maintains an internal mapping to translate edges.
 - `title` → frontmatter `title`.
 - `description` → Markdown body (verbatim).
 - `status` → see status mapping below.
@@ -592,7 +599,7 @@ This is the authoritative and exhaustive mapping used by the one-time migration 
 - `acceptance_criteria` → appended to body under an `## Acceptance Criteria` heading (if non-empty).
 - `notes` → each note appended to body under a `## Notes` heading (if non-empty).
 - `comments` → each comment appended to body under a `## Comments` heading (if non-empty).
-- `defer_until` → dropped (the `paused` status replaces this concept; the original value is not preserved).
+- `defer_until` → mapped to `paused` status; the specific deferred date is preserved by appending it as a standard note in the Markdown body under the `## Notes` heading.
 - `original_type` → dropped (internal bookkeeping from beads type migrations; no semantic value).
 - `deleted_at`, `deleted_by`, `delete_reason` → used only for `tombstone` status mapping (see below); otherwise dropped.
 - `dependencies` → see dependency type mapping below.
