@@ -111,10 +111,10 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
 
 **Reference Resolution Rules**
 - `parent`, `after`, and `related` must reference existing task IDs.
-- If a referenced ID is missing, the CLI gracefully ignores it (e.g., a missing prerequisite does not block readiness) and issues a warning.
+- Graph constraints (missing referenced IDs or asymmetric `related` links) do not invalidate the task. For missing references, the CLI gracefully drops the invalid edge in-memory (e.g., ignoring a missing prerequisite so it does not block readiness). For asymmetric `related` links between two existing tasks, the CLI "self-heals" the graph in-memory by synthesizing the missing bi-directional link. Both cases issue a warning.
 - `pebble check` fails if any reference is missing or if `related` is asymmetric.
 - `pebble add`/`update` fail fast when given non-existent IDs to prevent creating invalid state through the CLI.
-- `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
+- `list`/`show` should surface missing or asymmetric references in output (human) and include them explicitly in `--json`.
 
 **ID Generation Rules**
 - IDs are generated on `pebble add` and follow `<issue-prefix>-<suffix>`.
@@ -362,10 +362,11 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - All commands that read tasks (`list`, `next`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
 - `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
 - `show` **must** scan the full `tasks-dir` and build the complete graph. This is required to compute `before` (reverse dependencies) and to ensure `is_ready` is accurate for the returned `TaskObject`.
-- For `list`, `next`, `search`, and `show`, validation errors in non-target files are **warnings**, not fatal errors: the CLI logs a warning to `stderr`, skips the invalid file, and continues. This provides graceful degradation when a human or agent has made a mistake in one file.
-- If the target task for `show` is invalid or unparseable, `show` fails with a non-zero exit code and a clear error message.
-- Missing references (`parent`, `after`, `related`) are warnings in read commands. A missing prerequisite is ignored and does **not** block a task from being ready (the missing task is treated as if it never existed).
-- Unknown frontmatter keys are treated as errors (schema is closed). In read commands, they follow the same warning behavior described above.
+- For `list`, `next`, `search`, and `show`, validation errors are explicitly bifurcated to prioritize graceful degradation:
+  - **Unparseable / Schema Errors** (e.g., malformed YAML, missing required `id` field, invalid status enum): The CLI logs a warning to `stderr`, completely skips the invalid file, and continues.
+  - **Graph / Constraint Errors** (e.g., missing references in `parent` or `after`, asymmetric `related` edges): The CLI logs a warning to `stderr` and resolves the constraint in-memory (e.g., dropping missing references, or "self-healing" asymmetric `related` links by synthesizing the missing edge), keeping the task fully visible and processable in the graph. This prevents a task from vanishing from the tracker due to a typo in a cross-reference.
+- If the target task for `show` has an Unparseable / Schema Error, `show` fails with a non-zero exit code and a clear error message. Graph / Constraint errors follow the warning-and-drop behavior above.
+- Unknown frontmatter keys are treated as Schema Errors (schema is strict). In read commands, they trigger the skip-file warning behavior described above.
 - In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
 - `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`; it fails on any validation error.
 - Structured validation errors are available only via `pebble check --json`.
