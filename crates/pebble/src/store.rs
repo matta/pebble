@@ -6,6 +6,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
+pub const STATUS_OPEN: &str = "open";
+pub const STATUS_CLOSED: &str = "closed";
+pub const TYPE_TASK: &str = "task";
+
 /// Represents a single issue or task within the system.
 ///
 /// This struct maps directly to the JSON object stored in `issues.jsonl`.

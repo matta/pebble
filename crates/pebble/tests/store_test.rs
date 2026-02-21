@@ -1,11 +1,14 @@
-use pebble::store::{Issue, JsonlStore};
+use pebble::store::{Issue, JsonlStore, STATUS_CLOSED, STATUS_OPEN, TYPE_TASK};
 use std::io::Write;
 use tempfile::NamedTempFile;
 
 #[test]
 fn test_read_issues() {
     let mut file = NamedTempFile::new().unwrap();
-    let issue_json = r#"{"id":"mydoo-0kq","title":"Test Issue","description":"Desc","status":"open","priority":0,"issue_type":"task","owner":"me","created_at":"2026-01-01T00:00:00Z","created_by":"Me","updated_at":"2026-01-01T00:00:00Z","closed_at":null,"close_reason":null}"#;
+    let issue_json = format!(
+        r#"{{"id":"mydoo-0kq","title":"Test Issue","description":"Desc","status":"{}","priority":0,"issue_type":"{}","owner":"me","created_at":"2026-01-01T00:00:00Z","created_by":"Me","updated_at":"2026-01-01T00:00:00Z","closed_at":null,"close_reason":null}}"#,
+        STATUS_OPEN, TYPE_TASK
+    );
     writeln!(file, "{}", issue_json).unwrap();
 
     let path = file.path().to_str().unwrap();
@@ -28,9 +31,9 @@ fn test_write_issues() {
         id: "test-1".to_string(),
         title: "Title 1".to_string(),
         description: Some("Desc 1".to_string()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("me".to_string()),
         created_at: "2026-01-01T00:00:00Z".to_string(),
         created_by: Some("Me".to_string()),
@@ -52,9 +55,9 @@ fn test_issue_merge() {
         id: "test-1".to_string(),
         title: "Original Title".to_string(),
         description: Some("Original Desc".to_string()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("me".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
         created_by: Some("Me".to_string()),
@@ -68,7 +71,7 @@ fn test_issue_merge() {
         id: "test-1".to_string(),
         title: "New Title".to_string(),
         description: Some("New Desc".to_string()),
-        status: "closed".to_string(),
+        status: STATUS_CLOSED.to_string(),
         priority: 2,
         issue_type: "bug".to_string(),
         owner: Some("you".to_string()),
@@ -83,7 +86,7 @@ fn test_issue_merge() {
     base.merge(incoming);
 
     assert_eq!(base.title, "New Title");
-    assert_eq!(base.status, "closed");
+    assert_eq!(base.status, STATUS_CLOSED);
     assert_eq!(base.updated_at, "2026-01-01T11:00:00Z");
     assert_eq!(base.closed_at, Some("2026-01-01T11:00:00Z".to_string()));
 }
@@ -94,9 +97,9 @@ fn test_issue_merge_older_ignored() {
         id: "test-1".to_string(),
         title: "Newer Title".to_string(),
         description: Some("Newer Desc".to_string()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("me".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
         created_by: Some("Me".to_string()),
@@ -110,7 +113,7 @@ fn test_issue_merge_older_ignored() {
         id: "test-1".to_string(),
         title: "Older Title".to_string(),
         description: Some("Older Desc".to_string()),
-        status: "closed".to_string(),
+        status: STATUS_CLOSED.to_string(),
         priority: 2,
         issue_type: "bug".to_string(),
         owner: Some("you".to_string()),
@@ -125,7 +128,7 @@ fn test_issue_merge_older_ignored() {
     base.merge(incoming);
 
     assert_eq!(base.title, "Newer Title");
-    assert_eq!(base.status, "open");
+    assert_eq!(base.status, STATUS_OPEN);
     assert_eq!(base.updated_at, "2026-01-01T12:00:00Z");
 }
 
@@ -157,9 +160,9 @@ fn test_read_issues_mixed_valid_and_invalid() {
         id: "1".to_string(),
         title: "Valid".to_string(),
         description: Some(String::new()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("me".to_string()),
         created_at: "2023-01-01".to_string(),
         created_by: Some(String::new()),
@@ -200,9 +203,9 @@ fn test_append_issue_newline_handling() {
         id: "test-1".to_string(),
         title: "Title 1".to_string(),
         description: Some("Desc 1".to_string()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("me".to_string()),
         created_at: "2026-01-01T00:00:00Z".to_string(),
         created_by: Some("Me".to_string()),

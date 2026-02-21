@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
-use pebble::store::Issue;
+use pebble::store::{Issue, STATUS_OPEN, TYPE_TASK};
 use std::fs;
 use std::process::Command as std_command;
 use tempfile::TempDir;
@@ -51,9 +51,9 @@ fn test_import_basic() {
         id: "EXT-1".to_string(),
         title: "Imported Issue".to_string(),
         description: Some("External desc".to_string()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("external@example.com".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
         created_by: Some("External".to_string()),
@@ -100,9 +100,9 @@ fn test_import_basic_json() {
         id: "EXT-2".to_string(),
         title: "Imported JSON Issue".to_string(),
         description: Some("External desc".to_string()),
-        status: "open".to_string(),
+        status: STATUS_OPEN.to_string(),
         priority: 1,
-        issue_type: "task".to_string(),
+        issue_type: TYPE_TASK.to_string(),
         owner: Some("external@example.com".to_string()),
         created_at: "2026-01-01T10:00:00Z".to_string(),
         created_by: Some("External".to_string()),
