@@ -338,13 +338,15 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
 
 **Strictness & Failure Modes (Read Commands)**
-- All commands that read tasks (`list`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
+- All commands that read tasks (`list`, `next`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
 - `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
 - `show` **must** scan the full `tasks-dir` and build the complete graph. This is required to compute `before` (reverse dependencies) and to ensure `is_ready` is accurate for the returned `TaskObject`.
-- Any validation error encountered in scanned data (invalid YAML, missing required fields, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
-- Unknown frontmatter keys are treated as errors (schema is closed).
+- For `list`, `next`, `search`, and `show`, validation errors in non-target files are **warnings**, not fatal errors: the CLI logs a warning to `stderr`, skips the invalid file, and continues. This provides graceful degradation when a human or agent has made a mistake in one file.
+- If the target task for `show` is invalid or unparseable, `show` fails with a non-zero exit code and a clear error message.
+- Missing references (`parent`, `after`, `related`) are warnings in read commands. Tasks with missing prerequisites are **not** considered ready; `is_ready` is false when any prerequisite is missing.
+- Unknown frontmatter keys are treated as errors (schema is closed). In read commands, they follow the same warning behavior described above.
 - In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
-- `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`.
+- `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`; it fails on any validation error.
 - Structured validation errors are available only via `pebble check --json`.
 
 **Future performance note**
