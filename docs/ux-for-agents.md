@@ -142,18 +142,30 @@ $ pebble list
 
 ```
 $ pebble list --json
-[
-  {"id": "proj-0kq", "status": "open", "title": "Deploy staging environment"},
-  {"id": "proj-1ab", "status": "closed", "title": "Fix login timeout"},
-  {"id": "proj-2cd", "status": "open", "title": "Add rate limiting"}
-]
+{"tasks":[
+  {"id":"proj-0kq","status":"todo","title":"Deploy staging environment"},
+  {"id":"proj-1ab","status":"done","title":"Fix login timeout"},
+  {"id":"proj-2cd","status":"todo","title":"Add rate limiting"}
+]}
 ```
 
-**Structured errors (on stderr, exit code non-zero):**
+**Errors (on stderr, exit code non-zero):**
 
-```json
-{"error": "worktree_not_found", "message": "No worktree found for branch 'pebble-sync'. Run 'pebble sync' first.", "hint": "pebble sync"}
 ```
+$ pebble show nonexistent-id --json
+error: no task found with id 'nonexistent-id'
+$ echo $?
+1
+```
+
+Errors are human-readable text on stderr, even in `--json` mode. This
+matches the convention of `gh`, `cargo`, `git`, and other widely-used
+CLIs. Agents check the exit code to detect failure and read the stderr
+text for diagnostics — structured JSON errors add implementation
+complexity without meaningful benefit, since agents parse natural
+language error messages reliably. The critical design rule is: **never
+exit 0 on failure**. Silent failures (exit 0, empty or wrong output)
+are far more dangerous to agents than unstructured error text.
 
 ### Discoverability: Help Your Agents Help Themselves
 
