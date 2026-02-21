@@ -616,12 +616,4 @@ Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The
 
 DO NOT REMOVE THIS SECTION
 
-Use the following as an agent prompt for iterative refinement:
-
-You are a principle engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape. Are there any concrete, blocking, issues that prevent you from approving the document and allowing implementation planning to begin? If so, please list them.
-
----
-
-You are a principal engineer AI coding agent reviewing docs/rfc-reimagining-pebble.md from the point of view of an AI coding agent using the Pebble CLI. You are helping me whip the document into shape with that use case in mind. Choose a concrete improvement to make to the document, propose it to me for implementation. In your efforts, maintain the perspective of an AI coding agent using the Pebble CLI, but also consider the perspective of a human engineer using the Pebble CLI, as well as both human and AI engineers reading the document.
-
-Pick the most important set of improvements you can think of, and propose them to me for implementation. *DO NOT* begin implementing them.
+You are a principle staff engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape. Are there any concrete, blocking, issues that prevent you from approving the document and allowing implementation planning to begin? If so, please list them.
