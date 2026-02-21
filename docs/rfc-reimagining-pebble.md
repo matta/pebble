@@ -18,7 +18,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - `pebble next` is a convenience command that returns the highest-priority ready task.
 - Default list order: topological (respecting `after`), then `priority`, then `created_at`.
-- Agents MAY read task files directly; mutations SHOULD use the CLI.
+- Agents MAY read and edit task bodies directly (a core benefit); frontmatter mutations SHOULD use the CLI.
 - `.pebble/AGENTS.md` provides agent bootstrapping instructions; `pebble init` creates it.
 - One-time migration via a throw-away script from the existing JSONL.
 
@@ -126,10 +126,11 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
 
 **Direct File Access Contract**
 
-Task files are plain Markdown with YAML frontmatter in a visible directory. This means agents and scripts can — and will — read and write them directly, bypassing the CLI. The following rules govern this:
+Task files are plain Markdown with YAML frontmatter in `tasks-dir`. Direct file access by agents, scripts, and humans is a **core design benefit** of the Markdown-native storage model — not a workaround.
 
 - **Reading:** Agents and scripts MAY read task files directly. The file format (YAML frontmatter + Markdown body) is a stable contract. This is often faster and cheaper than shelling out to `pebble show`, especially when an agent already has file-reading tools available. `pebble show --path-only <id>` resolves an ID to its file path for this purpose.
-- **Writing:** Agents and scripts SHOULD use `pebble add` and `pebble update` for mutations. The CLI provides ID generation, automatic timestamp management (`modified_at`, `resolved_at`), `related` symmetry enforcement, and strict schema validation. Direct file writes are permitted but bypass all of these safeguards — the author assumes full responsibility for schema correctness.
+- **Body editing:** Agents, scripts, and humans are encouraged to edit the Markdown body directly. The body is free-form content — checklists, notes, acceptance criteria, design sketches — and direct editing is the natural way to work with it. Checking off a checklist item, appending implementation notes, or restructuring sections are all expected direct-edit operations. The CLI also provides `--body` (replace) and `--append-body` (append) flags on `pebble update` for simpler mutations that benefit from automatic `modified_at` management.
+- **Frontmatter mutations:** Agents and scripts SHOULD use `pebble add` and `pebble update` for frontmatter changes. The CLI provides ID generation, automatic timestamp management (`modified_at`, `resolved_at`), `related` symmetry enforcement, and strict schema validation. Direct frontmatter writes are permitted but bypass all of these safeguards — the author assumes full responsibility for schema correctness.
 - **Recovery:** `pebble check` detects problems introduced by direct file edits (schema violations, broken references, asymmetric `related` links). `pebble fix` repairs what it can deterministically. This is the safety net for direct file access.
 - **Implication for CLI output:** Because agents may use file paths to read tasks directly, `pebble list` and `pebble search` include the `path` field (relative to `tasks-dir`) in both human and `--json` output modes.
 
@@ -316,9 +317,9 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 
 **Mutation commands**
 - `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text becomes the Markdown body of the file.
-- `pebble update <id>`: Safely modifies the frontmatter and title. Options: `--title <text>`, `--status <status>`, `--priority <N>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
+- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>`, `--parent <id>`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter. If a filename collision occurs, the CLI appends a numeric suffix to the archived filename.
-- Users can edit Markdown bodies directly; no dedicated `edit` command is required.
+- Agents and users are encouraged to edit Markdown bodies directly — this is a core benefit of the Markdown-native model. The CLI also provides `--body` and `--append-body` on `pebble update` for simple cases.
 
 **Validation**
 - `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` and `related` links, circular dependencies, `related` symmetry (if A lists B in `related`, B must list A), schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
@@ -366,72 +367,7 @@ A `TaskObject` includes:
 
 ### 4.7 Migration
 
-**Migration Plan**
-1. There is exactly one existing database to migrate.
-2. Use a one-time throw-away script to transform the current JSONL into Markdown files under `docs/pebble/`.
-3. Validate the result manually and discard the script after migration.
-
-**Compatibility & Data Loss**
-- The Markdown schema intentionally drops: `owner`, `created_by`, `updated_at`, `closed_at`, and `close_reason`.
-- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`). It will preserve the logical graph as `parent`, `after`, and `related` (with `before` computed).
-
-> **Rationale:** There is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
-
-**Compatibility & Migration Mapping (Current JSONL → Markdown)**
-
-This is the authoritative and exhaustive mapping used by the one-time migration script. Every field present in the JSONL schema is listed below with its disposition. Any JSONL field not listed here is a migration error — the script must fail rather than silently drop data.
-
-**Field mapping (exhaustive)**
-- `id` → frontmatter `id` (unchanged).
-- `title` → frontmatter `title`.
-- `description` → Markdown body (verbatim).
-- `status` → see status mapping below.
-- `priority` → frontmatter `priority` (preserved as integer).
-- `issue_type` → `tags` entry with the same string (preserves information without a formal type system).
-- `created_at` → frontmatter `created_at` (required; missing value is a migration error).
-- `updated_at` → frontmatter `modified_at` (if present).
-- `closed_at` → frontmatter `resolved_at` when status maps to `done` or `canceled` (if present).
-- `owner` → dropped (audit via Git history).
-- `created_by` → dropped (audit via Git history).
-- `close_reason` → used only for status mapping; otherwise dropped.
-- `labels` → merged into `tags` (deduplicated with any tag derived from `issue_type`).
-- `acceptance_criteria` → appended to body under an `## Acceptance Criteria` heading (if non-empty).
-- `notes` → each note appended to body under a `## Notes` heading (if non-empty).
-- `comments` → each comment appended to body under a `## Comments` heading (if non-empty).
-- `defer_until` → dropped (the `paused` status replaces this concept; the original value is not preserved).
-- `original_type` → dropped (internal bookkeeping from beads type migrations; no semantic value).
-- `deleted_at`, `deleted_by`, `delete_reason` → used only for `tombstone` status mapping (see below); otherwise dropped.
-- `dependencies` → see dependency type mapping below.
-
-**Status mapping**
-- `open` → `todo`.
-- `in_progress` → `in_progress`.
-- `deferred` → `paused`.
-- `closed` → `done` unless `close_reason` indicates cancellation (`canceled` / `cancelled`, case-insensitive) in which case → `canceled`.
-- `tombstone` → `canceled` (with `resolved_at` set from `deleted_at` if present, falling back to `updated_at`).
-- Any other status value is a migration error (explicitly surfaced).
-
-**Dependency type mapping**
-
-Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The mapping by type:
-- `parent-child` → the child's frontmatter `parent` is set to the parent's ID. (`issue_id` is the child; `depends_on_id` is the parent.)
-- `blocks` → the blocked task's `after` array includes the blocking task's ID. (If A blocks B: B gets `after: [A]`.)
-- `depends-on` → the dependent task's `after` array includes the dependency's ID. (If A depends-on B: A gets `after: [B]`.)
-- `relates-to` → both tasks' `related` arrays include the other's ID. (Symmetric; deduplicated.)
-- Edge audit metadata (`created_at`, `created_by` on each dependency) is dropped.
-- Any other dependency type value is a migration error.
-
-**Timestamp mapping**
-- `modified_at` is set from `updated_at` if present; otherwise omitted.
-- `resolved_at` is set from `closed_at` if present. If `closed_at` is missing but status maps to `done` or `canceled`, use `updated_at` when available; otherwise omit. For `tombstone` → `canceled`, use `deleted_at` if present, falling back to `updated_at`.
-
-**Body assembly**
-- Each task file starts with YAML frontmatter, followed by the `description` as the Markdown body (if non-empty).
-- If `acceptance_criteria`, `notes`, or `comments` are non-empty, they are appended after the description as separate H2 sections.
-
-**Command mapping summary**
-- `pebble sync` and `sync-branch` config are removed (see "Command Deprecations & Removals").
-- `pebble list/show/search/add/update` remain, but operate on Markdown files in `tasks-dir`.
+There is exactly one existing JSONL database to migrate. A one-time throw-away script transforms the current JSONL into Markdown files under `docs/pebble/`. The Markdown schema intentionally drops audit fields (`owner`, `created_by`, `close_reason`) and per-edge audit metadata; Git history remains the fallback. The exhaustive field-by-field mapping is in Appendix C.
 
 ### 4.8 Agent Bootstrapping & Discoverability
 
@@ -461,6 +397,7 @@ parsing results programmatically.
 - **Get file path for a task:** `pebble show --path-only <id>`
 - **Create a task:** `pebble add "title" --body "description" --json`
 - **Update a task:** `pebble update <id> --status in_progress --json`
+- **Append notes:** `pebble update <id> --append-body "implementation notes..." --json`
 - **Validate the database:** `pebble check --json`
 
 ## Workflow
@@ -470,12 +407,20 @@ parsing results programmatically.
 3. Do the work.
 4. Run `pebble update <id> --status done` when finished.
 
-## Reading Tasks Directly
+## Direct File Access
 
-Task files are plain Markdown with YAML frontmatter. You may read them
-directly instead of using `pebble show`. Use `pebble show --path-only <id>`
-to resolve an ID to a file path. Mutations should use the CLI (`pebble add`,
-`pebble update`) to ensure ID generation, timestamps, and validation.
+Task files are plain Markdown with YAML frontmatter in `docs/pebble/`.
+You can read and edit them directly — this is a core feature of the
+system, not a workaround. Use `pebble show --path-only <id>` to resolve
+an ID to a file path.
+
+Direct file editing is especially useful for body changes: checking off
+checklist items, appending notes, or restructuring sections. Direct body
+edits do not automatically update `modified_at`; use `pebble update
+--append-body` or `--body` if you want `modified_at` refreshed. For
+frontmatter changes (status, priority, tags, dependencies), prefer the
+CLI — it handles timestamps, validation, and cross-references
+automatically.
 ```
 
 This file is designed to be included by reference from the project's root agent configuration. For example, in `AGENTS.md`:
@@ -582,14 +527,78 @@ Run the canary deploy pipeline against the `staging` cluster.
 - **Pros:** Makes reading the raw file tree theoretically easier for humans.
 - **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`parent`/`after`), reserving the recursive directory scan feature purely for automated lifecycle `archive` sorting.
 
-## Appendix B: Iterative Refinement
+## Appendix C: Migration Field Mapping
+
+This is the authoritative and exhaustive mapping used by the one-time migration script. Every field present in the JSONL schema is listed below with its disposition. Any JSONL field not listed here is a migration error — the script must fail rather than silently drop data.
+
+**Compatibility & Data Loss**
+- The Markdown schema intentionally drops: `owner`, `created_by`, `updated_at`, `closed_at`, and `close_reason`.
+- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`). It will preserve the logical graph as `parent`, `after`, and `related` (with `before` computed).
+
+> **Rationale:** There is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
+
+**Field mapping (exhaustive)**
+- `id` → frontmatter `id` (unchanged).
+- `title` → frontmatter `title`.
+- `description` → Markdown body (verbatim).
+- `status` → see status mapping below.
+- `priority` → frontmatter `priority` (preserved as integer).
+- `issue_type` → `tags` entry with the same string (preserves information without a formal type system).
+- `created_at` → frontmatter `created_at` (required; missing value is a migration error).
+- `updated_at` → frontmatter `modified_at` (if present).
+- `closed_at` → frontmatter `resolved_at` when status maps to `done` or `canceled` (if present).
+- `owner` → dropped (audit via Git history).
+- `created_by` → dropped (audit via Git history).
+- `close_reason` → used only for status mapping; otherwise dropped.
+- `labels` → merged into `tags` (deduplicated with any tag derived from `issue_type`).
+- `acceptance_criteria` → appended to body under an `## Acceptance Criteria` heading (if non-empty).
+- `notes` → each note appended to body under a `## Notes` heading (if non-empty).
+- `comments` → each comment appended to body under a `## Comments` heading (if non-empty).
+- `defer_until` → dropped (the `paused` status replaces this concept; the original value is not preserved).
+- `original_type` → dropped (internal bookkeeping from beads type migrations; no semantic value).
+- `deleted_at`, `deleted_by`, `delete_reason` → used only for `tombstone` status mapping (see below); otherwise dropped.
+- `dependencies` → see dependency type mapping below.
+
+**Status mapping**
+- `open` → `todo`.
+- `in_progress` → `in_progress`.
+- `deferred` → `paused`.
+- `closed` → `done` unless `close_reason` indicates cancellation (`canceled` / `cancelled`, case-insensitive) in which case → `canceled`.
+- `tombstone` → `canceled` (with `resolved_at` set from `deleted_at` if present, falling back to `updated_at`).
+- Any other status value is a migration error (explicitly surfaced).
+
+**Dependency type mapping**
+
+Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The mapping by type:
+- `parent-child` → the child's frontmatter `parent` is set to the parent's ID. (`issue_id` is the child; `depends_on_id` is the parent.)
+- `blocks` → the blocked task's `after` array includes the blocking task's ID. (If A blocks B: B gets `after: [A]`.)
+- `depends-on` → the dependent task's `after` array includes the dependency's ID. (If A depends-on B: A gets `after: [B]`.)
+- `relates-to` → both tasks' `related` arrays include the other's ID. (Symmetric; deduplicated.)
+- Edge audit metadata (`created_at`, `created_by` on each dependency) is dropped.
+- Any other dependency type value is a migration error.
+
+**Timestamp mapping**
+- `modified_at` is set from `updated_at` if present; otherwise omitted.
+- `resolved_at` is set from `closed_at` if present. If `closed_at` is missing but status maps to `done` or `canceled`, use `updated_at` when available; otherwise omit. For `tombstone` → `canceled`, use `deleted_at` if present, falling back to `updated_at`.
+
+**Body assembly**
+- Each task file starts with YAML frontmatter, followed by the `description` as the Markdown body (if non-empty).
+- If `acceptance_criteria`, `notes`, or `comments` are non-empty, they are appended after the description as separate H2 sections.
+
+**Command mapping summary**
+- `pebble sync` and `sync-branch` config are removed (see "Command Deprecations & Removals").
+- `pebble list/show/search/add/update` remain, but operate on Markdown files in `tasks-dir`.
+
+## Appendix D: Iterative Refinement
 
 DO NOT REMOVE THIS SECTION
 
 Use the following as an agent prompt for iterative refinement:
 
-You are a principle staff engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape such that you'd be persuaded to approve it. Choose a concrete improvement to make to the document, propose it to me for implementation.
+You are a principle engineer that is in favor of the rfc-reimagining-pebble.md ideas, and are helping me whip the document into shape. Are there any concrete, blocking, issues that prevent you from approving the document and allowing implementation planning to begin? If so, please list them.
 
-Consider: removing unecessary complexity; editorial issues like section order, presentation language;  content improvements; missing gaps in the proposal; failures to consider every detail of the current pebble schema or command set; anything else you can think of.
+---
 
-Pick the most important improvement you can think of, and propose it to me for implementation.
+You are a principal engineer AI coding agent reviewing docs/rfc-reimagining-pebble.md from the point of view of an AI coding agent using the Pebble CLI. You are helping me whip the document into shape with that use case in mind. Choose a concrete improvement to make to the document, propose it to me for implementation. In your efforts, maintain the perspective of an AI coding agent using the Pebble CLI, but also consider the perspective of a human engineer using the Pebble CLI, as well as both human and AI engineers reading the document.
+
+Pick the most important set of improvements you can think of, and propose them to me for implementation. *DO NOT* begin implementing them.
