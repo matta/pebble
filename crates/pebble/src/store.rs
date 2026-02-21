@@ -1,8 +1,8 @@
 use color_eyre::Result;
 use color_eyre::eyre::Context;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
