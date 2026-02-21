@@ -16,6 +16,10 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - Readiness is computed: a task is `ready` when prerequisites are satisfied and the status is actionable (not `paused`, `done`, or `canceled`).
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
 - CLI reads/writes Markdown directly; no hidden worktrees.
+- `pebble next` is a convenience command that returns the highest-priority ready task.
+- Default list order: topological (respecting `after`), then `priority`, then `created_at`.
+- Agents MAY read task files directly; mutations SHOULD use the CLI.
+- `.pebble/AGENTS.md` provides agent bootstrapping instructions; `pebble init` creates it.
 - One-time migration via a throw-away script from the existing JSONL.
 
 ## 3. Minimum Useful Feature Set
@@ -72,6 +76,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Configuration Lifecycle**
 - `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
+- `pebble init` also creates `.pebble/AGENTS.md` containing agent bootstrapping instructions (see §4.8). On completion, it prints a message advising the user to include or reference `.pebble/AGENTS.md` from their project's root `AGENTS.md` (or equivalent agent configuration file such as `.cursorrules`, `.github/copilot-instructions.md`, etc.).
 - `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
 - Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
 - The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
@@ -118,6 +123,15 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 Because the `id` within the YAML frontmatter is the canonical identifier, the physical file path of a task Markdown file is strictly advisory. The CLI scans the `tasks-dir` **recursively**, meaning files can be moved without breaking graph links.
 
 - **Automated Lifecycle Archiving:** To prevent long-term repository bloat and IDE search pollution, Pebble provides a `pebble archive` command. This command scans the repository for `done` or `canceled` tasks whose `resolved_at` timestamp is older than a threshold (e.g., 30 days) and automatically moves them into an `archive/` subdirectory (e.g., `docs/pebble/archive/2026/`). Since the CLI recursively scans the base directory, these archived tasks remain part of the project history and graph but are visually moved out of active working directories. By relying on the `resolved_at` frontmatter field instead of a Git or filesystem `mtime`, this command remains deterministic, fast, and completely immune to repository resets or clones. If a filename collision occurs in the target archive directory, the CLI appends a numeric suffix (`-2`, `-3`, etc.) to avoid overwriting.
+
+**Direct File Access Contract**
+
+Task files are plain Markdown with YAML frontmatter in a visible directory. This means agents and scripts can — and will — read and write them directly, bypassing the CLI. The following rules govern this:
+
+- **Reading:** Agents and scripts MAY read task files directly. The file format (YAML frontmatter + Markdown body) is a stable contract. This is often faster and cheaper than shelling out to `pebble show`, especially when an agent already has file-reading tools available. `pebble show --path-only <id>` resolves an ID to its file path for this purpose.
+- **Writing:** Agents and scripts SHOULD use `pebble add` and `pebble update` for mutations. The CLI provides ID generation, automatic timestamp management (`modified_at`, `resolved_at`), `related` symmetry enforcement, and strict schema validation. Direct file writes are permitted but bypass all of these safeguards — the author assumes full responsibility for schema correctness.
+- **Recovery:** `pebble check` detects problems introduced by direct file edits (schema violations, broken references, asymmetric `related` links). `pebble fix` repairs what it can deterministically. This is the safety net for direct file access.
+- **Implication for CLI output:** Because agents may use file paths to read tasks directly, `pebble list` and `pebble search` include the `path` field (relative to `tasks-dir`) in both human and `--json` output modes.
 
 ### 4.4 Task Schema
 
@@ -273,16 +287,29 @@ Computed:
 - `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
 
 **Repository management**
-- `pebble init`: Bootstraps the environment and creates the tasks directory.
+- `pebble init`: Bootstraps the environment, creates the tasks directory, creates `.pebble/AGENTS.md` (see §4.8), and prints a message advising the user to include it in their project's agent configuration.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
-- `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
+- `pebble next`: Convenience command equivalent to `pebble list --is-ready --limit 1`. Returns the single highest-priority actionable task. Accepts `--json`. This is the canonical "what should I work on?" entry point for agents and humans alike.
+- `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task. `--path-only` prints only the file path (relative to `tasks-dir`) and nothing else — useful for agents and scripts that want to read the file directly.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
 - `pebble config get <key>`: Reads a configuration value. Supported keys: `issue-prefix`, `tasks-dir`. Also serves as a way for users and agents to discover the resolved config file location and effective values.
 
 **MVP filter semantics**
 - `--priority <N>` matches tasks whose `priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
+
+**Default Sort Order**
+
+The default sort order for `pebble list` (and by extension `pebble next`) is deterministic and dependency-aware:
+
+1. **Topological order** (respecting `after` dependencies): if task B has `after: [A]`, then A appears before B regardless of priority. Among tasks at the same topological level (no dependency relationship between them), the remaining tiebreakers apply.
+2. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
+3. **`created_at`** ascending (oldest first) as the final tiebreaker.
+
+The `--sort <field>` flag overrides this default. Supported fields: `priority`, `created_at`, `modified_at`, `status`, `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `paused`, `done`, `canceled`.
+
+Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done`), so the topological component of the default sort has no effect and the order is effectively priority → created_at.
 
 **Future direction for retrieval**
 - Keep simple flags for common cases, and add a small, explicit query language only if needed. A future `--filter <expr>` (or a dedicated `pebble query`) can provide compound conditions and ranges for both humans and agents without re-inventing SQL.
@@ -298,7 +325,7 @@ Computed:
 - `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 **Read/Write Policy**
-- **Read-only:** `list`, `show`, `search`, `config get`, and `check` never modify files.
+- **Read-only:** `list`, `next`, `show`, `search`, `config get`, and `check` never modify files.
 - **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
 
 **Strictness & Failure Modes (Read Commands)**
@@ -317,7 +344,9 @@ All `--json` output is a single JSON object printed to stdout per invocation.
 On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-readable error message, and the exit code is non-zero.
 
 - **Query commands** (`list`, `search`): `{"tasks": [<TaskObject>, ...]}`.
-- **`show --json`**: A single unwrapped `TaskObject`.
+- **`next --json`**: A single unwrapped `TaskObject`, or `null` if no ready tasks exist.
+- **`show --json`**: A single unwrapped `TaskObject`. With `--path-only`, emits `{"path": "..."}` instead.
+- **`show --path-only`** (without `--json`): Prints just the file path as a bare string to stdout (no JSON wrapping, no trailing newline decoration).
 - **Mutation commands** (`add`, `update`): Echo back the full `TaskObject` after the write.
 - **`check --json`**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`.
 - **`archive --json`**: `{"archived": [{"id": "...", "moved_to": "..."}]}`.
@@ -404,7 +433,66 @@ Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The
 - `pebble sync` and `sync-branch` config are removed (see "Command Deprecations & Removals").
 - `pebble list/show/search/add/update` remain, but operate on Markdown files in `tasks-dir`.
 
-### 4.8 Risks & Mitigations
+### 4.8 Agent Bootstrapping & Discoverability
+
+AI coding agents (Amp, Claude Code, Gemini CLI, Copilot, Cursor, etc.) discover project conventions by reading well-known configuration files at the repository root (`AGENTS.md`, `.cursorrules`, `.github/copilot-instructions.md`, etc.). Without an entry point in one of these files, an agent will never know pebble exists — rendering the "equally useful for AI coding agents" goal moot.
+
+**`.pebble/AGENTS.md`**
+
+`pebble init` generates `.pebble/AGENTS.md` with the following content (adapting `issue-prefix` and `tasks-dir` from the resolved config):
+
+```markdown
+# Pebble Task Tracker
+
+This project uses [pebble](https://github.com/matta/pebble) for task tracking.
+Tasks are stored as Markdown files in `docs/pebble/`.
+
+## Quick Reference
+
+All commands support `--json` for structured output. Prefer `--json` when
+parsing results programmatically.
+
+- **Full CLI reference:** `pebble --help-json` (machine-readable schema of all commands, flags, and output shapes)
+- **Help for a specific command:** `pebble <command> --help`
+
+- **What should I work on?** `pebble next --json`
+- **List all ready tasks:** `pebble list --is-ready --json`
+- **View a task:** `pebble show <id> --json` (or read the file directly)
+- **Get file path for a task:** `pebble show --path-only <id>`
+- **Create a task:** `pebble add "title" --body "description" --json`
+- **Update a task:** `pebble update <id> --status in_progress --json`
+- **Validate the database:** `pebble check --json`
+
+## Workflow
+
+1. Run `pebble next` to find the highest-priority actionable task.
+2. Run `pebble update <id> --status in_progress` to claim it.
+3. Do the work.
+4. Run `pebble update <id> --status done` when finished.
+
+## Reading Tasks Directly
+
+Task files are plain Markdown with YAML frontmatter. You may read them
+directly instead of using `pebble show`. Use `pebble show --path-only <id>`
+to resolve an ID to a file path. Mutations should use the CLI (`pebble add`,
+`pebble update`) to ensure ID generation, timestamps, and validation.
+```
+
+This file is designed to be included by reference from the project's root agent configuration. For example, in `AGENTS.md`:
+
+```markdown
+Read @.pebble/AGENTS.md
+```
+
+Or for agents that don't support transclusion, the user can copy the content directly. `pebble init` prints this guidance on completion.
+
+**Design Constraints:**
+- The generated file must be concise (agents have limited context windows).
+- It must include the canonical "what to work on next" workflow as the first entry.
+- It must reference the actual configured `tasks-dir`, not a hardcoded default.
+- `pebble init` never overwrites an existing `.pebble/AGENTS.md`. If the file exists, it prints a warning and skips.
+
+### 4.9 Risks & Mitigations
 
 1. **Filename collisions / human-editable names**
    - *Risk:* Two issues could map to the same filename, or renames could break links.
