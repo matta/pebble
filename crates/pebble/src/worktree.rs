@@ -483,8 +483,12 @@ impl<G: GitProvider> WorktreeManager<G> {
 
         if !merge_status.success() {
             if merge_status.code() == Some(1) {
-                self.resolve_conflicts(&worktree_path)
-                    .with_context(|| "Failed to execute git merge")?;
+                let _ = self
+                    .git
+                    .run_silent(&[&"merge", &"--abort"], &worktree_path);
+                return Err(eyre!(
+                    "Merge conflict detected. Run 'pebble sync' interactively to resolve."
+                ));
             } else {
                 return Err(eyre!("Git merge failed with status: {}", merge_status));
             }
