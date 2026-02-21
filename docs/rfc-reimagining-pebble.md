@@ -162,6 +162,7 @@ Intentionally omitted:
 
 Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
+- `effective_priority` (integer or null; dynamically computed to prevent starvation by inheriting the highest priority from dependents)
 
 > **Rationale for Omitted Fields:**
 > - **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
@@ -252,6 +253,16 @@ pub struct TaskNode {
 - Both sides must list each other; `pebble check` validates symmetry.
 - `--add-related` / `--remove-related` on `pebble update` modify both files atomically.
 
+**Priority Inheritance (Starvation Prevention)**
+
+To prevent high-priority tasks from being starved by lower-priority prerequisites, priority is transitive.
+- A task's `effective_priority` is computed dynamically as the highest (numerically lowest) priority among:
+  1. Its own explicitly set `priority`.
+  2. The `effective_priority` of any task that explicitly or implicitly depends on it (i.e., tasks in its `before` chain, and any parent tasks for which it is a child).
+- Tasks with no `priority` set, and with no dependents possessing a priority, have no `effective_priority` (treated as the lowest possible priority).
+- This computation happens purely in memory during the read path. The explicitly set `priority` in the YAML frontmatter is never mutated automatically.
+- `effective_priority` MUST be visible in human output modes only when it differs from the explicitly set `priority`, to reduce visual noise. In `--json` output, `effective_priority` MUST always be present so agents and scripts can consume a single definitive field for their logic.
+
 **Ready and Paused: Two Independent Concepts**
 
 A task has two independent concepts:
@@ -316,17 +327,17 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 - Results are returned in the default list order.
 
 **MVP filter semantics**
-- `--priority <N>` matches tasks whose `priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
+- `--priority <N>` matches tasks whose `effective_priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `effective_priority` never match `--priority`.
 
 **Default Sort Order**
 
 The default sort order for `pebble list` (and by extension `pebble next`) is deterministic and dependency-aware:
 
 1. **Topological order** (respecting `after` dependencies): if task B has `after: [A]`, then A appears before B regardless of priority. Among tasks at the same topological level (no dependency relationship between them), the remaining tiebreakers apply.
-2. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
+2. **Priority** ascending (lower number = higher priority), using `effective_priority`. Tasks with no `effective_priority` sort after all prioritized tasks.
 3. **`created_at`** ascending (oldest first) as the final tiebreaker.
 
-The `--sort <field>` flag overrides this default. Supported fields: `priority`, `created_at`, `modified_at`, `status`, `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `paused`, `done`, `canceled`.
+The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `effective_priority`), `created_at`, `modified_at`, `status`, `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `paused`, `done`, `canceled`.
 
 Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done` or `canceled`), so the topological component of the default sort has no effect and the order is effectively priority → created_at.
 
@@ -378,7 +389,7 @@ On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-rea
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `title`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `related`, `tags`).
-- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` or `canceled` and status is `todo` or `in_progress`).
+- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` or `canceled` and status is `todo` or `in_progress`), `effective_priority` (integer or null; reflects priority inheritance, always present in JSON).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim.
 - `path`: the file path relative to `tasks-dir`.
 
