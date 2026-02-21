@@ -14,6 +14,11 @@ pub struct UpdateFields {
     pub owner: Option<String>,
     pub close_reason: Option<String>,
     pub issue_type: Option<String>,
+    pub acceptance_criteria: Option<String>,
+    pub defer_until: Option<String>,
+    pub add_labels: Vec<String>,
+    pub remove_labels: Vec<String>,
+    pub add_notes: Vec<String>,
 }
 
 pub fn run(config: &Config, id: String, fields: UpdateFields, format: OutputFormat) -> Result<()> {
@@ -65,11 +70,67 @@ fn apply_updates(issue: &mut Issue, fields: UpdateFields) -> Result<bool> {
         owner,
         close_reason,
         issue_type,
+        acceptance_criteria,
+        defer_until,
+        add_labels,
+        remove_labels,
+        add_notes,
     } = fields;
 
     let status_next = status.clone().unwrap_or_else(|| issue.status.clone());
     validate_close_reason(issue.status.as_str(), status_next.as_str(), &close_reason)?;
 
+    let mut changed = apply_scalar_updates(
+        issue,
+        title,
+        description,
+        status,
+        priority,
+        owner,
+        close_reason,
+        issue_type,
+        acceptance_criteria,
+        defer_until,
+    );
+
+    if update_labels(issue, add_labels, remove_labels) {
+        changed = true;
+    }
+
+    if !add_notes.is_empty() {
+        issue.notes.extend(add_notes);
+        changed = true;
+    }
+
+    let now = chrono::Local::now().to_rfc3339();
+    if status_next == "closed" && issue.closed_at.is_none() {
+        issue.closed_at = Some(now.clone());
+        changed = true;
+    } else if status_next != "closed" && issue.closed_at.is_some() {
+        issue.closed_at = None;
+        changed = true;
+    }
+
+    if changed {
+        issue.updated_at = now;
+    }
+
+    Ok(changed)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_scalar_updates(
+    issue: &mut Issue,
+    title: Option<String>,
+    description: Option<String>,
+    status: Option<String>,
+    priority: Option<i32>,
+    owner: Option<String>,
+    close_reason: Option<String>,
+    issue_type: Option<String>,
+    acceptance_criteria: Option<String>,
+    defer_until: Option<String>,
+) -> bool {
     let mut changed = false;
     if let Some(t) = title {
         issue.title = t;
@@ -99,18 +160,37 @@ fn apply_updates(issue: &mut Issue, fields: UpdateFields) -> Result<bool> {
         issue.issue_type = it;
         changed = true;
     }
+    if let Some(ac) = acceptance_criteria {
+        issue.acceptance_criteria = Some(ac);
+        changed = true;
+    }
+    if let Some(du) = defer_until {
+        issue.defer_until = Some(du);
+        changed = true;
+    }
+    changed
+}
 
-    let now = chrono::Local::now().to_rfc3339();
-    if status_next == "closed" && issue.closed_at.is_none() {
-        issue.closed_at = Some(now.clone());
+fn update_labels(issue: &mut Issue, add_labels: Vec<String>, remove_labels: Vec<String>) -> bool {
+    let mut changed = false;
+    if !add_labels.is_empty() {
+        let mut labels_set: std::collections::HashSet<_> = issue.labels.drain(..).collect();
+        for label in add_labels {
+            labels_set.insert(label);
+        }
+        issue.labels = labels_set.into_iter().collect();
+        issue.labels.sort();
         changed = true;
     }
 
-    if changed {
-        issue.updated_at = now;
+    if !remove_labels.is_empty() {
+        let original_len = issue.labels.len();
+        issue.labels.retain(|l| !remove_labels.contains(l));
+        if issue.labels.len() != original_len {
+            changed = true;
+        }
     }
-
-    Ok(changed)
+    changed
 }
 
 fn validate_close_reason(

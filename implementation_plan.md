@@ -64,21 +64,21 @@ The approach is strict TDD. We will write a failing test, then implement the cod
 - [x] Ratified: `deleted_*` fields are read-only/internal.
 - [ ] Pending: dependency relation semantics and CLI shape.
 - [ ] Pending: confirm whether `issue_type` can be updated.
-- [ ] Add `pebble add` support for the chosen editable fields (flags + parsing + validation).
-- [ ] Add `pebble update` support for the chosen editable fields (flags + parsing + validation).
-- [ ] Implement incremental list/set flags in `update` for every list/set field (consistent `--add-*` / `--remove-*`).
-- [ ] Add tests that assert:
-    - [ ] `pebble add` can set allowed fields.
+- [x] Add `pebble add` support for the chosen editable fields (flags + parsing + validation).
+- [x] Add `pebble update` support for the chosen editable fields (flags + parsing + validation).
+- [x] Implement incremental list/set flags in `update` for every list/set field (consistent `--add-*` / `--remove-*`).
+- [x] Add tests that assert:
+    - [x] `pebble add` can set allowed fields.
     - [ ] `pebble add` rejects attempts to set read-only fields with a usage error (exit code 2).
-    - [ ] `pebble update` can modify allowed fields.
+    - [x] `pebble update` can modify allowed fields.
     - [ ] `pebble update` rejects attempts to modify read-only fields with a usage error (exit code 2).
-- [ ] Validate `pebble show` outputs new fields properly:
-    - [ ] JSON output includes all stored fields.
+- [x] Validate `pebble show` outputs new fields properly:
+    - [x] JSON output includes all stored fields.
     - [ ] Human output includes any new fields we decide to surface (and omits empty ones).
-- [ ] Validate `pebble list` supports the new fields properly:
-    - [ ] JSON output includes all stored fields.
+- [x] Validate `pebble list` supports the new fields properly:
+    - [x] JSON output includes all stored fields.
     - [ ] Human output remains stable (or add a new “long”/expanded view if needed).
-- [ ] Update CLI help/examples to reflect the supported new fields.
+- [x] Update CLI help/examples to reflect the supported new fields.
 
 ## Phase 5: Renaming & Cleanup (Eliminate legacy naming where appropriate) (Completed)
 - [x] Rename `.beads` directory to `.pebble` (while maintaining fallback)
@@ -109,10 +109,10 @@ Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 
 - [ ] P6-10 Tests: idempotency, exit codes, and stdout/stderr separation.
 
 ## Phase 7: Deterministic Merge & Storage Redesign (CRDT-Friendly)
-- [ ] Decide storage layout (no backward-compat required)
-    - [ ] Evaluate CRDT operation log vs. per-issue files vs. single JSONL snapshot
+- [x] Decide storage layout (no backward-compat required)
+    - [x] Evaluate CRDT operation log vs. per-issue files vs. single JSONL snapshot
     - [ ] Consider Markdown + YAML frontmatter for human-readable per-issue storage
-    - [ ] Pick one and document deterministic merge semantics
+    - [x] Pick one and document deterministic merge semantics
 - [ ] Define schema v2 (supports children + ordered checklists)
 - [ ] Implement conflict-free merge (no prompts)
     - [ ] LWW for scalar fields with per-field timestamps

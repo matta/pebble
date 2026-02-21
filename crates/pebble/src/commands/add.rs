@@ -3,12 +3,22 @@ use color_eyre::Result;
 use pebble::cli::OutputFormat;
 use pebble::config::Config;
 use pebble::id::generate_unique_id;
-pub fn run(
-    config: &Config,
-    title: String,
-    description: Option<String>,
-    format: OutputFormat,
-) -> Result<()> {
+
+#[derive(Debug)]
+pub struct AddOptions {
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub priority: i32,
+    pub issue_type: String,
+    pub owner: Option<String>,
+    pub acceptance_criteria: Option<String>,
+    pub defer_until: Option<String>,
+    pub labels: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+pub fn run(config: &Config, options: AddOptions, format: OutputFormat) -> Result<()> {
     let (store, manager, _) = get_store(config)?;
 
     let prefix = config.issue_prefix.as_deref().unwrap_or("issue");
@@ -23,19 +33,25 @@ pub fn run(
     let user_name = get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());
     let user_email = get_git_config("user.email").unwrap_or_else(|_| "unknown".to_string());
 
+    let owner = options.owner.or(Some(user_email));
+
     let issue = pebble::store::Issue {
         id: id.clone(),
-        title,
-        description,
-        status: "open".to_string(),
-        priority: 0,
-        issue_type: "task".to_string(),
-        owner: Some(user_email),
+        title: options.title,
+        description: options.description,
+        status: options.status,
+        priority: options.priority,
+        issue_type: options.issue_type,
+        owner,
         created_at: now.clone(),
         created_by: Some(user_name),
         updated_at: now,
         closed_at: None,
         close_reason: None,
+        acceptance_criteria: options.acceptance_criteria,
+        defer_until: options.defer_until,
+        labels: options.labels,
+        notes: options.notes,
         ..Default::default()
     };
 

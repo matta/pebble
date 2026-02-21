@@ -1,3 +1,4 @@
+use crate::commands::add::AddOptions;
 use crate::commands::config_cmd::ConfigCommand;
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand};
@@ -91,6 +92,22 @@ enum Commands {
         title: String,
         #[arg(long)]
         description: Option<String>,
+        #[arg(long, default_value = "open")]
+        status: String,
+        #[arg(long, default_value = "0")]
+        priority: i32,
+        #[arg(long = "type", default_value = "task")]
+        issue_type: String,
+        #[arg(long)]
+        owner: Option<String>,
+        #[arg(long)]
+        acceptance_criteria: Option<String>,
+        #[arg(long)]
+        defer_until: Option<String>,
+        #[arg(long)]
+        label: Option<Vec<String>>,
+        #[arg(long)]
+        note: Option<Vec<String>>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -122,6 +139,16 @@ enum Commands {
         /// New type for the issue
         #[arg(long = "type")]
         issue_type: Option<String>,
+        #[arg(long)]
+        acceptance_criteria: Option<String>,
+        #[arg(long)]
+        defer_until: Option<String>,
+        #[arg(long)]
+        add_label: Option<Vec<String>>,
+        #[arg(long)]
+        remove_label: Option<Vec<String>>,
+        #[arg(long)]
+        add_note: Option<Vec<String>>,
         /// Output as JSON
         #[arg(long)]
         json: bool,
@@ -231,6 +258,7 @@ fn run(cli: Cli) -> Result<()> {
     dispatch_command(cli.command, &config)
 }
 
+#[allow(clippy::too_many_lines)]
 fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
     use Commands::*;
     match command {
@@ -251,8 +279,30 @@ fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
         Add {
             title,
             description,
+            status,
+            priority,
+            issue_type,
+            owner,
+            acceptance_criteria,
+            defer_until,
+            label,
+            note,
             json,
-        } => run_add(require_config(config)?, title, description, json),
+        } => {
+            let options = AddOptions {
+                title,
+                description,
+                status,
+                priority,
+                issue_type,
+                owner,
+                acceptance_criteria,
+                defer_until,
+                labels: label.unwrap_or_default(),
+                notes: note.unwrap_or_default(),
+            };
+            run_add(require_config(config)?, options, json)
+        }
         Update {
             id,
             title,
@@ -262,6 +312,11 @@ fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
             owner,
             close_reason,
             issue_type,
+            acceptance_criteria,
+            defer_until,
+            add_label,
+            remove_label,
+            add_note,
             json,
         } => {
             let fields = commands::update::UpdateFields {
@@ -272,6 +327,11 @@ fn dispatch_command(command: Commands, config: &Option<Config>) -> Result<()> {
                 owner,
                 close_reason,
                 issue_type,
+                acceptance_criteria,
+                defer_until,
+                add_labels: add_label.unwrap_or_default(),
+                remove_labels: remove_label.unwrap_or_default(),
+                add_notes: add_note.unwrap_or_default(),
             };
             run_update(require_config(config)?, id, fields, json)
         }
@@ -323,8 +383,8 @@ fn run_list(config: &Config, filters: commands::IssueFilters, json: bool) -> Res
     commands::list::run(config, filters, format(json))
 }
 
-fn run_add(config: &Config, title: String, description: Option<String>, json: bool) -> Result<()> {
-    commands::add::run(config, title, description, format(json))
+fn run_add(config: &Config, options: AddOptions, json: bool) -> Result<()> {
+    commands::add::run(config, options, format(json))
 }
 
 fn run_update(
