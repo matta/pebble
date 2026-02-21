@@ -7,7 +7,8 @@ The goal of this RFC is to re-imagine Pebble from the ground up. Inspired by the
 While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects or for coordinating concurrently running autonomous AI agents, but for the simpler, single-repo projects common in open-source development and indie hacking.
 
 ## 2. Key Decisions (TL;DR)
-- Config lives in `.pebble/config.toml` (relative to the repository root).
+- Config lives in `.pebble/config.toml` (relative to the project root, i.e., the nearest parent containing `.pebble`).
+- Project root is defined by `.pebble/` and is not required to be the Git repository root.
 - Store tasks as Markdown files in `tasks-dir` (default `docs/pebble/`).
 - YAML frontmatter defines metadata; the Markdown body is free-form description.
 - `id` is canonical and user-editable; the CLI never changes it.
@@ -61,7 +62,7 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
 ### 4.2 Configuration
 
 **Configuration Contract**
-- Config lives at `.pebble/config.toml` (relative to the repository root).
+- Config lives at `.pebble/config.toml` (relative to the project root, i.e., the nearest parent containing `.pebble`).
 - Supported keys:
   - `issue-prefix` (string): prefix for new IDs (default: `issue`).
   - `tasks-dir` (string): path to task files (default: `docs/pebble/`).
@@ -69,20 +70,23 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
   - `--dir <PATH>` (on any command) overrides `tasks-dir`.
   - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
 
-**Path Resolution & Repo Root**
-- The CLI locates the repository root by walking up from the current working directory to the nearest parent containing `.git`.
-- If no `.git` directory is found, the CLI fails with a clear error.
-- `.pebble/config.toml` is always resolved relative to the repository root.
-- `tasks-dir` read from `.pebble/config.toml` is resolved relative to the repository root when it is a relative path.
-- `--dir` overrides `tasks-dir` and is strictly resolved relative to the user's current working directory (cwd) when it is a relative path.
+**Path Resolution & Project Root**
+- The project root is defined as the directory containing the `.pebble` configuration folder.
+- The CLI locates the project root by walking up from the current working directory to the nearest parent containing a `.pebble` directory.
+- Example: If you run `pebble` from `repo/subproject/` and place `.pebble/` there, the project root is `repo/subproject/` even if the Git repo root is `repo/`.
+- Note: The project root can be a subdirectory within a Git repository. Pebble does not assume `.git` is adjacent to `.pebble`, and any Git operations must resolve the repository root separately.
+- If no `.pebble` directory is found, the CLI fails with a clear error (except for `pebble init`, which initializes the `.pebble` directory in the user's current working directory).
+- `.pebble/config.toml` is always resolved relative to the project root.
+- `tasks-dir` read from `.pebble/config.toml` MUST be a relative path and is always resolved relative to the project root. If an absolute path is found in the config, the CLI fails with a clear error to prevent breaking the configuration for other teammates.
+- `--dir` overrides `tasks-dir`. It can be an absolute or relative path. When it is a relative path, it is strictly resolved relative to the user's current working directory (cwd).
 - Precedence: `--dir` > `tasks-dir` in config > default `docs/pebble/`.
 
 **Configuration Lifecycle**
-- `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
+- `pebble init` initializes the project by creating the `.pebble` directory and `.pebble/config.toml` in the current working directory if they do not exist. If run inside a larger Git repo, it creates `.pebble/` in the current directory (which may or may not be the repository root, depending on where you ran the command). It writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults). If `--dir` is provided during `init` to seed the config, it MUST be a relative path; otherwise, the command fails.
 - `pebble init` also creates `.pebble/AGENTS.md` containing agent bootstrapping instructions (see §4.8). On completion, it prints a message advising the user to include or reference `.pebble/AGENTS.md` from their project's root `AGENTS.md` (or equivalent agent configuration file such as `.cursorrules`, `.github/copilot-instructions.md`, etc.).
-- `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
+- `--dir` on runtime commands is a temporary override. It does not rewrite config outside of `pebble init`.
 - Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
-- The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
+- The CLI enforces that `tasks-dir` in `.pebble/config.toml` is a strictly relative path. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
 
 ### 4.3 Storage & File Layout
 
@@ -415,7 +419,7 @@ There is exactly one existing JSONL database to migrate. A one-time throw-away s
 
 ### 4.8 Agent Bootstrapping & Discoverability
 
-AI coding agents (Amp, Claude Code, Gemini CLI, Copilot, Cursor, etc.) discover project conventions by reading well-known configuration files at the repository root (`AGENTS.md`, `.cursorrules`, `.github/copilot-instructions.md`, etc.). Without an entry point in one of these files, an agent will never know pebble exists — rendering the "equally useful for AI coding agents" goal moot.
+AI coding agents (Amp, Claude Code, Gemini CLI, Copilot, Cursor, etc.) discover project conventions by reading well-known configuration files at the project root (`AGENTS.md`, `.cursorrules`, `.github/copilot-instructions.md`, etc.). Without an entry point in one of these files, an agent will never know pebble exists — rendering the "equally useful for AI coding agents" goal moot.
 
 **`.pebble/AGENTS.md`**
 
