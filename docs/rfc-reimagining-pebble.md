@@ -9,7 +9,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 ## 2. Key Decisions (TL;DR)
 - Config lives in `.pebble/config.toml` (relative to the repository root).
 - Store tasks as Markdown files in a visible repo directory (default `docs/pebble/`).
-- YAML frontmatter defines metadata; the Markdown body is the description.
+- YAML frontmatter defines metadata; the Markdown body is free-form description.
 - `id` is canonical and user-editable; the CLI never changes it.
 - Relationships: store `after` (prerequisites), compute `before` as inverse. Store `related` (symmetric cross-references).
 - Status model: `todo`, `in_progress`, `paused`, `done`, `canceled`.
@@ -99,6 +99,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
   - trim leading/trailing `-`
 - If the result is empty, use `task` and append a numeric suffix.
 - If the filename already exists, append `-2`, `-3`, etc.
+- Updating a task title never renames the file. Filenames are stable unless moved explicitly by `pebble archive`.
 
 **Reference Resolution Rules**
 - `parent`, `after`, and `related` must reference existing task IDs.
@@ -116,7 +117,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 Because the `id` within the YAML frontmatter is the canonical identifier, the physical file path of a task Markdown file is strictly advisory. The CLI scans the `tasks-dir` **recursively**, meaning files can be moved without breaking graph links.
 
-- **Automated Lifecycle Archiving:** To prevent long-term repository bloat and IDE search pollution, Pebble provides a `pebble archive` command. This command scans the repository for `done` or `canceled` tasks whose `resolved_at` timestamp is older than a threshold (e.g., 30 days) and automatically moves them into an `archive/` subdirectory (e.g., `docs/pebble/archive/2026/`). Since the CLI recursively scans the base directory, these archived tasks remain part of the project history and graph but are visually moved out of active working directories. By relying on the `resolved_at` frontmatter field instead of a Git or filesystem `mtime`, this command remains deterministic, fast, and completely immune to repository resets or clones.
+- **Automated Lifecycle Archiving:** To prevent long-term repository bloat and IDE search pollution, Pebble provides a `pebble archive` command. This command scans the repository for `done` or `canceled` tasks whose `resolved_at` timestamp is older than a threshold (e.g., 30 days) and automatically moves them into an `archive/` subdirectory (e.g., `docs/pebble/archive/2026/`). Since the CLI recursively scans the base directory, these archived tasks remain part of the project history and graph but are visually moved out of active working directories. By relying on the `resolved_at` frontmatter field instead of a Git or filesystem `mtime`, this command remains deterministic, fast, and completely immune to repository resets or clones. If a filename collision occurs in the target archive directory, the CLI appends a numeric suffix (`-2`, `-3`, etc.) to avoid overwriting.
 
 ### 4.4 Task Schema
 
@@ -124,6 +125,7 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
 
 Required:
 - `id` (string)
+- `title` (string)
 - `status` (enum: `todo` | `in_progress` | `paused` | `done` | `canceled`)
 - `created_at` (RFC3339 string)
 
@@ -169,6 +171,7 @@ pub enum TaskStatus {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaskFrontmatter {
     pub id: String,
+    pub title: String,
     // Status strictly validated against the enum.
     pub status: TaskStatus,
     // Optional priority for ordering.
@@ -192,9 +195,7 @@ pub struct TaskFrontmatter {
 pub struct TaskNode {
     pub path: PathBuf,
     pub frontmatter: TaskFrontmatter,
-    /// Extracted from the first H1 heading in `body`. Computed, never stored.
-    pub title: String,
-    /// Raw Markdown content after the frontmatter delimiter, including the H1.
+    /// Raw Markdown content after the frontmatter delimiter. Free-form; no structural requirements.
     pub body: String,
 }
 ```
@@ -210,9 +211,9 @@ pub struct TaskNode {
 - Users may edit timestamps manually, but `pebble check` fails on invalid format.
 - If `created_at` is missing, `pebble fix` sets it to the current time in UTC.
 
-**Title & Body Contract**
-- The Markdown body must start with a single H1 title.
-- `title` is not stored in frontmatter; the H1 is the sole title source.
+**Body Contract**
+- The Markdown body is free-form. There are no structural requirements (no mandatory H1, no required sections).
+- The body may be empty.
 
 ### 4.5 Graph Semantics
 
@@ -275,15 +276,21 @@ Computed:
 - `pebble init`: Bootstraps the environment and creates the tasks directory.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--priority`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
 - `pebble config get <key>`: Reads a configuration value. Supported keys: `issue-prefix`, `tasks-dir`. Also serves as a way for users and agents to discover the resolved config file location and effective values.
 
+**MVP filter semantics**
+- `--priority <N>` matches tasks whose `priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
+
+**Future direction for retrieval**
+- Keep simple flags for common cases, and add a small, explicit query language only if needed. A future `--filter <expr>` (or a dedicated `pebble query`) can provide compound conditions and ranges for both humans and agents without re-inventing SQL.
+
 **Mutation commands**
-- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
-- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
-- `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter.
+- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text becomes the Markdown body of the file.
+- `pebble update <id>`: Safely modifies the frontmatter and title. Options: `--title <text>`, `--status <status>`, `--priority <N>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
+- `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter. If a filename collision occurs, the CLI appends a numeric suffix to the archived filename.
 - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
 
 **Validation**
@@ -298,7 +305,7 @@ Computed:
 - All commands that read tasks (`list`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
 - `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
 - `show` is permitted to stop once it has found and validated the single task matching the requested `id`.
-- Any validation error encountered in scanned data (invalid YAML, missing required fields, missing H1 title, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
+- Any validation error encountered in scanned data (invalid YAML, missing required fields, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
 - Unknown frontmatter keys are treated as errors (schema is closed).
 - In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
 - `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`.
@@ -317,12 +324,10 @@ On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-rea
 - **`config get --json`**: `{"key": "<key>", "value": "<value>"}`.
 
 A `TaskObject` includes:
-- All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `related`, `tags`).
-- Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` and status is `todo` or `in_progress`).
-- `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
+- All stored frontmatter fields (`id`, `title`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `related`, `tags`).
+- Computed fields: `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` and status is `todo` or `in_progress`).
+- `body`: the raw Markdown content after the frontmatter delimiter, verbatim.
 - `path`: the file path relative to `tasks-dir`.
-
-> **Rationale:** `title` and `before` are computed convenience fields, analogous to each other—derived from the file on read, never stored. `body` is a faithful reproduction of the file content; the CLI does not strip or transform it. This means `title` appears twice in JSON output (once as a top-level key, once inside `body` as the H1). This minor redundancy is an acceptable tradeoff: agents get a structured `title` for filtering and display without parsing Markdown, while `body` remains a lossless round-trip representation of the file.
 
 **Command Deprecations & Removals**
 - `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
@@ -349,8 +354,8 @@ This is the authoritative and exhaustive mapping used by the one-time migration 
 
 **Field mapping (exhaustive)**
 - `id` → frontmatter `id` (unchanged).
-- `title` → first H1 in body (`# <title>`).
-- `description` → body content after the H1 (verbatim).
+- `title` → frontmatter `title`.
+- `description` → Markdown body (verbatim).
 - `status` → see status mapping below.
 - `priority` → frontmatter `priority` (preserved as integer).
 - `issue_type` → `tags` entry with the same string (preserves information without a formal type system).
@@ -392,7 +397,7 @@ Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The
 - `resolved_at` is set from `closed_at` if present. If `closed_at` is missing but status maps to `done` or `canceled`, use `updated_at` when available; otherwise omit. For `tombstone` → `canceled`, use `deleted_at` if present, falling back to `updated_at`.
 
 **Body assembly**
-- Each task file starts with YAML frontmatter, followed by `# <title>`, then a blank line and the `description` (if non-empty).
+- Each task file starts with YAML frontmatter, followed by the `description` as the Markdown body (if non-empty).
 - If `acceptance_criteria`, `notes`, or `comments` are non-empty, they are appended after the description as separate H2 sections.
 
 **Command mapping summary**
@@ -455,12 +460,11 @@ Assuming we embrace the "In-Band Storage is a Feature" argument (abandoning the 
 ```markdown
 ---
 id: proj-0kq
+title: Deploy staging environment
 status: todo
 parent: proj-epic1
 created_at: 2026-01-15T10:30:00Z
 ---
-# Deploy staging environment
-
 Run the canary deploy pipeline against the `staging` cluster.
 ```
 
