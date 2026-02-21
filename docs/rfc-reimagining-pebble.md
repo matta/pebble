@@ -34,6 +34,8 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 ## 4. Technical Specification
 
+### 4.1 Scope & Goals
+
 **Decision:** Adopt **per-issue Markdown files with YAML frontmatter** stored under a visible, human-friendly directory such as `docs/pebble/`. The Markdown files are the source of truth. Any caches or indexes are strictly derived and optional.
 
 **Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while keeping the architecture simple.
@@ -44,57 +46,82 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Scope & Risk Profile:** There are currently zero active Pebble repositories. This pivot carries low operational risk and requires no staged rollout. Validation is limited to internal tests plus the one-time migration script.
 
-**CLI Behavior Changes**
-- **Unchanged:** `list`, `show`, `search` remain the primary read commands.
-- **Change in storage location:** `add`/`update`/`show`/`list` read and write Markdown files under the visible directory (default `docs/pebble/`).
-- **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
-- **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
+**Success Criteria:**
+1. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
+2. Agents can create/update issues without schema drift; human edits remain the source of truth.
+3. Performance is acceptable for small single-repo teams without premature optimization.
 
-**CLI Command Surface (Authoritative)**
-**Global options**
-- `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
-- `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
+### 4.2 Configuration
 
-**Repository management**
-- `pebble init`: Bootstraps the environment and creates the tasks directory.
+**Configuration Contract**
+- Config lives at `.pebble/config.toml` (relative to the repository root).
+- Supported keys:
+  - `issue-prefix` (string): prefix for new IDs (default: `issue`).
+  - `tasks-dir` (string): path to task files (default: `docs/pebble/`).
+- Command-line flags:
+  - `--dir <PATH>` (on any command) overrides `tasks-dir`.
+  - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
 
-**Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
-- `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
-- `pebble search <query>`: Full-text search across titles and Markdown bodies.
-- `pebble config get <key>`: Reads a configuration value. Supported keys: `issue-prefix`, `tasks-dir`. Also serves as a way for users and agents to discover the resolved config file location and effective values.
+**Path Resolution & Repo Root**
+- The CLI locates the repository root by walking up from the current working directory to the nearest parent containing `.git`.
+- If no `.git` directory is found, the CLI fails with a clear error.
+- `.pebble/config.toml` is always resolved relative to the repository root.
+- `tasks-dir` is resolved relative to the repository root when it is a relative path.
+- `--dir` overrides `tasks-dir` and is resolved relative to the repository root when it is a relative path.
+- Precedence: `--dir` > `tasks-dir` in config > default `docs/pebble/`.
 
-**Mutation commands**
-- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
-- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
-- `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter.
-- Users can edit Markdown bodies directly; no dedicated `edit` command is required.
+**Configuration Lifecycle**
+- `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
+- `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
+- Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
+- The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
 
-**Validation**
-- `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` and `related` links, circular dependencies, `related` symmetry (if A lists B in `related`, B must list A), schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
-- `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
+### 4.3 Storage & File Layout
 
-**Read/Write Policy**
-- **Read-only:** `list`, `show`, `search`, `config get`, and `check` never modify files.
-- **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
+**Tooling Contract for File Layout**
+- The canonical identifier is the frontmatter `id`; filenames are advisory only.
+- The root directory defaults to `docs/pebble/` and is configurable; visibility (hidden directory, gitignored path, etc.) is a user choice.
+- The CLI **recursively** treats every `*.md` file under the root as a task file.
+- The CLI never changes `id`. Users may edit it manually, but the `id` **must** be unique across the repo.
+- If two files share the same `id`, the CLI fails with a clear error and no writes.
+- When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
+- Renaming or moving a file does not change the `id` and does not break references.
+- If a user changes an `id`, they must update all references (`parent`, `after`) for consistency.
+- `pebble check` fails on duplicates or dangling references.
 
-**Strictness & Failure Modes (Read Commands)**
-- All commands that read tasks (`list`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
-- `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
-- `show` is permitted to stop once it has found and validated the single task matching the requested `id`.
-- Any validation error encountered in scanned data (invalid YAML, missing required fields, missing H1 title, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
-- Unknown frontmatter keys are treated as errors (schema is closed).
-- In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
-- `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`.
-- Structured validation errors are available only via `pebble check --json`.
+**Filename Normalization Rules**
+- CLI generates filenames from the **task title provided at creation time** using a deterministic slug:
+  - lowercase
+  - ASCII only (strip/replace non-ASCII)
+  - whitespace → `-`
+  - remove punctuation
+  - collapse repeated `-`
+  - trim leading/trailing `-`
+- If the result is empty, use `task` and append a numeric suffix.
+- If the filename already exists, append `-2`, `-3`, etc.
 
-**Command Deprecations & Removals**
-- `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
-- `sync-branch` configuration is removed.
-- `pebble import` is removed. The one-time JSONL → Markdown migration is handled by a throw-away script (e.g., Python) that invokes the new `pebble` CLI.
-- `pebble init` only creates the tasks directory and config; it no longer creates a worktree.
+**Reference Resolution Rules**
+- `parent`, `after`, and `related` must reference existing task IDs.
+- `pebble check` fails if any reference is missing or if `related` is asymmetric.
+- `pebble add`/`update` fail fast when given non-existent IDs (default: strict).
+- `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
+
+**ID Generation Rules**
+- IDs are generated on `pebble add` and follow `<issue-prefix>-<suffix>`.
+- `issue-prefix` comes from config key `issue-prefix` (default: `issue` if unset).
+- The suffix uses the alphabet `a-z0-9` (36 characters).
+- The initial suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox estimate).
+
+**Archival & Organization Strategy**
+
+Because the `id` within the YAML frontmatter is the canonical identifier, the physical file path of a task Markdown file is strictly advisory. The CLI scans the `tasks-dir` **recursively**, meaning files can be moved without breaking graph links.
+
+- **Automated Lifecycle Archiving:** To prevent long-term repository bloat and IDE search pollution, Pebble provides a `pebble archive` command. This command scans the repository for `done` or `canceled` tasks whose `resolved_at` timestamp is older than a threshold (e.g., 30 days) and automatically moves them into an `archive/` subdirectory (e.g., `docs/pebble/archive/2026/`). Since the CLI recursively scans the base directory, these archived tasks remain part of the project history and graph but are visually moved out of active working directories. By relying on the `resolved_at` frontmatter field instead of a Git or filesystem `mtime`, this command remains deterministic, fast, and completely immune to repository resets or clones.
+
+### 4.4 Task Schema
 
 **Frontmatter Contract (Required vs Optional)**
+
 Required:
 - `id` (string)
 - `status` (enum: `todo` | `in_progress` | `paused` | `done` | `canceled`)
@@ -114,6 +141,10 @@ Intentionally omitted:
 
 Computed:
 - `before` (derived as the inverse of `after` across the repo; set/list of IDs)
+
+> **Rationale for Omitted Fields:**
+> - **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
+> - **Task Types (`type`):** Generic tags (`tags` array) are sufficient for lightweight categorization. Supporting configurable type taxonomies introduces complexity counter to Pebble's minimalist goals.
 
 **Frontmatter Format**
 - YAML frontmatter delimited by `---`.
@@ -167,9 +198,6 @@ pub struct TaskNode {
     pub body: String,
 }
 ```
-**Rationale for Omitted Fields:** 
-- **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
-- **Task Types (`type`):** Generic tags (`tags` array) are sufficient for lightweight categorization. Supporting configurable type taxonomies introduces complexity counter to Pebble's minimalist goals.
 
 **Timestamp Rules**
 - `created_at` is required in frontmatter and must be RFC3339.
@@ -185,6 +213,8 @@ pub struct TaskNode {
 **Title & Body Contract**
 - The Markdown body must start with a single H1 title.
 - `title` is not stored in frontmatter; the H1 is the sole title source.
+
+### 4.5 Graph Semantics
 
 **Ordering Semantics (after/before)**
 - `after` is the stored field and represents prerequisites.
@@ -205,7 +235,7 @@ A task has two independent concepts:
 
 The `--is-ready` filter on `list` matches tasks that are `ready`. In `--json` output, `TaskObject` includes a computed boolean `is_ready` so agents can filter without re-deriving readiness.
 
-**Rationale for `paused` as a stored status:** Without it, the only way to represent an external hold is to create a dummy prerequisite task (e.g., "Wait for Apple review") — a non-actionable task that pollutes the tracker purely to manipulate graph state. `status: paused` avoids this antipattern. The staleness risk (user forgets to un-pause after the external condition resolves) is a user discipline problem common to every task tracker; `pebble list --status paused` serves as the periodic review queue.
+> **Rationale for `paused` as a stored status:** Without it, the only way to represent an external hold is to create a dummy prerequisite task (e.g., "Wait for Apple review") — a non-actionable task that pollutes the tracker purely to manipulate graph state. `status: paused` avoids this antipattern. The staleness risk (user forgets to un-pause after the external condition resolves) is a user discipline problem common to every task tracker; `pebble list --status paused` serves as the periodic review queue.
 
 Example:
 ```yaml
@@ -227,6 +257,53 @@ Computed:
 - `before(B) = [C]`
 - `before(C) = []`
 
+### 4.6 CLI
+
+**CLI Behavior Changes**
+- **Unchanged:** `list`, `show`, `search` remain the primary read commands.
+- **Change in storage location:** `add`/`update`/`show`/`list` read and write Markdown files under the visible directory (default `docs/pebble/`).
+- **New read behavior:** `list` and `search` scan Markdown files directly; any caches are optional and non-canonical.
+- **No hidden worktree dependency:** The CLI no longer requires a sync worktree for reads/writes under this model, which dramatically reduces git worktree complexity.
+
+**CLI Command Surface (Authoritative)**
+
+**Global options**
+- `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
+- `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
+
+**Repository management**
+- `pebble init`: Bootstraps the environment and creates the tasks directory.
+
+**Query commands**
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. Filters: `--status`, `--tag`, `--parent`, `--is-ready` (computed; shows only tasks whose prerequisites are `done` and whose status is actionable).
+- `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task.
+- `pebble search <query>`: Full-text search across titles and Markdown bodies.
+- `pebble config get <key>`: Reads a configuration value. Supported keys: `issue-prefix`, `tasks-dir`. Also serves as a way for users and agents to discover the resolved config file location and effective values.
+
+**Mutation commands**
+- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
+- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
+- `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter.
+- Users can edit Markdown bodies directly; no dedicated `edit` command is required.
+
+**Validation**
+- `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` and `related` links, circular dependencies, `related` symmetry (if A lists B in `related`, B must list A), schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
+- `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
+
+**Read/Write Policy**
+- **Read-only:** `list`, `show`, `search`, `config get`, and `check` never modify files.
+- **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
+
+**Strictness & Failure Modes (Read Commands)**
+- All commands that read tasks (`list`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
+- `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
+- `show` is permitted to stop once it has found and validated the single task matching the requested `id`.
+- Any validation error encountered in scanned data (invalid YAML, missing required fields, missing H1 title, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
+- Unknown frontmatter keys are treated as errors (schema is closed).
+- In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
+- `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`.
+- Structured validation errors are available only via `pebble check --json`.
+
 **JSON Output Contract**
 
 All `--json` output is a single JSON object printed to stdout per invocation.
@@ -245,19 +322,17 @@ A `TaskObject` includes:
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
 - `path`: the file path relative to `tasks-dir`.
 
-Rationale: `title` and `before` are computed convenience fields, analogous to each other—derived from the file on read, never stored. `body` is a faithful reproduction of the file content; the CLI does not strip or transform it. This means `title` appears twice in JSON output (once as a top-level key, once inside `body` as the H1). This minor redundancy is an acceptable tradeoff: agents get a structured `title` for filtering and display without parsing Markdown, while `body` remains a lossless round-trip representation of the file.
+> **Rationale:** `title` and `before` are computed convenience fields, analogous to each other—derived from the file on read, never stored. `body` is a faithful reproduction of the file content; the CLI does not strip or transform it. This means `title` appears twice in JSON output (once as a top-level key, once inside `body` as the H1). This minor redundancy is an acceptable tradeoff: agents get a structured `title` for filtering and display without parsing Markdown, while `body` remains a lossless round-trip representation of the file.
 
-**Success Criteria:**
-1. Git merges of concurrent edits to different issues resolve cleanly without manual intervention.
-2. Agents can create/update issues without schema drift; human edits remain the source of truth.
-3. Performance is acceptable for small single-repo teams without premature optimization.
+**Command Deprecations & Removals**
+- `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
+- `sync-branch` configuration is removed.
+- `pebble import` is removed. The one-time JSONL → Markdown migration is handled by a throw-away script (e.g., Python) that invokes the new `pebble` CLI.
+- `pebble init` only creates the tasks directory and config; it no longer creates a worktree.
 
-**Archival & Organization Strategy:**
-Because the `id` within the YAML frontmatter is the canonical identifier, the physical file path of a task Markdown file is strictly advisory. The CLI scans the `tasks-dir` **recursively**, meaning files can be moved without breaking graph links.
+### 4.7 Migration
 
-- **Automated Lifecycle Archiving:** To prevent long-term repository bloat and IDE search pollution, Pebble provides a `pebble archive` command. This command scans the repository for `done` or `canceled` tasks whose `resolved_at` timestamp is older than a threshold (e.g., 30 days) and automatically moves them into an `archive/` subdirectory (e.g., `docs/pebble/archive/2026/`). Since the CLI recursively scans the base directory, these archived tasks remain part of the project history and graph but are visually moved out of active working directories. By relying on the `resolved_at` frontmatter field instead of a Git or filesystem `mtime`, this command remains deterministic, fast, and completely immune to repository resets or clones.
-
-**Migration Plan:**
+**Migration Plan**
 1. There is exactly one existing database to migrate.
 2. Use a one-time throw-away script to transform the current JSONL into Markdown files under `docs/pebble/`.
 3. Validate the result manually and discard the script after migration.
@@ -265,9 +340,11 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
 **Compatibility & Data Loss**
 - The Markdown schema intentionally drops: `owner`, `created_by`, `updated_at`, `closed_at`, and `close_reason`.
 - The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`). It will preserve the logical graph as `parent`, `after`, and `related` (with `before` computed).
-- Rationale: there is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
+
+> **Rationale:** There is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
 
 **Compatibility & Migration Mapping (Current JSONL → Markdown)**
+
 This is the authoritative and exhaustive mapping used by the one-time migration script. Every field present in the JSONL schema is listed below with its disposition. Any JSONL field not listed here is a migration error — the script must fail rather than silently drop data.
 
 **Field mapping (exhaustive)**
@@ -301,6 +378,7 @@ This is the authoritative and exhaustive mapping used by the one-time migration 
 - Any other status value is a migration error (explicitly surfaced).
 
 **Dependency type mapping**
+
 Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The mapping by type:
 - `parent-child` → the child's frontmatter `parent` is set to the parent's ID. (`issue_id` is the child; `depends_on_id` is the parent.)
 - `blocks` → the blocked task's `after` array includes the blocking task's ID. (If A blocks B: B gets `after: [A]`.)
@@ -318,10 +396,11 @@ Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The
 - If `acceptance_criteria`, `notes`, or `comments` are non-empty, they are appended after the description as separate H2 sections.
 
 **Command mapping summary**
-- `pebble sync` and `sync-branch` config are removed (see “Command Deprecations & Removals”).
+- `pebble sync` and `sync-branch` config are removed (see "Command Deprecations & Removals").
 - `pebble list/show/search/add/update` remain, but operate on Markdown files in `tasks-dir`.
 
-**Risks & Mitigations:**
+### 4.8 Risks & Mitigations
+
 1. **Filename collisions / human-editable names**
    - *Risk:* Two issues could map to the same filename, or renames could break links.
    - *Mitigation:* Filenames are advisory only; `id` is canonical. On write, the CLI ensures uniqueness by suffixing `-2`, `-3`, etc. On read, `id` is authoritative.
@@ -331,63 +410,6 @@ Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The
 3. **Query performance (deferred)**
    - *Risk:* Large repos may need faster list/search than raw file scans provide.
    - *Mitigation:* Defer optimization until user reports demand. Architectural options include lazy caching, background file watchers, incremental indexing, and derived query indices (JSONL or SQLite) that are strictly non-canonical.
-
-**Tooling Contract for File Layout**
-- The canonical identifier is the frontmatter `id`; filenames are advisory only.
-- The root directory defaults to `docs/pebble/` and is configurable; visibility (hidden directory, gitignored path, etc.) is a user choice.
-- The CLI **recursively** treats every `*.md` file under the root as a task file.
-- The CLI never changes `id`. Users may edit it manually, but the `id` **must** be unique across the repo.
-- If two files share the same `id`, the CLI fails with a clear error and no writes.
-- When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
-- Renaming or moving a file does not change the `id` and does not break references.
-- If a user changes an `id`, they must update all references (`parent`, `after`) for consistency.
-- `pebble check` fails on duplicates or dangling references.
-
-**Filename Normalization Rules**
-- CLI generates filenames from the **task title provided at creation time** using a deterministic slug:
-  - lowercase
-  - ASCII only (strip/replace non-ASCII)
-  - whitespace → `-`
-  - remove punctuation
-  - collapse repeated `-`
-  - trim leading/trailing `-`
-- If the result is empty, use `task` and append a numeric suffix.
-- If the filename already exists, append `-2`, `-3`, etc.
-
-**Reference Resolution Rules**
-- `parent`, `after`, and `related` must reference existing task IDs.
-- `pebble check` fails if any reference is missing or if `related` is asymmetric.
-- `pebble add`/`update` fail fast when given non-existent IDs (default: strict).
-- `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
-
-**ID Generation Rules (Current Implementation)**
-- IDs are generated on `pebble add` and follow `<issue-prefix>-<suffix>`.
-- `issue-prefix` comes from config key `issue-prefix` (default: `issue` if unset).
-- The suffix uses the alphabet `a-z0-9` (36 characters).
-- The initial suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox estimate).
-
-**Configuration Contract**
-- Config lives at `.pebble/config.toml` (relative to the repository root).
-- Supported keys:
-  - `issue-prefix` (string): prefix for new IDs (default: `issue`).
-  - `tasks-dir` (string): path to task files (default: `docs/pebble/`).
-- Command-line flags:
-  - `--dir <PATH>` (on any command) overrides `tasks-dir`.
-  - `--issue-prefix <PREFIX>` (on `pebble init`) sets the initial prefix in config.
-
-**Path Resolution & Repo Root**
-- The CLI locates the repository root by walking up from the current working directory to the nearest parent containing `.git`.
-- If no `.git` directory is found, the CLI fails with a clear error.
-- `.pebble/config.toml` is always resolved relative to the repository root.
-- `tasks-dir` is resolved relative to the repository root when it is a relative path.
-- `--dir` overrides `tasks-dir` and is resolved relative to the repository root when it is a relative path.
-- Precedence: `--dir` > `tasks-dir` in config > default `docs/pebble/`.
-
-**Configuration Lifecycle**
-- `pebble init` creates `.pebble/config.toml` if it does not exist and writes the initial `issue-prefix` and `tasks-dir` (from `--issue-prefix` / `--dir` if provided, otherwise defaults).
-- `--dir` is a runtime override. It does not rewrite config outside of `pebble init`.
-- Users may edit `.pebble/config.toml` directly to change `issue-prefix` or `tasks-dir`.
-- The CLI accepts any relative or absolute path for `tasks-dir`. Visibility (hidden directory, gitignored path, etc.) is a user choice and not enforced by the tool.
 
 ## Appendix A: Alternatives Considered
 
