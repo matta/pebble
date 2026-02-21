@@ -237,6 +237,12 @@ pub struct TaskNode {
 - `before` is computed as the inverse of `after`.
 - Cycles are invalid and rejected by `pebble check`.
 
+**Hierarchy Semantics (parent/child)**
+- `parent` defines hierarchy only; there is no separate epic type. A parent can be actionable.
+- For execution semantics, each child is an implicit prerequisite of its parent. Parents are not ready until all children are `done` or `canceled`, and topological ordering places children before their parent.
+- Prerequisites are inherited downward: if a parent has `after` prerequisites, all descendants treat those as prerequisites for readiness. This prevents subtasks of blocked parents from appearing ready.
+- Inherited prerequisites and implicit child → parent edges are computed; they are not stored in frontmatter.
+
 **Related Tasks (related)**
 - `related` is a stored, symmetric cross-reference with no ordering or dependency semantics. It means "these tasks are relevant to each other" (e.g., overlapping scope, shared context, alternative approaches).
 - Both sides must list each other; `pebble check` validates symmetry.
@@ -246,7 +252,7 @@ pub struct TaskNode {
 
 A task has two independent concepts:
 
-1. **Ready (computed):** A task is `ready` when all `after` prerequisites are `done` and its status is actionable (`todo` or `in_progress`). Tasks with status `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
+1. **Ready (computed):** A task is `ready` when its status is actionable (`todo` or `in_progress`), all explicit and inherited `after` prerequisites are `done`, and all children (if any) are `done` or `canceled`. Tasks with status `paused`, `done`, or `canceled` are never `ready`, even if dependencies are satisfied.
 2. **Paused (explicit):** The user sets `status: paused` to represent an external hold not captured in the graph (e.g., waiting on a vendor, approval, or shipment). This is manual and only clears when the user changes the status.
 
 The `--is-ready` filter on `list` matches tasks that are `ready`. In `--json` output, `TaskObject` includes a computed boolean `is_ready` so agents can filter without re-deriving readiness.
