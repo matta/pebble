@@ -44,6 +44,9 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while keeping the architecture simple.
 
+**Design Philosophy: Forgiving Reads, Strict Writes**
+Pebble embraces the fluid, unstructured nature of Markdown by treating manual inconsistencies—like dangling references from hand-deleted files—gracefully during read operations. When the CLI encounters such inconsistencies, it **should log a clear warning to the user** but then continue as if the missing data doesn't exist, rather than holding the graph hostage. However, **the CLI must never be the source of invalid state**. It should be impossible to author an inconsistency (such as linking a non-existent ID or generating a schema violation) using `pebble` commands. You can break things using `rm` or `vim`, but never through `pebble`.
+
 **Non-Goals:**
 - Not targeting enterprise-scale analytics or cross-repo issue federation.
 - **Model Context Protocol (MCP) Server:** Building an MCP server is explicitly a post-1.0/post-MVP decision. AI agents perform perfectly well interacting via a local CLI. 
@@ -91,8 +94,8 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 - If two files share the same `id`, the CLI fails with a clear error and no writes.
 - When creating a new task, the CLI derives a human-readable filename from the title and appends a numeric suffix if needed.
 - Renaming or moving a file does not change the `id` and does not break references.
-- If a user changes an `id`, they must update all references (`parent`, `after`) for consistency.
-- `pebble check` fails on duplicates or dangling references.
+- If a user changes an `id` or deletes a file, references to the old `id` become dangling. They can be cleaned up manually or automatically via `pebble fix`.
+- `pebble check` fails on duplicate and dangling IDs (ideal for CI/pre-commit enforcement).
 
 **Filename Normalization Rules**
 - CLI generates filenames from the **task title provided at creation time** using a deterministic slug:
@@ -108,8 +111,9 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Reference Resolution Rules**
 - `parent`, `after`, and `related` must reference existing task IDs.
+- If a referenced ID is missing, the CLI gracefully ignores it (e.g., a missing prerequisite does not block readiness) and issues a warning.
 - `pebble check` fails if any reference is missing or if `related` is asymmetric.
-- `pebble add`/`update` fail fast when given non-existent IDs (default: strict).
+- `pebble add`/`update` fail fast when given non-existent IDs to prevent creating invalid state through the CLI.
 - `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
 
 **ID Generation Rules**
@@ -337,7 +341,7 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 
 **Validation**
 - `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` and `related` links, circular dependencies, `related` symmetry (if A lists B in `related`, B must list A), schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
-- `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
+- `pebble fix`: Applies safe, deterministic repairs (e.g., automatically stripping dangling references from `parent`, `after`, and `related` arrays to self-heal the graph, inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 **Read/Write Policy**
 - **Read-only:** `list`, `next`, `show`, `search`, `config get`, and `check` never modify files.
@@ -349,7 +353,7 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - `show` **must** scan the full `tasks-dir` and build the complete graph. This is required to compute `before` (reverse dependencies) and to ensure `is_ready` is accurate for the returned `TaskObject`.
 - For `list`, `next`, `search`, and `show`, validation errors in non-target files are **warnings**, not fatal errors: the CLI logs a warning to `stderr`, skips the invalid file, and continues. This provides graceful degradation when a human or agent has made a mistake in one file.
 - If the target task for `show` is invalid or unparseable, `show` fails with a non-zero exit code and a clear error message.
-- Missing references (`parent`, `after`, `related`) are warnings in read commands. Tasks with missing prerequisites are **not** considered ready; `is_ready` is false when any prerequisite is missing.
+- Missing references (`parent`, `after`, `related`) are warnings in read commands. A missing prerequisite is ignored and does **not** block a task from being ready (the missing task is treated as if it never existed).
 - Unknown frontmatter keys are treated as errors (schema is closed). In read commands, they follow the same warning behavior described above.
 - In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
 - `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`; it fails on any validation error.
