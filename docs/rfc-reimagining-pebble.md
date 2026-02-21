@@ -73,8 +73,8 @@ Pebble embraces the fluid, unstructured nature of Markdown by treating manual in
 - The CLI locates the repository root by walking up from the current working directory to the nearest parent containing `.git`.
 - If no `.git` directory is found, the CLI fails with a clear error.
 - `.pebble/config.toml` is always resolved relative to the repository root.
-- `tasks-dir` is resolved relative to the repository root when it is a relative path.
-- `--dir` overrides `tasks-dir` and is resolved relative to the repository root when it is a relative path.
+- `tasks-dir` read from `.pebble/config.toml` is resolved relative to the repository root when it is a relative path.
+- `--dir` overrides `tasks-dir` and is strictly resolved relative to the user's current working directory (cwd) when it is a relative path.
 - Precedence: `--dir` > `tasks-dir` in config > default `docs/pebble/`.
 
 **Configuration Lifecycle**
@@ -309,7 +309,7 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 
 **Global options**
 - `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
-- `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
+- `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root. If a relative path is provided, it is strictly resolved relative to the user's current working directory.
 - `--help-json`: Emit a machine-readable schema of commands, flags, and output shapes to stdout, then exit.
 
 **Repository management**
