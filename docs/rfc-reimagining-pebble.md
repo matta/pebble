@@ -2,7 +2,7 @@
 
 ## 1. Introduction & Motivation
 
-The goal of this RFC is to step back and re-imagine Pebble from the ground up. Inspired by the legacy `bd` tool but now forging its own divergent path, the core mission remains unaltered: **provide a project task tracking system that is equally useful and delightful for both human developers and autonomous AI coding agents**.
+The goal of this RFC is to re-imagine Pebble from the ground up. Inspired by the `beads` tool (https://github.com/steveyegge/beads) but now forging its own divergent path, with different goals. The core mission remains unaltered: **provide a project task tracking system that is equally useful and delightful for both human developers and AI coding agents**.
 
 While the current implementation relies on a Rust CLI with a JSONL storage backbone, this document explores the solution space without those constraints. We aim for a "minimum useful feature set" tailored not for enormous enterprise projects or for coordinating concurrently running autonomous AI agents, but for the simpler, single-repo projects common in open-source development and indie hacking.
 
@@ -11,7 +11,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - Store tasks as Markdown files in a visible repo directory (default `docs/pebble/`).
 - YAML frontmatter defines metadata; the Markdown body is the description.
 - `id` is canonical and user-editable; the CLI never changes it.
-- Relationships: store `after` (prerequisites), compute `before` as inverse.
+- Relationships: store `after` (prerequisites), compute `before` as inverse. Store `related` (symmetric cross-references).
 - Status model: `todo`, `in_progress`, `paused`, `done`, `canceled`.
 - Readiness is computed: a task is `ready` when prerequisites are satisfied and the status is actionable (not `paused`, `done`, or `canceled`).
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
@@ -66,17 +66,27 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Mutation commands**
 - `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--body <text>`, `--parent <id>`, `--tag <tag>`, `--after <id>`, `--before <id>`. The `--body` text is inserted after the `# <title>` heading, separated by a blank line.
-- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
+- `pebble update <id>`: Safely modifies the frontmatter. Options: `--status <status>`, `--parent <id>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-after <id>`, `--remove-after <id>`, `--add-before <id>`, `--remove-before <id>`, `--add-related <id>`, `--remove-related <id>`. `--before` / `--add-before` / `--remove-before` are syntactic sugar; they update the referenced task(s)' `after` lists to include or remove the current task's `id`. No `before` field is stored in frontmatter. `--add-related` / `--remove-related` update both the current task and the referenced task symmetrically (adding/removing the ID from both files' `related` arrays). When modifying the frontmatter, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter.
 - Users can edit Markdown bodies directly; no dedicated `edit` command is required.
 
 **Validation**
-- `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` links, circular dependencies, schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
+- `pebble check`: A strict linter that evaluates the `.md` database. Checks: ID collisions, broken `after` and `related` links, circular dependencies, `related` symmetry (if A lists B in `related`, B must list A), schema adherence, and state consistency (e.g., flagging a `done` parent that still has non-`done` children).
 - `pebble fix`: Applies safe, deterministic repairs (e.g., inserting missing `created_at`, sorting YAML keys, normalizing whitespace).
 
 **Read/Write Policy**
 - **Read-only:** `list`, `show`, `search`, `config get`, and `check` never modify files.
 - **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
+
+**Strictness & Failure Modes (Read Commands)**
+- All commands that read tasks (`list`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
+- `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
+- `show` is permitted to stop once it has found and validated the single task matching the requested `id`.
+- Any validation error encountered in scanned data (invalid YAML, missing required fields, missing H1 title, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
+- Unknown frontmatter keys are treated as errors (schema is closed).
+- In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
+- `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`.
+- Structured validation errors are available only via `pebble check --json`.
 
 **Command Deprecations & Removals**
 - `pebble sync` is removed under the Markdown-native model because no worktree sync exists; task files are normal repo content.
@@ -93,6 +103,7 @@ Required:
 Optional:
 - `parent` (string)
 - `after` (string array; multiple prerequisites allowed)
+- `related` (string array; symmetric cross-references to related tasks)
 - `tags` (string array)
 - `priority` (integer)
 - `modified_at` (RFC3339 string; automatically updated on modification)
@@ -139,6 +150,8 @@ pub struct TaskFrontmatter {
     #[serde(default)]
     pub after: Vec<String>,
     #[serde(default)]
+    pub related: Vec<String>,
+    #[serde(default)]
     pub tags: Vec<String>,
 }
 
@@ -178,6 +191,11 @@ pub struct TaskNode {
 - `before` is computed as the inverse of `after`.
 - Cycles are invalid and rejected by `pebble check`.
 
+**Related Tasks (related)**
+- `related` is a stored, symmetric cross-reference with no ordering or dependency semantics. It means "these tasks are relevant to each other" (e.g., overlapping scope, shared context, alternative approaches).
+- Both sides must list each other; `pebble check` validates symmetry.
+- `--add-related` / `--remove-related` on `pebble update` modify both files atomically.
+
 **Ready and Paused: Two Independent Concepts**
 
 A task has two independent concepts:
@@ -212,16 +230,17 @@ Computed:
 **JSON Output Contract**
 
 All `--json` output is a single JSON object printed to stdout per invocation.
+On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-readable error message, and the exit code is non-zero.
 
 - **Query commands** (`list`, `search`): `{"tasks": [<TaskObject>, ...]}`.
 - **`show --json`**: A single unwrapped `TaskObject`.
 - **Mutation commands** (`add`, `update`): Echo back the full `TaskObject` after the write.
-- **`check --json`**: `{"ok": bool, "errors": [{"file": "...", "line": N, "message": "..."}]}`.
+- **`check --json`**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`.
 - **`archive --json`**: `{"archived": [{"id": "...", "moved_to": "..."}]}`.
 - **`config get --json`**: `{"key": "<key>", "value": "<value>"}`.
 
 A `TaskObject` includes:
-- All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `tags`).
+- All stored frontmatter fields (`id`, `status`, `priority`, `parent`, `created_at`, `modified_at`, `resolved_at`, `after`, `related`, `tags`).
 - Computed fields: `title` (extracted from the H1 heading), `before` (inverse of `after` across the repo), `is_ready` (boolean; true if all prerequisites are `done` and status is `todo` or `in_progress`).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim (including the H1 heading).
 - `path`: the file path relative to `tasks-dir`.
@@ -245,8 +264,62 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
 
 **Compatibility & Data Loss**
 - The Markdown schema intentionally drops: `owner`, `created_by`, `updated_at`, `closed_at`, and `close_reason`.
-- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`, `dependencies[].type`). It will preserve the logical graph as `parent` and `after` (with `before` computed).
+- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`). It will preserve the logical graph as `parent`, `after`, and `related` (with `before` computed).
 - Rationale: there is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
+
+**Compatibility & Migration Mapping (Current JSONL → Markdown)**
+This is the authoritative and exhaustive mapping used by the one-time migration script. Every field present in the JSONL schema is listed below with its disposition. Any JSONL field not listed here is a migration error — the script must fail rather than silently drop data.
+
+**Field mapping (exhaustive)**
+- `id` → frontmatter `id` (unchanged).
+- `title` → first H1 in body (`# <title>`).
+- `description` → body content after the H1 (verbatim).
+- `status` → see status mapping below.
+- `priority` → frontmatter `priority` (preserved as integer).
+- `issue_type` → `tags` entry with the same string (preserves information without a formal type system).
+- `created_at` → frontmatter `created_at` (required; missing value is a migration error).
+- `updated_at` → frontmatter `modified_at` (if present).
+- `closed_at` → frontmatter `resolved_at` when status maps to `done` or `canceled` (if present).
+- `owner` → dropped (audit via Git history).
+- `created_by` → dropped (audit via Git history).
+- `close_reason` → used only for status mapping; otherwise dropped.
+- `labels` → merged into `tags` (deduplicated with any tag derived from `issue_type`).
+- `acceptance_criteria` → appended to body under an `## Acceptance Criteria` heading (if non-empty).
+- `notes` → each note appended to body under a `## Notes` heading (if non-empty).
+- `comments` → each comment appended to body under a `## Comments` heading (if non-empty).
+- `defer_until` → dropped (the `paused` status replaces this concept; the original value is not preserved).
+- `original_type` → dropped (internal bookkeeping from beads type migrations; no semantic value).
+- `deleted_at`, `deleted_by`, `delete_reason` → used only for `tombstone` status mapping (see below); otherwise dropped.
+- `dependencies` → see dependency type mapping below.
+
+**Status mapping**
+- `open` → `todo`.
+- `in_progress` → `in_progress`.
+- `deferred` → `paused`.
+- `closed` → `done` unless `close_reason` indicates cancellation (`canceled` / `cancelled`, case-insensitive) in which case → `canceled`.
+- `tombstone` → `canceled` (with `resolved_at` set from `deleted_at` if present, falling back to `updated_at`).
+- Any other status value is a migration error (explicitly surfaced).
+
+**Dependency type mapping**
+Each JSONL `dependencies` entry has `issue_id`, `depends_on_id`, and `type`. The mapping by type:
+- `parent-child` → the child's frontmatter `parent` is set to the parent's ID. (`issue_id` is the child; `depends_on_id` is the parent.)
+- `blocks` → the blocked task's `after` array includes the blocking task's ID. (If A blocks B: B gets `after: [A]`.)
+- `depends-on` → the dependent task's `after` array includes the dependency's ID. (If A depends-on B: A gets `after: [B]`.)
+- `relates-to` → both tasks' `related` arrays include the other's ID. (Symmetric; deduplicated.)
+- Edge audit metadata (`created_at`, `created_by` on each dependency) is dropped.
+- Any other dependency type value is a migration error.
+
+**Timestamp mapping**
+- `modified_at` is set from `updated_at` if present; otherwise omitted.
+- `resolved_at` is set from `closed_at` if present. If `closed_at` is missing but status maps to `done` or `canceled`, use `updated_at` when available; otherwise omit. For `tombstone` → `canceled`, use `deleted_at` if present, falling back to `updated_at`.
+
+**Body assembly**
+- Each task file starts with YAML frontmatter, followed by `# <title>`, then a blank line and the `description` (if non-empty).
+- If `acceptance_criteria`, `notes`, or `comments` are non-empty, they are appended after the description as separate H2 sections.
+
+**Command mapping summary**
+- `pebble sync` and `sync-branch` config are removed (see “Command Deprecations & Removals”).
+- `pebble list/show/search/add/update` remain, but operate on Markdown files in `tasks-dir`.
 
 **Risks & Mitigations:**
 1. **Filename collisions / human-editable names**
@@ -282,8 +355,8 @@ Because the `id` within the YAML frontmatter is the canonical identifier, the ph
 - If the filename already exists, append `-2`, `-3`, etc.
 
 **Reference Resolution Rules**
-- `parent` and `after` must reference existing task IDs.
-- `pebble check` fails if any reference is missing.
+- `parent`, `after`, and `related` must reference existing task IDs.
+- `pebble check` fails if any reference is missing or if `related` is asymmetric.
 - `pebble add`/`update` fail fast when given non-existent IDs (default: strict).
 - `list`/`show` should surface missing references in output (human) and include them explicitly in `--json`.
 
