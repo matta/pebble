@@ -283,9 +283,12 @@ Computed:
 
 **CLI Command Surface (Authoritative)**
 
+This RFC supersedes `docs/cli-contract.md`; that document will be updated during implementation.
+
 **Global options**
 - `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
 - `--dir <PATH>`: Override the default tasks directory (default: `docs/pebble/`). Users can pass `--dir` on any command to point at a non-default task root.
+- `--help-json`: Emit a machine-readable schema of commands, flags, and output shapes to stdout, then exit.
 
 **Repository management**
 - `pebble init`: Bootstraps the environment, creates the tasks directory, creates `.pebble/AGENTS.md` (see §4.8), and prints a message advising the user to include it in their project's agent configuration.
@@ -296,6 +299,11 @@ Computed:
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task. `--path-only` prints only the file path (relative to `tasks-dir`) and nothing else — useful for agents and scripts that want to read the file directly.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
 - `pebble config get <key>`: Reads a configuration value. Supported keys: `issue-prefix`, `tasks-dir`. Also serves as a way for users and agents to discover the resolved config file location and effective values.
+
+**MVP search semantics**
+- `pebble search` performs a plain substring match against the task `title` (frontmatter) and the raw Markdown `body` (frontmatter excluded).
+- Matching is case-insensitive. No regex, stemming, or tokenization in MVP.
+- Results are returned in the default list order.
 
 **MVP filter semantics**
 - `--priority <N>` matches tasks whose `priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
@@ -332,12 +340,15 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 **Strictness & Failure Modes (Read Commands)**
 - All commands that read tasks (`list`, `show`, `search`, `check`) perform strict validation of the task data they actually consume.
 - `list` and `search` may scan the full `tasks-dir` for correctness, but are not required to; they may validate only as much data as needed to produce a correct answer **assuming the repository is well-formed**.
-- `show` is permitted to stop once it has found and validated the single task matching the requested `id`.
+- `show` **must** scan the full `tasks-dir` and build the complete graph. This is required to compute `before` (reverse dependencies) and to ensure `is_ready` is accurate for the returned `TaskObject`.
 - Any validation error encountered in scanned data (invalid YAML, missing required fields, invalid status value, duplicate IDs, or broken references) **fails the command** with a non-zero exit code; no partial results are emitted.
 - Unknown frontmatter keys are treated as errors (schema is closed).
 - In `--json` mode, JSON is emitted only on success. On failure, `stdout` is empty and a human-readable error message is written to `stderr`.
 - `pebble check` is the only command required to validate and report errors across the entire `tasks-dir`.
 - Structured validation errors are available only via `pebble check --json`.
+
+**Future performance note**
+- If full scans become a bottleneck, add a cached index as a strictly derived (non-canonical) optimization. The MVP assumes full scans are acceptable for single-repo scale.
 
 **JSON Output Contract**
 
