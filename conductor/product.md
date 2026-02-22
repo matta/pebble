@@ -1,31 +1,20 @@
-# Initial Concept
-Pebble is a simplified Rust re-implementation of the `beads` tool, focusing on a JSONL backend, strict Git-based worktree synchronization, and a Test-Driven Development (TDD) approach.
-
 # Product Guide: Pebble
 
 ## Overview
-Pebble is a streamlined, "bare-bones" alternative to `beads`. It intentionally strips away peripheral features to focus on a minimal, high-performance core for developers who value simplicity and zero overhead.
+Pebble is a streamlined, Markdown-native CLI task tracker built upon a "Permissive Writes, Strict Evaluation" design philosophy. It focuses on a minimal, high-performance core for developers who value absolute control over their data, native integration with standard Git workflows, and an architecture that AI coding agents can easily understand.
 
 ## Target Audience
-- **Git-Centric Developers**: Users who want their task management to live alongside their code, leveraging Git for synchronization.
-- **Minimalists**: Those who prefer a "bare minimum" toolset and value a focused, reduced feature set.
-- **Original Beads Users**: People looking for a more predictable, Rust-powered alternative to the original Go implementation.
+- **Git-Centric Developers**: Users who want their task management to live alongside their code, leveraging their standard Git commit/push routines without separate tracking tools.
+- **Minimalists**: Those who prefer a highly focused toolset that degrades gracefully to standard text editors.
+- **AI Agents**: Autonomous agents that benefit from predictable file-system level APIs, readable formats (Markdown), and a CLI interface that accepts raw data without panicking.
 
 ## Core Goals
-1. **Reduced Scope**: Provide only the essential features required for issue tracking, avoiding "feature creep" at all costs.
-2. **Minimal Overhead**: Zero daemon processes and a simple, JSONL-only backend.
-3. **Small-Scale Focused**: Intentionally not intended to scale to massive databases or huge projects. It's built for individual developers and small teams who value speed over scalability.
-4. **Data Integrity**: Using JSONL as the single source of truth to ensure data is human-readable and easily manipulated.
-5. **Robust Synchronization**: Leveraging Git worktrees for a reliable, offline-first sync mechanism.
-6. **Developer-First Design**: Built with TDD, providing a clean CLI interface and high test coverage.
-
-## Key Features
-- **JSONL Storage**: All issues are stored in a human-readable JSONL format.
-- **Worktree Integration**: Data resides exclusively in a Git worktree, keeping it separate from the main project files but synchronized via Git.
-- **Sync Command**: A straightforward `pebble sync` command that wraps common Git operations.
-- **CLI Management**: Commands for listing, adding, showing, and editing issues.
+1. **Markdown-Native Storage**: All tasks are stored as discrete `.md` files with YAML frontmatter. 
+2. **Permissive Writes, Strict Evaluation**: The storage layer acts purely as a raw directed graph. It never fails or panics if you author a cycle or reference a missing ID; instead, validation is deferred to the read-path, which strictly evaluates structural issues as "not ready".
+3. **No Hidden State**: Zero daemon processes, zero hidden `.git` worktrees, and no opaque databases.
+4. **Developer-First Design**: Built via Test-Driven Development (TDD), providing a strictly defined CLI and JSON output interface.
+5. **Dynamic Scoring**: To prevent starvation, tasks are dynamically sorted using a blocking count algorithm, ensuring critical bottlenecks naturally surface to the top of the `pebble next` queue.
 
 ## Constraints
-- **No SQLite Support**: Exclusively uses JSONL.
-- **No Daemon Mode**: Pebble runs as a simple CLI command and does not maintain a background process.
-- **Strict Configuration**: Only supports `sync-branch` configuration.
+- **Configuration Constraints**: Task directories are resolved strictly relative to the nearest `.pebble/` configuration folder.
+- **Single Structural Edge**: Task relationships are entirely flattened into a single `deps` link. Temporality and hierarchy share the same axis.

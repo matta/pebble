@@ -1,8 +1,10 @@
+[STATUS: FROZEN]
+
 # RFC: Re-imagining Pebble from Scratch
 
 ## 1. Introduction & Motivation
 
-**High-Level Goal & Principles: "Worse is Better"**
+**High-Level Goal & Principles: "Permissive Writes, Strict Evaluation"**
 Pebble fundamentally approaches task management as a pure, loosely coupled directed graph layered seamlessly over the filesystem. Influenced by Git's content-addressable DAG, the system is deeply unopinionated about how you author data. The CLI acts as a runtime engine that derives insights (like `pebble next`), rather than a strict compiler enforcing business logic. By removing artificial barriers (like preemptive cycle prevention, cascading external states, and bi-directional link synchronization), Pebble gains robust simplicity and becomes practically unbreakable.
 
 
@@ -50,7 +52,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 
 **Rationale:** This maximizes human transparency, makes review diffs first-class in Git, and keeps agent tooling aligned with what humans see. It also eliminates single-file merge conflicts while keeping the architecture simple.
 
-**Design Philosophy: Worse is Better (The CLI is Not a Compiler)**
+**Design Philosophy: Permissive Writes, Strict Evaluation (The CLI is Not a Compiler)**
 Pebble embraces the liquid, unstructured nature of Markdown. It fundamentally views task tracking as a pure directed graph. It does not treat the user as an adversary by baking strict "Jira-esque" business logic (cycle prevention, cascading effective statuses) into the storage layer. Modeled after Git's mathematically sound core, the system writes the graph as you dictate it. If you author a cycle, neither task will ever emerge in the "ready" queue—perfectly matching real-world deadlocks. If you reference a missing dependency, the task blocks until the dependency exists or the reference is removed. We provide `pebble doctor` to diagnose these structural anomalies, but the system never panics, refuses writes, or requires complex in-memory cycle-breakers to function.
 
 **Non-Goals:**

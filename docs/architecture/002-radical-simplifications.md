@@ -1,6 +1,8 @@
-# Radical Simplifications for Pebble (The "Worse is Better" Design)
+[STATUS: FROZEN]
 
-This document preserves the core design philosophies that pivoted Pebble from a strict, normalized relational-database-like system to a highly fluid, simple, graph-based tracker following the "worse is better" principle heavily inspired by Git's content-addressable DAG.
+# Radical Simplifications for Pebble (The "Permissive Writes, Strict Evaluation" Design)
+
+This document preserves the core design philosophies that pivoted Pebble from a strict, normalized relational-database-like system to a highly fluid, simple, graph-based tracker following the "Permissive Writes, Strict Evaluation" principle heavily inspired by Git's content-addressable DAG.
 
 ## 1. The One True Edge (`deps`)
 Instead of dividing structural relationships into `parent/child` (hierarchy) and `after` (temporal prerequisites) which requires complex graph traversal and mixed-loop handling, Pebble uses exactly one structural edge: `deps` (dependencies).
@@ -9,7 +11,7 @@ Instead of dividing structural relationships into `parent/child` (hierarchy) and
 
 Mathematically and practically, an Epic is just a task that requires other tasks to finish before it can be closed. By collapsing hierarchy and temporality into a single directed edge, we dramatically reduce graph traversal rules.
 
-## 2. Emotively Deadpan Rules (Cycles & Dangling Pointers)
+## 2. Permissive Writes, Strict Evaluation (Cycles & Dangling Pointers)
 Instead of proactively "handling" invalid data, enforcing "fail-safe" vs "fail-open", or blocking writes to prevent cycles, Pebble simply defines what it means to be ready:
 **Rule: A task is "ready" if and only if all of its `deps` exist and are closed (`done` or `canceled`).**
 * **Dangling Pointers:** If A depends on Z, and Z doesn't exist, is Z closed? No. Therefore, A is blocked.
