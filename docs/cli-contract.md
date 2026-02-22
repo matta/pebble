@@ -70,7 +70,7 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--priority <N>`: Filters by priority (OR'ed).
     * `--is-ready`: Filters to tasks whose status is actionable (`todo` or `in_progress`), whose `deps` all exist, and whose `deps` are all `done` or `canceled`.
     * `--all`: Disables default omission of `done` and `canceled` tasks.
-    * `--sort <field>`: Sort by a specific field. Valid fields: `priority`, `blocking`, `created_at`, `modified_at`, `status`, `title`. Prefix with `-` for descending. Ex: `--sort -created_at`.
+    * `--sort <field>`: Sort by a specific field. Valid fields: `priority`, `blocking`, `created_at`, `modified_at`, `status`, `title`. Defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the canonical order is: `todo`, `in_progress`, `done`, `canceled`. When sorting by `priority`, tasks with no `priority` sort after all prioritized tasks.
     * `--limit <N>`: Limits returned rows.
 * **Default sort order**: Deterministic and dependency-aware:
     1. **Topological order** (respecting `deps`): if B depends on A, A appears before B.
@@ -94,8 +94,9 @@ Outputs full details of a specific task.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>`.
 
 ### `pebble search <query>`
-Full-text substring search across titles and Markdown bodies.
+Case-insensitive substring search against task `title` (frontmatter) and raw Markdown `body` (frontmatter excluded). No regex, stemming, or tokenization.
 * **Inputs**: `<query>` (string).
+* **Results order**: Default list order (see `pebble list` default sort).
 * **Output (`--json`)**: `{"tasks": [<TaskObject>, ...]}`
 
 ## Mutation Commands

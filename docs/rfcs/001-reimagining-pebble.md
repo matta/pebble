@@ -205,7 +205,7 @@ pub struct TaskFrontmatter {
     // Status strictly validated against the enum.
     pub status: TaskStatus,
     // Optional priority for ordering.
-    pub priority: Option<u8>,
+    pub priority: Option<u32>,
     pub created_at: DateTime<Utc>,
     pub modified_at: Option<DateTime<Utc>>,
     pub resolved_at: Option<DateTime<Utc>>,
