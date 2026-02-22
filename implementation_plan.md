@@ -111,7 +111,7 @@ Sequencing: P6-1 → P6-2 → P6-3 → P6-4 → P6-5 → P6-6 → P6-7 → P6-8 
 ## Phase 7: Deterministic Merge & Storage Redesign (CRDT-Friendly)
 - [ ] Decide storage layout (no backward-compat required)
     - [ ] Evaluate CRDT operation log vs. per-issue files vs. single JSONL snapshot
-    - [ ] Consider Markdown + YAML frontmatter for human-readable per-issue storage
+    - [ ] Consider Markdown + TOML frontmatter for human-readable per-issue storage
     - [ ] Pick one and document deterministic merge semantics
 - [ ] Define schema v2 (supports children + ordered checklists)
 - [ ] Implement conflict-free merge (no prompts)

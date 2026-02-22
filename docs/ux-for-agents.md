@@ -21,22 +21,23 @@ tools. Design for composability from day one.
 
 ## 1. Data Storage in Git
 
-### The Recommendation: Markdown + YAML Frontmatter
+### The Recommendation: Markdown + TOML Frontmatter
 
 For data that lives in a Git repository and needs to be read by both
 humans (in code review, in an editor) and agents (via tool calls or
-direct file reads), **Markdown with YAML frontmatter** is the clear
+direct file reads), **Markdown with TOML frontmatter** is the clear
 winner.
 
 ```markdown
----
-id: "proj-0kq"
-status: "open"
-priority: 0
-type: "task"
-owner: "matt@rfc20.org"
-created_at: "2026-01-15T10:30:00Z"
----
++++
+id = "proj-0kq"
+status = "open"
+priority = 0
+type = "task"
+owner = "matt@rfc20.org"
+created_at = 2026-01-15T10:30:00Z
++++
+
 # Deploy staging environment
 
 Run the canary deploy pipeline against the `staging` cluster.
@@ -45,7 +46,7 @@ Verify health checks pass before promoting.
 
 **Why this format?**
 
-| Concern | Markdown + YAML | JSON | JSONL | Plain YAML |
+| Concern | Markdown + TOML | JSON | JSONL | Plain TOML |
 |:---|:---|:---|:---|:---|
 | **Git diffs** | ✅ Clean, line-based | ❌ Brace noise, trailing commas | ✅ Line-per-record | ✅ Clean |
 | **Human readability** | ✅ Native rendering everywhere | ⚠️ Passable | ⚠️ Dense | ✅ Good |
@@ -310,7 +311,7 @@ uses fewer tokens than JSON for prose-heavy content.
 When building a tool intended for dual human/agent use:
 
 ### Data Storage
-- [ ] Prose-heavy records → Markdown with YAML frontmatter
+- [ ] Prose-heavy records → Markdown with TOML frontmatter
 - [ ] Record-oriented data → JSONL (one record per line)
 - [ ] Small collections → consider one file per record
 - [ ] All data files → committed to Git, diffable, no binary formats

@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "crates/pebble",
-    "crates/pebble_legacy",
     "xtask",
 ]
 
@@ -15,7 +14,6 @@ clap = "4.5.59"
 nanoid = "0.4.0"
 chrono = { version = "0.4.43", features = ["serde"] }
 serde_json = "1.0.149"
-serde_yaml = "0.9.34"
 assert_cmd = "2.1.2"
 predicates = "3.1.4"
 const_format = "0.2"

@@ -25,7 +25,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - `pebble next` is a convenience command that returns the highest-priority ready task.
-- Default list order: topological (respecting `deps`), then `priority`, then `created_at`.
+- Default list order: topological (respecting `deps`), then transitive blocking count, then `priority`, then `created_at`, then `id`.
 - Agents MAY read and edit task bodies directly (a core benefit); frontmatter mutations SHOULD use the CLI.
 - `.pebble/AGENTS.md` provides agent bootstrapping instructions; `pebble init` creates it.
 - One-time migration via a throw-away script from the existing JSONL.
@@ -163,7 +163,7 @@ Required:
 Optional:
 - `deps` (string array; the single dependency edge)
 - `tags` (string array)
-- `priority` (integer)
+- `priority` (integer, `0..99`; lower number = higher priority)
 - `modified_at` (RFC3339 string; automatically updated on modification; replaces legacy `updated_at`)
 - `resolved_at` (RFC3339 string; automatically managed based on status)
 
@@ -173,7 +173,13 @@ Intentionally omitted:
 Computed:
 - `is_ready` (boolean; true only when all `deps` exist and are terminal: `done` or `canceled`)
 - `blocked_by` (list of `deps` that are missing or non-terminal, where non-terminal means `todo` or `in_progress`)
-- `blocking` (list of task IDs whose `deps` include this task and are therefore blocked until it is terminal)
+- `blocking` (list of non-terminal task IDs whose `deps` directly include this task — the inverse edge of `deps`, excluding terminal dependents)
+
+**Unknown Frontmatter Fields**
+- Unknown frontmatter keys are ignored by read commands (no warnings).
+- `pebble doctor` and `pebble fix` emit warnings for unknown fields.
+- `pebble check` treats unknown fields as errors.
+- `pebble fix` does not remove unknown fields.
 
 > **Rationale for Omitted Fields:**
 > - **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
@@ -205,7 +211,7 @@ pub struct TaskFrontmatter {
     // Status strictly validated against the enum.
     pub status: TaskStatus,
     // Optional priority for ordering.
-    pub priority: Option<u8>,
+    pub priority: Option<u32>,
     pub created_at: DateTime<Utc>,
     pub modified_at: Option<DateTime<Utc>>,
     pub resolved_at: Option<DateTime<Utc>>,
@@ -259,8 +265,10 @@ pub struct TaskNode {
 
 **Dynamic Scoring (Starvation Prevention)**
 - Starvation prevention is a runtime sorting concern, not a data-layer rule. There is no computed or inherited priority — the `priority` field in YAML is strictly local.
-- `pebble next` sorts the ready frontier using the sort key tuple: **`(len(blocking) DESC, priority ASC, created_at ASC)`**. Blocking count is the primary key; local priority breaks ties; creation time is the final tiebreaker. A task blocking 5 others always ranks above a task blocking 0, regardless of local priority. This means a small task that is the sole blocker of a massive Epic naturally bubbles to the top of the queue.
+- `pebble next` sorts the ready frontier using the sort key tuple: **`(transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC)`**. The transitive blocking count (unique, non-terminal tasks reachable by traversing reverse `deps` edges) is the primary key; local priority breaks ties; creation time is the next tiebreaker; `id` (lexicographic) is the absolute tiebreaker guaranteeing determinism. A task blocking 5 downstream others always ranks above a task blocking 0, regardless of local priority. This means a small task that is the sole blocker of a massive Epic naturally bubbles to the top of the queue.
 - This replaces the old transitive `effective_priority` inheritance model. Priority information is never written back to YAML; it exists only as a runtime sort key.
+
+**Transitive Blocking Count (Definition)**: The count of **unique, non-terminal** tasks (`todo` or `in_progress`) reachable by traversing the **reverse** `deps` edges starting from this task (i.e., tasks that depend on this task, directly or indirectly). The current task is excluded from the count. Missing IDs are ignored because they do not exist as graph nodes. Cycles are handled by tracking visited nodes, so each task contributes at most 1 to the count.
 
 ### 4.6 CLI
 
@@ -272,7 +280,7 @@ pub struct TaskNode {
 
 **CLI Command Surface (Authoritative)**
 
-This RFC supersedes `docs/cli-contract.md`; that document will be updated during implementation.
+This RFC supersedes the earlier `003-cli-contract.md` snapshot in this directory; the live `docs/cli-contract.md` is the authoritative interface specification and will be kept in sync during implementation.
 
 **Global options**
 - `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
@@ -296,7 +304,7 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 
 **MVP filter semantics**
 - `--status <status>` matches tasks whose `status` equals `<status>`. The flag is repeatable; multiple values are OR'ed. Explicitly requesting `--status done` or `--status canceled` guarantees those tasks are included, overriding the default omission.
-- `--priority <N>` matches tasks whose `priority` equals `N`. The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
+- `--priority <N>` matches tasks whose `priority` equals `N` (valid range: `0..99`). The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
 - `--tag <tag>` matches tasks whose `tags` array contains `<tag>`. The flag is repeatable; multiple values are AND'ed (a task must possess all provided tags to match).
 - `--dep <id>` matches tasks whose `deps` array contains `<id>`. The flag is repeatable; multiple values are OR'ed (a task matches if it depends on any of the provided IDs).
 - `--all` disables the default omission, ensuring `done` and `canceled` tasks are evaluated alongside actionable ones.
@@ -306,20 +314,23 @@ This RFC supersedes `docs/cli-contract.md`; that document will be updated during
 The default sort order for `pebble list` (and by extension `pebble next`) is deterministic and dependency-aware:
 
 1. **Topological order** (respecting `deps`): if task B has `deps: [A]`, then A appears before B regardless of priority. Among tasks at the same topological level (no dependency relationship between them), the remaining tiebreakers apply.
-2. **Blocking count** descending (`len(blocking)`). Tasks blocking a larger number of downstream tasks appear first. This creates the dynamic scoring that surfaces critical bottlenecks.
+   - Missing dependencies are ignored for ordering (only existing tasks participate).
+   - Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
+2. **Transitive blocking count** descending. The number of **unique, non-terminal** tasks recursively reachable downstream through dependency edges (see definition in §4.5). Tasks blocking a larger number of downstream tasks appear first. This creates the dynamic scoring that surfaces critical bottlenecks.
 3. **Priority** ascending (lower number = higher priority), using `priority`. Tasks with no `priority` sort after all prioritized tasks.
-4. **`created_at`** ascending (oldest first) as the final tiebreaker.
+4. **`created_at`** ascending (oldest first).
+5. **`id`** ascending (lexicographic) as the absolute tiebreaker, guaranteeing determinism.
 
-The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `priority`), `created_at`, `modified_at`, `status` (which sorts by `status`), `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `done`, `canceled`.
+The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `priority`), `blocking`, `created_at`, `modified_at`, `status` (which sorts by `status`), `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. Ties are broken by `created_at` ascending, then `id` ascending. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `done`, `canceled`. When sorting by `blocking`, the key is the transitive blocking count (not `len(blocking)`).
 
-Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done` or `canceled`), so the topological component of the default sort has no effect and the order is effectively blocking count → priority → created_at.
+Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done` or `canceled`), so the topological component of the default sort has no effect and the order is effectively blocking count → priority → created_at → id.
 
 **Future direction for retrieval**
 - Keep simple flags for common cases, and add a small, explicit query language only if needed. A future `--filter <expr>` (or a dedicated `pebble query`) can provide compound conditions and ranges for both humans and agents without re-inventing SQL.
 
 **Mutation commands**
-- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>`, `--body <text>`, `--dep <id>`, `--tag <tag>`. The `--body` text becomes the Markdown body of the file.
-- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>`, `--clear-priority`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-dep <id>`, `--remove-dep <id>`. To unset optional singular fields, use `--clear-priority`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
+- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--dep <id>`, `--tag <tag>`. The `--body` text becomes the Markdown body of the file.
+- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-dep <id>`, `--remove-dep <id>`. To unset optional singular fields, use `--clear-priority`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter. If a filename collision occurs, the CLI appends a numeric suffix to the archived filename.
 - Agents and users are encouraged to edit Markdown bodies directly — this is a core benefit of the Markdown-native model. The CLI also provides `--body` and `--append-body` on `pebble update` for simple cases.
 
@@ -333,8 +344,8 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - **Write commands:** `add`, `update`, `fix`, and `archive` are the only commands that mutate task files or their locations.
 
 **Strictness & Failure Modes**
-- Validation is relaxed across the board. The CLI is not a schema compiler.
-- **Read Commands:** Full recursive scans build the graph. If a cycle or dangling pointer exists, it is naturally reflected in `is_ready: false` states. Only unparseable YAML or duplicate IDs cause a file to be skipped (with a stderr warning).
+- Graph validation is relaxed; schema validation is strict only for `pebble check`. Unknown fields, invalid types, or malformed frontmatter cause `pebble check` errors.
+- **Read Commands:** Full recursive scans build the graph. If a cycle or dangling pointer exists, it is naturally reflected in `is_ready: false` states. Unparseable YAML or duplicate IDs cause a file to be skipped (with a stderr warning). Unknown fields are ignored without warning.
 - **Write Commands:** Graph modifications (`add`, `update`) write directly without checking for loops. If you author a loop, `pebble doctor` will catch it asynchronously. This guarantees developers can always write to their files.
 - **Structured Errors:** Full graph anomalies are available via `pebble doctor --json` or `pebble check --json`.
 
@@ -356,7 +367,7 @@ On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-rea
 
 A `TaskObject` includes:
 - All stored frontmatter fields (`id`, `title`, `status`, `priority`, `created_at`, `modified_at`, `resolved_at`, `deps`, `tags`).
-- Computed fields: `is_ready` (boolean), `blocked_by` (array of missing or open deps), `blocking` (array of tasks that are blocked by this task).
+- Computed fields: `is_ready` (boolean), `blocked_by` (array of missing or open deps), `blocking` (array of non-terminal tasks that are blocked by this task).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim.
 - `path`: the file path relative to `tasks-dir`.
 

@@ -3,7 +3,7 @@
 Pebble uses a Markdown-native storage model. Each task is represented as a single Markdown file located within the configured tasks directory. 
 
 The file consists of two parts:
-1. **YAML Frontmatter**: Contains all structured metadata and graph edges. Delimited by `---`.
+1. **TOML Frontmatter**: Contains all structured metadata and graph edges. Delimited by `+++`.
 2. **Markdown Body**: Contains free-form description, notes, conversational elements, and checklists, separated from the frontmatter.
 
 ## Rust Schema Definitions
@@ -11,12 +11,12 @@ The file consists of two parts:
 The data layer is strictly defined by the following Rust structures. AI agents and CLI tooling must adhere to these definitions when parsing or generating task files.
 
 ```rust
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use toml_datetime::Datetime;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "snake_case")] // Ensures YAML matches exactly "todo", "in_progress", "done", "canceled".
+#[serde(rename_all = "snake_case")] // Ensures TOML matches exactly "todo", "in_progress", "done", "canceled".
 pub enum TaskStatus {
     Todo,
     InProgress,
@@ -24,18 +24,18 @@ pub enum TaskStatus {
     Canceled,
 }
 
-/// Represents the exact structure of the YAML front matter.
+/// Represents the exact structure of the TOML front matter.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaskFrontmatter {
     pub id: String,
     pub title: String,
     // Status strictly validated against the enum.
     pub status: TaskStatus,
-    // Optional priority for ordering.
-    pub priority: Option<u8>,
-    pub created_at: DateTime<Utc>,
-    pub modified_at: Option<DateTime<Utc>>,
-    pub resolved_at: Option<DateTime<Utc>>,
+    // Valid range: 0..99. Lower number = higher priority.
+    pub priority: Option<u32>,
+    pub created_at: Datetime,
+    pub modified_at: Option<Datetime>,
+    pub resolved_at: Option<Datetime>,
     #[serde(default)]
     pub deps: Vec<String>,
     #[serde(default)]
@@ -69,3 +69,16 @@ Pebble intentionally omits traditional issue tracker audit fields from the schem
 Instead of vague update markers, Pebble relies on specific timestamps for operations:
 * **`modified_at`**: Used to indicate when the task was last modified. This provides a clear, deterministic indicator of stale or neglected tasks.
 * **`resolved_at`**: Used purely for archival purposes. Tasks in a terminal state (`done`, `canceled`) whose `resolved_at` passes a certain age threshold can be easily archived. Relying on an explicit frontmatter field rather than file system `mtime` makes archiving deterministic and independent of Git cloning behavior.
+
+## Priority Range
+
+Valid values for `priority` are `0..99` (lower number = higher priority). Values outside this range are rejected as schema errors by the CLI. Tasks with no `priority` sort after all prioritized tasks in sort operations.
+
+## Unknown Frontmatter Fields
+
+Unknown frontmatter keys are **not** fatal for normal reads and are never removed by `pebble fix`:
+
+* **Read commands** ignore unknown keys without warning.
+* **`pebble doctor`** reports unknown fields as warnings.
+* **`pebble fix`** emits warnings for unknown fields but does **not** remove them.
+* **`pebble check`** treats unknown fields as errors.

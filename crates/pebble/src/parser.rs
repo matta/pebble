@@ -2,34 +2,34 @@ use crate::models::{TaskFrontmatter, TaskNode};
 use color_eyre::eyre::{Result, eyre};
 use std::path::Path;
 
-/// Parses a Markdown file with YAML frontmatter into a TaskNode.
+/// Parses a Markdown file with TOML frontmatter into a TaskNode.
 pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let lines: Vec<&str> = content.lines().collect();
 
     // Frontmatter must start on the first line.
-    if lines.is_empty() || lines[0].trim() != "---" {
+    if lines.is_empty() || lines[0].trim() != "+++" {
         return Err(eyre!(
-            "Missing or invalid YAML frontmatter: file must start with '---'"
+            "Missing or invalid TOML frontmatter: file must start with '+++'"
         ));
     }
 
     // Find the end of the frontmatter.
     let mut end_idx = None;
     for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim() == "---" {
+        if line.trim() == "+++" {
             end_idx = Some(i);
             break;
         }
     }
 
-    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '---' for YAML frontmatter"))?;
+    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
 
     // Extract frontmatter string.
-    let yaml_str = lines[1..end_idx].join("\n");
-    let frontmatter: TaskFrontmatter = serde_yaml::from_str(&yaml_str)
-        .map_err(|e| eyre!("Failed to parse YAML frontmatter: {}", e))?;
+    let toml_str = lines[1..end_idx].join("\n");
+    let frontmatter: TaskFrontmatter =
+        toml::from_str(&toml_str).map_err(|e| eyre!("Failed to parse TOML frontmatter: {}", e))?;
 
-    // Extract body, stripping leading newlines after the closing '---'.
+    // Extract body, stripping leading newlines after the closing '+++'.
     let body_lines = &lines[end_idx + 1..];
 
     // We want to reconstruct the body. We can use `join("\n")`,
@@ -57,12 +57,12 @@ mod tests {
 
     #[test]
     fn test_parse_valid_task() {
-        let content = r#"---
-id: issue-1
-title: Test
-status: todo
-created_at: 2026-02-21T17:00:00Z
----
+        let content = r#"+++
+id = "issue-1"
+title = "Test"
+status = "todo"
+created_at = 2026-02-21T17:00:00Z
++++
 
 # Body
 This is the body.
@@ -78,30 +78,30 @@ This is the body.
     fn test_parse_missing_frontmatter() {
         let content = "# Just a markdown file";
         let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
-        assert!(err.to_string().contains("must start with '---'"));
+        assert!(err.to_string().contains("must start with '+++'"));
     }
 
     #[test]
     fn test_parse_unclosed_frontmatter() {
-        let content = r#"---
-id: issue-1
-title: Test
-status: todo
-created_at: 2026-02-21T17:00:00Z
+        let content = r#"+++
+id = "issue-1"
+title = "Test"
+status = "todo"
+created_at = 2026-02-21T17:00:00Z
 "#;
         let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
-        assert!(err.to_string().contains("Missing closing '---'"));
+        assert!(err.to_string().contains("Missing closing '+++'"));
     }
 
     #[test]
-    fn test_parse_invalid_yaml() {
-        let content = r#"---
-id: issue-1
-title: Test
-status: invalid_status
-created_at: 2026-02-21T17:00:00Z
----"#;
+    fn test_parse_invalid_toml() {
+        let content = r#"+++
+id = "issue-1"
+title = "Test"
+status = "invalid_status"
+created_at = 2026-02-21T17:00:00Z
++++"#;
         let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
-        assert!(err.to_string().contains("Failed to parse YAML frontmatter"));
+        assert!(err.to_string().contains("Failed to parse TOML frontmatter"));
     }
 }
