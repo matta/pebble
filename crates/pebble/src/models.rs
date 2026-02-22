@@ -2,6 +2,20 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Represents the lifecycle state of a task.
+///
+/// This enum defines the possible states a task can be in.
+/// The variants are serialized to snake_case strings in the YAML frontmatter.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::models::TaskStatus;
+///
+/// let status = TaskStatus::Todo;
+/// // Serializes to "todo"
+/// assert_eq!(serde_yaml::to_string(&status).unwrap().trim(), "todo");
+/// ```
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
@@ -12,6 +26,20 @@ pub enum TaskStatus {
 }
 
 /// Represents the exact structure of the YAML front matter.
+///
+/// This struct corresponds to the metadata block at the top of a task file.
+/// It includes the task's unique ID, title, status, and other metadata.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::models::{TaskFrontmatter, TaskStatus};
+///
+/// let yaml = "id: issue-123\ntitle: Test\nstatus: todo\ncreated_at: 2023-01-01T00:00:00Z";
+/// let fm: TaskFrontmatter = serde_yaml::from_str(yaml).unwrap();
+/// assert_eq!(fm.title, "Test");
+/// assert_eq!(fm.status, TaskStatus::Todo);
+/// ```
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct TaskFrontmatter {
     pub id: String,
@@ -29,8 +57,34 @@ pub struct TaskFrontmatter {
     pub tags: Vec<String>,
 }
 
-/// The in-memory representation.
-/// This is what the CLI stores in its graph topology.
+/// The in-memory representation of a task.
+///
+/// This struct combines the task's metadata ([`TaskFrontmatter`]), its file path,
+/// and its raw markdown body. It serves as the primary node in the task graph.
+///
+/// # Examples
+///
+/// ```
+/// use std::path::PathBuf;
+/// use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
+///
+/// let node = TaskNode {
+///     path: PathBuf::from("tasks/issue-123.md"),
+///     frontmatter: TaskFrontmatter {
+///         id: "issue-123".into(),
+///         title: "My Task".into(),
+///         status: TaskStatus::Todo,
+///         priority: None,
+///         created_at: chrono::Utc::now(),
+///         modified_at: None,
+///         resolved_at: None,
+///         deps: vec![],
+///         tags: vec![],
+///     },
+///     body: "Detailed description".into(),
+/// };
+/// assert_eq!(node.frontmatter.title, "My Task");
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct TaskNode {
     pub path: PathBuf,
