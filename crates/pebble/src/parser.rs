@@ -4,75 +4,36 @@ use std::path::Path;
 
 /// Parses a Markdown file with YAML frontmatter into a TaskNode.
 pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
-    // Zero-allocation parsing strategy:
-    // 1. Check start line.
-    // 2. Scan for closing "---" using slicing instead of splitting all lines.
-
-    // 1. Check start
-    let first_line_end = content.find('\n').unwrap_or(content.len());
-    let first_line = &content[0..first_line_end];
-
-    if first_line.trim() != "---" {
+    // 1. Ensure file starts with "---"
+    let content = content.trim_start();
+    if !content.starts_with("---") {
         return Err(eyre!(
             "Missing or invalid YAML frontmatter: file must start with '---'"
         ));
     }
 
-    let rest_start = if first_line_end < content.len() {
-        first_line_end + 1
-    } else {
-        content.len()
-    };
+    // 2. Find the closing "---"
+    // We look for a newline followed by "---" to ensure it's on its own line.
+    // This handles both LF (\n---) and CRLF (\r\n---).
+    let remainder = &content[3..];
+    let end_offset = remainder
+        .find("\n---")
+        .ok_or_else(|| eyre!("Missing closing '---' for YAML frontmatter"))?;
 
-    // 2. Find closing "---"
-    let mut fm_end_start = 0;
-    let mut fm_end_end = 0;
-    let mut found = false;
-    let mut search_idx = rest_start;
-
-    while let Some(offset) = content[search_idx..].find('\n') {
-        let newline_idx = search_idx + offset;
-        let line = &content[search_idx..newline_idx];
-
-        if line.trim() == "---" {
-            fm_end_start = search_idx;
-            fm_end_end = newline_idx;
-            found = true;
-            break;
-        }
-
-        search_idx = newline_idx + 1;
-    }
-
-    if !found {
-        // Check last line (EOF case)
-        let last_line = &content[search_idx..];
-        if last_line.trim() == "---" {
-            fm_end_start = search_idx;
-            fm_end_end = content.len();
-            found = true;
-        }
-    }
-
-    if !found {
-        return Err(eyre!("Missing closing '---' for YAML frontmatter"));
-    }
-
-    // Extract frontmatter
-    let yaml_slice = &content[rest_start..fm_end_start];
+    // 3. Extract and parse frontmatter (zero allocation slice)
+    let yaml_slice = &remainder[..end_offset];
     let frontmatter: TaskFrontmatter = serde_yaml::from_str(yaml_slice)
         .map_err(|e| eyre!("Failed to parse YAML frontmatter: {}", e))?;
 
-    // Extract body
-    let body_start = if fm_end_end < content.len() {
-        fm_end_end + 1
-    } else {
-        content.len()
-    };
-    let body_slice = &content[body_start..];
+    // 4. Extract body
+    // The body starts after the closing "---" (3 chars) and potentially a newline.
+    // end_offset points to the \n before ---.
+    // So the closing delimiter starts at end_offset + 1 (the "-").
+    // Its length is 3. So end of delimiter is end_offset + 1 + 3 = end_offset + 4.
+    let body_start = end_offset + 4;
+    let body_slice = &remainder[body_start..];
 
-    // Optimize: trim first to reduce size, then normalize newlines.
-    // Normalization (CRLF -> LF) ensures consistency with previous behavior and tests.
+    // Normalize body: trim start and normalize CRLF to LF
     let body = body_slice.trim_start().replace("\r\n", "\n");
 
     Ok(TaskNode {
