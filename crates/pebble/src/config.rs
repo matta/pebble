@@ -59,7 +59,11 @@ pub fn parse_config(toml_str: &str) -> Result<Config> {
         ));
     }
 
-    if config.tasks_dir.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+    if config
+        .tasks_dir
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
         return Err(eyre!(
             "Configuration error: 'tasks-dir' must not contain parent directory components ('..'). Found: {}",
             config.tasks_dir.display()
@@ -112,7 +116,8 @@ mod tests {
         "#;
         let err = parse_config(toml).unwrap_err();
         assert!(
-            err.to_string().contains("must not contain parent directory components"),
+            err.to_string()
+                .contains("must not contain parent directory components"),
             "Error was: {}",
             err
         );
@@ -122,7 +127,9 @@ mod tests {
         "#;
         let err_nested = parse_config(toml_nested).unwrap_err();
         assert!(
-            err_nested.to_string().contains("must not contain parent directory components"),
+            err_nested
+                .to_string()
+                .contains("must not contain parent directory components"),
             "Error was: {}",
             err_nested
         );
