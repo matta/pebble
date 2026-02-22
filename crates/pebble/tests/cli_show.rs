@@ -7,21 +7,24 @@ use tempfile::tempdir;
 fn test_show_path_only_relative() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    
+
     // Create config
     let config_dir = root.join(".pebble");
     fs::create_dir(&config_dir).unwrap();
-    fs::write(config_dir.join("config.toml"), 
+    fs::write(
+        config_dir.join("config.toml"),
         r#"
         issue_prefix = "PROJ"
         tasks_dir = "tasks"
-        "#
-    ).unwrap();
-    
+        "#,
+    )
+    .unwrap();
+
     let tasks_dir = root.join("tasks");
     fs::create_dir(&tasks_dir).unwrap();
     let task_path = tasks_dir.join("PROJ-1.md");
-    fs::write(&task_path, 
+    fs::write(
+        &task_path,
         r#"---
 id: PROJ-1
 title: "First Task"
@@ -30,15 +33,13 @@ deps: []
 created_at: "2024-01-01T00:00:00Z"
 ---
 Body text
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
-    let expected_rel_path = if cfg!(windows) {
-        "PROJ-1.md\n"
-    } else {
-        "PROJ-1.md\n"
-    };
+    let expected_rel_path = "PROJ-1.md\n";
 
+    #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("pebble").unwrap();
     cmd.current_dir(root)
         .arg("show")
@@ -55,21 +56,24 @@ Body text
 fn test_show_formatted_output() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    
+
     // Create config
     let config_dir = root.join(".pebble");
     fs::create_dir(&config_dir).unwrap();
-    fs::write(config_dir.join("config.toml"), 
+    fs::write(
+        config_dir.join("config.toml"),
         r#"
         issue_prefix = "PROJ"
         tasks_dir = "tasks"
-        "#
-    ).unwrap();
-    
+        "#,
+    )
+    .unwrap();
+
     let tasks_dir = root.join("tasks");
     fs::create_dir(&tasks_dir).unwrap();
     let task_path = tasks_dir.join("PROJ-2.md");
-    fs::write(&task_path, 
+    fs::write(
+        &task_path,
         r#"---
 id: PROJ-2
 title: "A Formatted Task"
@@ -79,9 +83,11 @@ tags: ["frontend"]
 created_at: "2024-01-01T00:00:00Z"
 ---
 Body text explaining the task.
-"#
-    ).unwrap();
+"#,
+    )
+    .unwrap();
 
+    #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("pebble").unwrap();
     cmd.current_dir(root)
         .arg("show")
