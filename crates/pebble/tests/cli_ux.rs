@@ -1,8 +1,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
-use tempfile::tempdir;
 use tempfile::TempDir;
+use tempfile::tempdir;
 
 fn setup_test_env() -> TempDir {
     let dir = tempdir().unwrap();
