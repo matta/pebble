@@ -41,11 +41,19 @@ impl<'a> TaskObject<'a> {
             })
             .collect();
 
-        let blocking = graph
+        let blocking: Vec<String> = graph
             .reverse_deps
             .get(&node.frontmatter.id)
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+            .filter(|dep_id| {
+                graph
+                    .nodes
+                    .get(*dep_id)
+                    .is_some_and(|dep_node| dep_node.frontmatter.status.is_actionable())
+            })
             .cloned()
-            .unwrap_or_default();
+            .collect();
 
         let rel_path = node.path.strip_prefix(tasks_dir).unwrap_or(&node.path);
 
@@ -206,4 +214,56 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
         println!("\n{}", obj.body.trim());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::str::FromStr;
+
+    fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
+        TaskNode {
+            path: PathBuf::from(format!("{id}.md")),
+            body: String::new(),
+            frontmatter: TaskFrontmatter {
+                id: id.to_string(),
+                title: id.to_string(),
+                status,
+                priority: None,
+                created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap(),
+                modified_at: None,
+                resolved_at: None,
+                deps: deps.into_iter().map(|s| s.to_string()).collect(),
+                tags: vec![],
+            },
+        }
+    }
+
+    #[test]
+    fn test_blocking_list_excludes_terminal_dependents() {
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            "A".to_string(),
+            make_test_node("A", TaskStatus::Todo, vec![]),
+        );
+        nodes.insert(
+            "B".to_string(),
+            make_test_node("B", TaskStatus::Todo, vec!["A"]),
+        );
+        nodes.insert(
+            "C".to_string(),
+            make_test_node("C", TaskStatus::Done, vec!["A"]),
+        );
+
+        let graph = TaskGraph::new(nodes);
+        let node = graph.nodes.get("A").unwrap();
+        let tasks_dir = PathBuf::from(".");
+        let obj = TaskObject::from_node(node, &graph, tasks_dir.as_path());
+
+        let mut blocking = obj.blocking.clone();
+        blocking.sort();
+        assert_eq!(blocking, vec!["B"]);
+    }
 }

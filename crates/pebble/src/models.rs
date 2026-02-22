@@ -25,6 +25,16 @@ pub enum TaskStatus {
     Canceled,
 }
 
+impl TaskStatus {
+    pub fn is_actionable(&self) -> bool {
+        matches!(self, Self::Todo | Self::InProgress)
+    }
+
+    pub fn is_closed(&self) -> bool {
+        matches!(self, Self::Done | Self::Canceled)
+    }
+}
+
 /// Represents the exact structure of the TOML front matter.
 ///
 /// This struct corresponds to the metadata block at the top of a task file.
@@ -123,6 +133,19 @@ mod tests {
 
         let err = serde_json::from_str::<TaskStatus>("\"invalid_status\"").unwrap_err();
         assert!(err.to_string().contains("unknown variant"));
+    }
+
+    #[test]
+    fn test_task_status_helpers() {
+        assert!(TaskStatus::Todo.is_actionable());
+        assert!(TaskStatus::InProgress.is_actionable());
+        assert!(!TaskStatus::Done.is_actionable());
+        assert!(!TaskStatus::Canceled.is_actionable());
+
+        assert!(TaskStatus::Done.is_closed());
+        assert!(TaskStatus::Canceled.is_closed());
+        assert!(!TaskStatus::Todo.is_closed());
+        assert!(!TaskStatus::InProgress.is_closed());
     }
 
     #[test]
