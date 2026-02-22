@@ -1,6 +1,6 @@
 # Implementation Plan - Pebble
 
-This document outlines the step-by-step plan to implement `pebble`, a simplified Rust version of `beads`.
+This document outlines the step-by-step plan to implement `pebble`, a streamlined CLI task tracker.
 The approach is strict TDD. We will write a failing test, then implement the code to pass it.
 
 ## Phase 1: Foundation & Configuration (Completed)

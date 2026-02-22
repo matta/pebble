@@ -1,69 +1,43 @@
 # Project: Pebble
 
-This project is a Rust re-implementation of the existing `beads` tool, with a drastically reduced feature set.
+This project is a CLI task tracker written in Rust, built upon a Markdown-native graph design.
 
-## Project Goals
+## Project Goals & Immutable Invariants
 
-1.  **Drastically Simpler**: Focus on core features, avoiding complexity.
-2.  **Reduced Feature Set**:
-    - Backend: **JSONL ONLY**. No SQLite support.
-    - Configuration: **Strict**. The only supported format is TOML configuration in `.pebble/config.toml`. Other configurations are unsupported. (Note: Original `beads` used `.beads/config.yaml`).
-    - Daemon Mode: **NOT SUPPORTED**. The program will not run as a daemon. Configuration suggesting daemon mode results in run time errors.
-3.  **TDD approach**:
-    - **Test-Driven Development (TDD)** is mandatory.
-    - Extensive test coverage is required.
-    - Tests should exercise the functionality thoroughly.
-4.  **Target Feature Set**:
-    - `bd` version `0.49.6 (c064f2aa)` functionality.
-    - The repository `../beads` is synced to this release commit.
-    - Use `../mydoo` as a reference testbed where beads is set up correctly.
+1. **Markdown-Native Storage**: 
+    - Task data is stored entirely in Markdown files with YAML frontmatter.
+    - There is no JSONL database, no SQLite database, and no hidden Git worktrees.
+    - The files themselves act as the directed graph.
 
-## Implementation Details
+2. **Strict Project Invariants**:
+    - **The `id` field is immutable**: The CLI must never change an ID after generation.
+    - **No Preemptive Cycle Prevention**: Do **NOT** write cycle-prevention or deadlock-handling logic in the storage/write layer. The read layer naturally handles cycles by refusing to consider a cyclical task as "ready".
+    - **One True Edge (`deps`)**: Hierarchy and temporal ordering are entirely collapsed into a single edge: `deps`. Do not re-introduce `parent`/`child` relationships.
+    - **Absolute Readiness**: A task is ready if and only if all of its `deps` exist and have a terminal status. Dangling pointers structurally block readiness forever without panicking.
 
-- **Testbed**: Use `../mydoo` for understanding the intended workflow and verifying behavior against the original `bd` tool.
-- **Reference**: The `../beads` directory contains the original implementation (Go). Consult it for behavior clarification when needed, but do not copy-paste code directly. Focus on re-implementation in idiomatic Rust.
-- **Configuration Parsing**: Must parse `.pebble/config.toml` format. Specifically handle `sync-branch`.
-- **Database**: **JSONL**. The `issues.jsonl` file is the single source of truth.
-- **Architecture: Worktree-Only Data Storage**: 
-    - **No Local Copy**: The `issues.jsonl` file does **NOT** exist in the user's working directory (e.g., `.beads/issues.jsonl`).
-    - **Sync-Branch Location**: The data resides **exclusively** in a Git worktree checked out to the configured `sync-branch` (default `pebble-sync`).
-    - **Operations**: All `pebble` commands (read/write) must locate this worktree (default `.git/pebble-worktrees/<branch>`) and operate directly on the file within it.
-    - **Sync Command**: `pebble sync` is strictly a wrapper for Git operations (`fetch`, `merge`, `push`) **within the worktree**. It does **not** copy files between the worktree and the main working directory.
+3. **Test-Driven Development (TDD) Mandated**:
+    - **Test-Driven Development (TDD)** is strictly mandatory.
+    - Agents must write failing unit tests *before* implementing any graph traversal or business logic defined in `docs/graph-semantics.md`.
+    - Extensive test coverage is required for all new logic.
 
-## Data Model
+4. **Configuration**:
+    - TOML configuration in `.pebble/config.toml` dictates `tasks-dir`. 
+    - `tasks-dir` must always be a path relative to the project root.
 
-The `Issue` struct must strictly adhere to the following schema derived from `issues.jsonl`:
+## Architecture Documentation Requirements
 
-```rust
-struct Issue {
-    id: String,           // e.g., "mydoo-0kq"
-    title: String,
-    description: String,
-    status: String,       // e.g., "closed", "open"
-    priority: i32,        // e.g., 0
-    issue_type: String,   // e.g., "epic", "task"
-    owner: String,        // e.g., "matt@rfc20.org"
-    created_at: String,   // RFC3339 timestamp
-    created_by: String,   // Display name
-    updated_at: String,   // RFC3339 timestamp
-    closed_at: Option<String>, // RFC3339 timestamp, nullable/optional
-    close_reason: Option<String>, // e.g., "Closed", nullable/optional
-}
-```
+When implementing, strictly rely on the specifications extracted from the RFC:
+- [Data Layer (`schema.md`)](docs/schema.md) - Contains the strict Rust struct mappings and details dropped audit fields.
+- [Interface Layer (`cli-contract.md`)](docs/cli-contract.md) - Exact command, flag, and JSON output specifications.
+- [Logic Layer (`graph-semantics.md`)](docs/graph-semantics.md) - Definition of traversal rules, absolute readiness, and dynamic starvation prevention scoring.
+- [Historical RFC & Decisions](docs/architecture/) - Only consult frozen architecture documents for pure context, *never* for active implementation details.
 
 ## Constraints
 
-- Strictly adhere to TDD. Write failing tests first, then implement.
-- Maintain compatibility with the existing `bd` command interface where applicable for the subset of features supported.
-- Do not implement daemon mode.
-- **Style Guide**: Adhere to the [Style Guide](.gemini/styleguide.md).
+- Strictly adhere to TDD.
+- **Style Guide**: Adhere to the [.gemini/styleguide.md](.gemini/styleguide.md).
 - **Docs Discoverability**: Any new documentation added to the repository must be linked from this file.
 - **Clippy Changes Require Approval**: Any modifications to clippy configuration or suppression of clippy warnings must be explicitly discussed and approved by the operator before applying.
-
-## Documentation
-
-- [CLI I/O Contract](docs/cli-contract.md) - Defines stdout/stderr usage and exit code semantics.
-- [UX for Agents](docs/ux-for-agents.md) - Guidelines for designing the CLI for humans and agents.
 
 ## Workflows
 
