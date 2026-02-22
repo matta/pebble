@@ -119,7 +119,7 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--limit <N>`: Limits returned rows.
 * **Default sort order**: Deterministic and dependency-aware:
     1. **Topological order** (respecting `deps`): if B depends on A, A appears before B. Missing dependencies are ignored for ordering (only existing tasks participate). Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
-    2. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `deps` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Tasks blocking more downstream work appear first.
+    2. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `deps` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Tasks blocking more downstream work appear first.
     3. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
     4. **`created_at`** ascending (oldest first).
     5. **`id`** ascending (lexicographic) as the absolute tiebreaker, guaranteeing determinism.

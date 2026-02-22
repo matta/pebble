@@ -103,12 +103,16 @@ impl TaskGraph {
         while let Some(current) = stack.pop() {
             if let Some(downstream_ids) = self.reverse_deps.get(&current) {
                 for downstream_id in downstream_ids {
-                    if visited.insert(downstream_id.clone()) {
-                        if let Some(node) = self.nodes.get(downstream_id)
-                            && node.frontmatter.status.is_actionable()
-                        {
-                            count += 1;
-                        }
+                    if !visited.insert(downstream_id.clone()) {
+                        continue;
+                    }
+
+                    let Some(node) = self.nodes.get(downstream_id) else {
+                        continue;
+                    };
+
+                    if node.frontmatter.status.is_actionable() {
+                        count += 1;
                         stack.push(downstream_id.clone());
                     }
                 }
@@ -261,8 +265,9 @@ mod tests {
 
         let graph = TaskGraph::new(nodes);
 
-        // Reachable non-terminal tasks from A are B, D, E. C is terminal, A is excluded.
-        assert_eq!(graph.count_blocking("A"), 3);
+        // Reachable non-terminal tasks from A are B and E.
+        // C is terminal and stops traversal, so D is not counted.
+        assert_eq!(graph.count_blocking("A"), 2);
     }
 
     #[test]
