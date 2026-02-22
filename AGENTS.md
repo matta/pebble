@@ -64,6 +64,7 @@ struct Issue {
 
 - [CLI I/O Contract](docs/cli-contract.md) - Defines stdout/stderr usage and exit code semantics.
 - [UX for Agents](docs/ux-for-agents.md) - Guidelines for designing the CLI for humans and agents.
+- [Radical Simplifications](docs/radical-simplifications.md) - High-level design principles for the "worse is better" model.
 
 ## Workflows
 
