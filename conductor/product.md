@@ -9,7 +9,8 @@ Pebble is a streamlined, Markdown-native CLI task tracker built upon a "Permissi
 - **AI Agents**: Autonomous agents that benefit from predictable file-system level APIs, readable formats (Markdown), and a CLI interface that accepts raw data without panicking.
 
 ## Core Goals
-1. **Markdown-Native Storage**: All tasks are stored as discrete `.md` files with YAML frontmatter. 
+1. **Markdown-Native Storage**: All tasks are stored as discrete `.md` files with TOML frontmatter.
+ 
 2. **Permissive Writes, Strict Evaluation**: The storage layer acts purely as a raw directed graph. It never fails or panics if you author a cycle or reference a missing ID; instead, validation is deferred to the read-path, which strictly evaluates structural issues as "not ready".
 3. **No Hidden State**: Zero daemon processes, zero hidden `.git` worktrees, and no opaque databases.
 4. **Developer-First Design**: Built via Test-Driven Development (TDD), providing a strictly defined CLI and JSON output interface.
