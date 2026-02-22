@@ -15,15 +15,15 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```
-/// use pebble::store::Issue;
+/// use pebble::store::{Issue, STATUS_OPEN, TYPE_TASK};
 ///
 /// let issue = Issue {
 ///     id: "PROJECT-123".to_string(),
 ///     title: "Implement documentation".to_string(),
 ///     description: Some("Add doc comments to public API".to_string()),
-///     status: "open".to_string(),
+///     status: STATUS_OPEN.to_string(),
 ///     priority: 1,
-///     issue_type: "task".to_string(),
+///     issue_type: TYPE_TASK.to_string(),
 ///     owner: Some("alice@example.com".to_string()),
 ///     created_at: "2023-10-27T10:00:00Z".to_string(),
 ///     created_by: Some("Alice".to_string()),
@@ -33,7 +33,7 @@ use std::path::Path;
 ///     ..Default::default()
 /// };
 ///
-/// assert_eq!(issue.status, "open");
+/// assert_eq!(issue.status, STATUS_OPEN);
 /// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct IssueDependency {
@@ -44,6 +44,10 @@ pub struct IssueDependency {
     pub created_at: String,
     pub created_by: String,
 }
+
+pub const STATUS_OPEN: &str = "open";
+pub const STATUS_CLOSED: &str = "closed";
+pub const TYPE_TASK: &str = "task";
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct Issue {
@@ -94,13 +98,13 @@ impl Issue {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::Issue;
+    /// use pebble::store::{Issue, STATUS_OPEN};
     ///
     /// let mut issue1 = Issue {
     ///     id: "1".to_string(),
     ///     title: "Old Title".to_string(),
     ///     description: Some("Old Desc".to_string()),
-    ///     status: "open".to_string(),
+    ///     status: STATUS_OPEN.to_string(),
     ///     priority: 1,
     ///     issue_type: "bug".to_string(),
     ///     owner: Some("me".to_string()),
@@ -295,7 +299,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::{JsonlStore, Issue};
+    /// use pebble::store::{JsonlStore, Issue, STATUS_OPEN, TYPE_TASK};
     /// use tempfile::NamedTempFile;
     ///
     /// # fn main() -> color_eyre::Result<()> {
@@ -306,9 +310,9 @@ impl JsonlStore {
     ///     id: "1".to_string(),
     ///     title: "Test".to_string(),
     ///     description: Some("Desc".to_string()),
-    ///     status: "open".to_string(),
+    ///     status: STATUS_OPEN.to_string(),
     ///     priority: 1,
-    ///     issue_type: "task".to_string(),
+    ///     issue_type: TYPE_TASK.to_string(),
     ///     owner: Some("me".to_string()),
     ///     created_at: "2023-01-01T00:00:00Z".to_string(),
     ///     created_by: Some("me".to_string()),
@@ -365,7 +369,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::{JsonlStore, Issue};
+    /// use pebble::store::{JsonlStore, Issue, STATUS_OPEN};
     /// use tempfile::NamedTempFile;
     ///
     /// # fn main() -> color_eyre::Result<()> {
@@ -376,7 +380,7 @@ impl JsonlStore {
     ///     id: "2".to_string(),
     ///     title: "New Issue".to_string(),
     ///     description: Some("Description".to_string()),
-    ///     status: "open".to_string(),
+    ///     status: STATUS_OPEN.to_string(),
     ///     priority: 1,
     ///     issue_type: "bug".to_string(),
     ///     owner: Some("me".to_string()),

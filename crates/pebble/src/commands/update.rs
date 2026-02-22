@@ -101,7 +101,7 @@ fn apply_updates(issue: &mut Issue, fields: UpdateFields) -> Result<bool> {
     }
 
     let now = chrono::Local::now().to_rfc3339();
-    if status_next == "closed" && issue.closed_at.is_none() {
+    if status_next == pebble::store::STATUS_CLOSED && issue.closed_at.is_none() {
         issue.closed_at = Some(now.clone());
         changed = true;
     }
@@ -118,9 +118,10 @@ fn validate_close_reason(
     status_next: &str,
     close_reason: &Option<String>,
 ) -> Result<()> {
-    let closing_transition = status_next == "closed" && current_status != "closed";
+    let closing_transition =
+        status_next == pebble::store::STATUS_CLOSED && current_status != pebble::store::STATUS_CLOSED;
 
-    if close_reason.is_some() && status_next != "closed" {
+    if close_reason.is_some() && status_next != pebble::store::STATUS_CLOSED {
         return Err(UsageError::new("close_reason requires status 'closed'").into());
     }
     if close_reason.is_none() && closing_transition {
