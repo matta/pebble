@@ -16,6 +16,15 @@ Pebble locates its configuration and task files using strict path resolution rul
     * If a relative path is provided, it is strictly resolved relative to the **user's current working directory (cwd)**.
 * **Precedence**: `--dir` flag > `tasks-dir` in config > default `docs/pebble/`.
 
+> [!WARNING]
+> **Path-resolution example.** Suppose the project root is `/home/user/myproject` and the config sets `tasks-dir = "docs/pebble/"`. A user in `/home/user/myproject/src` runs:
+> ```
+> pebble list --dir ../notes
+> ```
+> * `tasks-dir` resolves to `/home/user/myproject/docs/pebble/` (relative to project root).
+> * `--dir ../notes` resolves to `/home/user/myproject/notes` (relative to cwd `/home/user/myproject/src`).
+> * Because `--dir` takes precedence, the CLI scans `/home/user/myproject/notes`.
+
 ## File Scanning & Error Handling
 
 * The CLI **recursively** treats every `*.md` file under `tasks-dir` as a potential task file.
