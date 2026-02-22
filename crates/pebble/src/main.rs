@@ -21,15 +21,19 @@ use std::path::PathBuf;
     about = "A distributed issue tracking system built on Git."
 )]
 struct Cli {
+    /// Change to the given directory before doing anything
     #[arg(short = 'C', long)]
     directory: Option<PathBuf>,
 
+    /// Path to configuration file
     #[arg(short, long, env = "PEBBLE_CONFIG")]
     config: Option<PathBuf>,
 
+    /// Output in JSON format
     #[arg(long, global = true)]
     json: bool,
 
+    /// Path to the tasks directory (overrides config)
     #[arg(long, global = true)]
     dir: Option<PathBuf>,
 
