@@ -1,6 +1,6 @@
 # Implementation Plan: TOML Frontmatter Migration
 
-## Phase 1: Research & Setup
+## Phase 1: Research & Setup [checkpoint: b2d6a57]
 - [x] Task: Audit codebase for "YAML" references and identify all test fixtures.
     - [x] Grep for `YAML`, `yaml`, `Yaml` in `crates/pebble/src/`.
     - [x] Grep for `YAML`, `yaml`, `Yaml` in `docs/*.md` (excluding `docs/rfcs/`).
