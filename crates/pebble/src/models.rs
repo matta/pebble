@@ -12,10 +12,9 @@ pub enum TaskStatus {
 }
 
 /// Represents the exact structure of the YAML front matter.
-// TODO: Per schema.md updates:
-//   1. Add #[serde(deny_unknown_fields)] to reject unknown YAML keys.
-//   2. Widen `priority` from Option<u8> to Option<u32> with 0..99 range validation.
+// TODO: Widen `priority` from Option<u8> to Option<u32> with 0..99 range validation.
 //   Also update corresponding Option<u8> in: main.rs (Add, Update), commands_write.rs (run_add, run_update).
+// TODO: Implement unknown-key handling: reads ignore; doctor/fix warn; check errors; fix preserves.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct TaskFrontmatter {
     pub id: String,

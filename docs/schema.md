@@ -26,7 +26,6 @@ pub enum TaskStatus {
 
 /// Represents the exact structure of the YAML front matter.
 #[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(deny_unknown_fields)]
 pub struct TaskFrontmatter {
     pub id: String,
     pub title: String,
@@ -77,11 +76,9 @@ Valid values for `priority` are `0..99` (lower number = higher priority). Values
 
 ## Unknown Frontmatter Fields
 
-The CLI performs **strict** frontmatter validation. Any YAML key not present in the `TaskFrontmatter` struct is treated as a schema error:
+Unknown frontmatter keys are **not** fatal for normal reads and are never removed by `pebble fix`:
 
-* **Read commands** skip the file and emit a warning to `stderr` (same behavior as unparseable YAML).
-* **`pebble doctor` / `pebble check`** report each unknown field as a schema error.
-
-This is equivalent to serde's `#[serde(deny_unknown_fields)]` attribute on `TaskFrontmatter`.
-
-**Rationale:** Strict validation catches typos (e.g., `proirity` instead of `priority`) and prevents schema drift from direct file edits. Users who need custom metadata should use `tags` or the Markdown body.
+* **Read commands** ignore unknown keys without warning.
+* **`pebble doctor`** reports unknown fields as warnings.
+* **`pebble fix`** emits warnings for unknown fields but does **not** remove them.
+* **`pebble check`** treats unknown fields as errors.
