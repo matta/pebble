@@ -152,6 +152,15 @@ Creates a new task file with generated boilerplate.
 * **Inputs**: `<title>` (string).
     * Flags: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--dep <id>` (repeatable), `--tag <tag>` (repeatable).
 * **ID Generation**: The generated ID follows the pattern `<issue-prefix>-<suffix>`, where `issue-prefix` comes from the `issue-prefix` config key (default: `issue`). The suffix uses the alphabet `a-z0-9` (36 characters). The suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox sizing).
+* **Filename Generation**: The filename is derived from the `<title>` using a deterministic slug. To ensure maximum reach and cross-platform safety, slugs are strictly restricted to lowercase alphanumeric characters, dashes, and underscores:
+    * lowercase
+    * ASCII only (strictly `a-z`, `0-9`, `-`, `_`)
+    * whitespace and other non-alphanumeric characters → `-`
+    * collapse repeated `-`
+    * trim leading/trailing `-`
+    * truncate to 80 characters (then trim trailing `-` again)
+    * If the result is empty, use `task`.
+    * If the filename already exists, append `-2`, `-3`, etc.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>` representing the newly created task.
 
 ### `pebble update <id>`

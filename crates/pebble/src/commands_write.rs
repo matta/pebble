@@ -56,6 +56,43 @@ See documentation for implementation details.
     Ok(())
 }
 
+/// Maximum length for a generated slug, to stay well within filesystem limits.
+const MAX_SLUG_LEN: usize = 80;
+
+/// Generates a cross-platform safe filename slug from a task title.
+///
+/// Slugs are strictly restricted to lowercase alphanumeric characters,
+/// dashes, and underscores. Any other characters are collapsed into single dashes.
+/// The result is truncated to [`MAX_SLUG_LEN`] characters to avoid filesystem errors.
+pub fn slugify(s: &str) -> String {
+    let mut slug = String::with_capacity(s.len());
+    let mut last_was_dash = false;
+
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() {
+            slug.push(c.to_ascii_lowercase());
+            last_was_dash = false;
+        } else if c == '_' {
+            slug.push('_');
+            last_was_dash = false;
+        } else if !last_was_dash && !slug.is_empty() {
+            slug.push('-');
+            last_was_dash = true;
+        }
+    }
+
+    let mut slug = slug.trim_end_matches('-').to_string();
+    if slug.len() > MAX_SLUG_LEN {
+        slug.truncate(MAX_SLUG_LEN);
+        slug = slug.trim_end_matches('-').to_string();
+    }
+    if slug.is_empty() {
+        "task".to_string()
+    } else {
+        slug
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn run_add(
     ctx: &RunContext,
@@ -99,7 +136,19 @@ pub fn run_add(
     let content = format!("+++\n{}+++\n{}", fm_toml, body_text);
 
     std::fs::create_dir_all(&ctx.tasks_dir)?;
-    let filepath = ctx.tasks_dir.join(format!("{}.md", new_id));
+
+    let base_slug = slugify(&title);
+    let mut filename = format!("{}.md", base_slug);
+    let mut filepath = ctx.tasks_dir.join(&filename);
+    let mut counter = 2;
+
+    // TODO(pebble: docs/pebble/toctou-race-in-slug-collision-loop.md): Use create_new + retry to make filename selection atomic.
+    while filepath.exists() {
+        filename = format!("{}-{}.md", base_slug, counter);
+        filepath = ctx.tasks_dir.join(&filename);
+        counter += 1;
+    }
+
     std::fs::write(&filepath, content)?;
 
     let node = TaskNode {
@@ -270,4 +319,44 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_slugify_basic() {
+        assert_eq!(slugify("Implement Task Node"), "implement-task-node");
+        assert_eq!(slugify("  Lots   of  Spaces  "), "lots-of-spaces");
+        assert_eq!(
+            slugify("Punctuation! (is) removed?"),
+            "punctuation-is-removed"
+        );
+        assert_eq!(slugify("Already-Slugified"), "already-slugified");
+    }
+
+    #[test]
+    fn test_slugify_mixed_separators() {
+        assert_eq!(
+            slugify("mix_of_dashes-and_underscores"),
+            "mix_of_dashes-and_underscores"
+        );
+        assert_eq!(slugify("---Trim-Repeating---"), "trim-repeating");
+        assert_eq!(slugify("123-Numbers-456"), "123-numbers-456");
+    }
+
+    #[test]
+    fn test_slugify_empty_fallback() {
+        assert_eq!(slugify(""), "task");
+        assert_eq!(slugify("!!!"), "task");
+    }
+
+    #[test]
+    fn test_slugify_reserved_chars() {
+        // Strict character set tests (reserved characters become delimiters)
+        assert_eq!(slugify("Windows: < > : \" / \\ | ? *"), "windows");
+        assert_eq!(slugify("macOS: / and :"), "macos-and");
+        assert_eq!(slugify("Linux/Unix: \0 and /"), "linux-unix-and");
+    }
 }

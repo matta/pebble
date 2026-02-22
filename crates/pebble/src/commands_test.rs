@@ -70,3 +70,83 @@ fn test_init_and_add() {
     assert_eq!(updated_node.frontmatter.tags, vec!["new_tag".to_string()]);
     assert_eq!(updated_node.body, "Body text\n\nAppended body");
 }
+
+#[test]
+fn test_add_slug_filename() {
+    let dir = tempdir().unwrap();
+    let current_dir = dir.path();
+    let tasks_dir = current_dir.join("docs/pebble");
+
+    let ctx = RunContext {
+        project_root: Some(current_dir.to_path_buf()),
+        config: Config {
+            issue_prefix: "TEST".to_string(),
+            tasks_dir: PathBuf::from("docs/pebble"),
+        },
+        tasks_dir: tasks_dir.clone(),
+        json: false,
+    };
+
+    // 1. Basic slugification
+    run_add(
+        &ctx,
+        "Implement Task Node".to_string(),
+        None,
+        None,
+        None,
+        vec![],
+        vec![],
+    )
+    .unwrap();
+    assert!(tasks_dir.join("implement-task-node.md").exists());
+
+    // 2. Collision handling
+    run_add(
+        &ctx,
+        "Implement Task Node".to_string(),
+        None,
+        None,
+        None,
+        vec![],
+        vec![],
+    )
+    .unwrap();
+    assert!(tasks_dir.join("implement-task-node-2.md").exists());
+
+    // 3. Punctuation and spaces
+    run_add(
+        &ctx,
+        "Fix: Bug #123! (now)".to_string(),
+        None,
+        None,
+        None,
+        vec![],
+        vec![],
+    )
+    .unwrap();
+    assert!(tasks_dir.join("fix-bug-123-now.md").exists());
+
+    // 4. Empty slug fallback
+    run_add(&ctx, "!!!".to_string(), None, None, None, vec![], vec![]).unwrap();
+    assert!(tasks_dir.join("task.md").exists());
+
+    // 5. Long title is truncated
+    let long_title = "a ".repeat(100); // 200 chars of "a " -> slug would be "a-a-a-..."
+    run_add(&ctx, long_title, None, None, None, vec![], vec![]).unwrap();
+    let entries: Vec<_> = std::fs::read_dir(&tasks_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            name.starts_with("a-a-a")
+        })
+        .collect();
+    assert_eq!(entries.len(), 1);
+    let stem = entries[0]
+        .path()
+        .file_stem()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+    assert!(stem.len() <= 80, "slug was {} chars", stem.len());
+}
