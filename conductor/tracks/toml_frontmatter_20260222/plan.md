@@ -44,3 +44,6 @@
     - [x] Run `just test` to ensure all tests pass with TOML.
     - [x] Manually verify `pebble add` and `pebble show` with the new format.
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Test Migration & Final Verification' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions f6d0d2a
