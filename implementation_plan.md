@@ -7,23 +7,27 @@ TDD is mandatory: write a failing test before each behavior change.
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
 
-- [ ] P0.1 Recursive scan of `tasks-dir` for all `*.md` files.
-- [ ] P0.2 Duplicate ID handling (required for correct graph semantics).
-- [ ] P0.2.a Read commands warn to `stderr` and skip **all** files with duplicated IDs.
-- [ ] P0.2.b Write commands fail with a clear error if target ID is duplicated.
-- [ ] P0.3 Graph semantics for readiness and blocking.
-- [ ] P0.3.a `blocking` includes only **non-terminal** direct dependents.
-- [ ] P0.3.b Transitive blocking count excludes terminal tasks, excludes self, ignores missing IDs, and is cycle-safe.
-- [ ] P0.4 Deterministic default ordering for `list` and `next`.
-- [ ] P0.4.a Topological order respecting `deps` (missing deps ignored; cycles grouped, ordered by `created_at` then `id`).
-- [ ] P0.4.b Then transitive blocking count DESC.
-- [ ] P0.4.c Then priority ASC (None last).
-- [ ] P0.4.d Then `created_at` ASC.
-- [ ] P0.4.e Then `id` ASC.
-- [ ] P0.5 Tests for P0.1–P0.4 (TDD).
-- [ ] P0.6 JSON output is trustworthy for planning commands (`list`, `next`, `show`, `add`, `update`).\n+- [ ] P0.6.a `--json` emits valid JSON to `stdout` and nothing else.\n+- [ ] P0.6.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.\n+- [ ] P0.6.c Tests validating JSON purity and stdout/stderr separation for these commands.
+- [ ] P0.1 Graph semantics for readiness and blocking.
+- [ ] P0.1.a `blocking` includes only **non-terminal** direct dependents.
+- [ ] P0.1.b Transitive blocking count excludes terminal tasks, excludes self, ignores missing IDs, and is cycle-safe.
+- [ ] P0.2 Deterministic default ordering for `list` and `next`.
+- [ ] P0.2.a Topological order respecting `deps` (missing deps ignored; cycles grouped, ordered by `created_at` then `id`).
+- [ ] P0.2.b Then transitive blocking count DESC.
+- [ ] P0.2.c Then priority ASC (None last).
+- [ ] P0.2.d Then `created_at` ASC.
+- [ ] P0.2.e Then `id` ASC.
+- [ ] P0.3 Tests for P0.1–P0.2 (TDD).
+- [ ] P0.4 JSON output is trustworthy for planning commands (`list`, `next`, `show`, `add`, `update`).
+- [ ] P0.4.a `--json` emits valid JSON to `stdout` and nothing else.
+- [ ] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
+- [ ] P0.4.c Tests validating JSON purity and stdout/stderr separation for these commands.
 
 ## Phase 1: Core CLI Contract Coverage (Non-Blocking for Planning)
+- [ ] P1.0 Deferred scan/duplicate handling (immediately after Phase Zero).
+- [ ] P1.0.a Recursive scan of `tasks-dir` for all `*.md` files.
+- [ ] P1.0.b Duplicate ID handling (required for correct graph semantics).
+- [ ] P1.0.c Read commands warn to `stderr` and skip **all** files with duplicated IDs.
+- [ ] P1.0.d Write commands fail with a clear error if target ID is duplicated.
 - [ ] P1.1 `list` filters: `--status` (OR), `--tag` (AND), `--dep` (OR), `--priority` (OR), `--is-ready`, `--all`, `--limit`.
 - [ ] P1.2 `list` alias `ls`.
 - [ ] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
