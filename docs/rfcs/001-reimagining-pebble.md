@@ -173,7 +173,7 @@ Intentionally omitted:
 Computed:
 - `is_ready` (boolean; true only when all `deps` exist and are terminal: `done` or `canceled`)
 - `blocked_by` (list of `deps` that are missing or non-terminal, where non-terminal means `todo` or `in_progress`)
-- `blocking` (list of task IDs whose `deps` include this task and are therefore blocked until it is terminal)
+- `blocking` (list of task IDs whose `deps` directly include this task — the inverse edge of `deps`)
 
 > **Rationale for Omitted Fields:**
 > - **Audit Metadata (`owner`, `created_by`, `close_reason`):** Delegated to Git history. Adds parsing/updating friction and write contention without immediate value. (Note: The legacy `updated_at` and `closed_at` fields have been explicitly replaced by the more semantically distinct `modified_at` and `resolved_at` fields).
@@ -259,7 +259,7 @@ pub struct TaskNode {
 
 **Dynamic Scoring (Starvation Prevention)**
 - Starvation prevention is a runtime sorting concern, not a data-layer rule. There is no computed or inherited priority — the `priority` field in YAML is strictly local.
-- `pebble next` sorts the ready frontier using the sort key tuple: **`(len(blocking) DESC, priority ASC, created_at ASC)`**. Blocking count is the primary key; local priority breaks ties; creation time is the final tiebreaker. A task blocking 5 others always ranks above a task blocking 0, regardless of local priority. This means a small task that is the sole blocker of a massive Epic naturally bubbles to the top of the queue.
+- `pebble next` sorts the ready frontier using the sort key tuple: **`(transitive_blocking_count DESC, priority ASC, created_at ASC)`**. The transitive blocking count (all tasks recursively reachable downstream through dependency edges) is the primary key; local priority breaks ties; creation time is the final tiebreaker. A task blocking 5 downstream others always ranks above a task blocking 0, regardless of local priority. This means a small task that is the sole blocker of a massive Epic naturally bubbles to the top of the queue.
 - This replaces the old transitive `effective_priority` inheritance model. Priority information is never written back to YAML; it exists only as a runtime sort key.
 
 ### 4.6 CLI
@@ -306,7 +306,7 @@ This RFC supersedes the earlier `003-cli-contract.md` snapshot in this directory
 The default sort order for `pebble list` (and by extension `pebble next`) is deterministic and dependency-aware:
 
 1. **Topological order** (respecting `deps`): if task B has `deps: [A]`, then A appears before B regardless of priority. Among tasks at the same topological level (no dependency relationship between them), the remaining tiebreakers apply.
-2. **Blocking count** descending (`len(blocking)`). Tasks blocking a larger number of downstream tasks appear first. This creates the dynamic scoring that surfaces critical bottlenecks.
+2. **Transitive blocking count** descending. The number of tasks recursively reachable downstream through dependency edges. Tasks blocking a larger number of downstream tasks appear first. This creates the dynamic scoring that surfaces critical bottlenecks.
 3. **Priority** ascending (lower number = higher priority), using `priority`. Tasks with no `priority` sort after all prioritized tasks.
 4. **`created_at`** ascending (oldest first) as the final tiebreaker.
 

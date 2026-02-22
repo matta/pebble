@@ -34,7 +34,7 @@ Pebble locates its configuration and task files using strict path resolution rul
 Most commands emitting JSON will return either a single `TaskObject` or a list of them.
 A `TaskObject` includes:
 * **Basic Fields**: `id`, `title`, `status`, `priority` (optional), `created_at`, `modified_at` (optional), `resolved_at` (optional), `deps` (array), `tags` (array).
-* **Computed Fields**: `is_ready` (boolean), `blocked_by` (array of ID strings), `blocking` (array of ID strings).
+* **Computed Fields**: `is_ready` (boolean), `blocked_by` (array of ID strings), `blocking` (array of ID strings — direct dependents whose `deps` include this task).
 * **Content & Location**: `body` (raw Markdown content string), `path` (file path relative to `tasks-dir`).
 
 ## Timestamp Rules
@@ -74,7 +74,7 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--limit <N>`: Limits returned rows.
 * **Default sort order**: Deterministic and dependency-aware:
     1. **Topological order** (respecting `deps`): if B depends on A, A appears before B.
-    2. **Blocking count** descending (`len(blocking)`): tasks blocking more downstream tasks appear first.
+    2. **Transitive blocking count** descending: the number of tasks recursively reachable downstream through dependency edges. Tasks blocking more downstream work appear first.
     3. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
     4. **`created_at`** ascending (oldest first) as the final tiebreaker.
 * When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field.
@@ -82,7 +82,7 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
 * **Output (`--json`)**: `{"tasks": [<TaskObject>, ...]}`
 
 ### `pebble next`
-Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(len(blocking) DESC, priority ASC, created_at ASC)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.
+Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(transitive_blocking_count DESC, priority ASC, created_at ASC)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.
 * **Inputs**: None.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>`, or `null` if no ready tasks exist.
 

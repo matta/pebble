@@ -27,4 +27,4 @@ Enforcing symmetry on `related` links requires self-healing and bi-directional w
 
 ## 5. Dynamic PageRank Scoring over Transitive Priority
 Instead of baking "starvation prevention" into the data schema (pushing `effective_priority` up the chain), priority inherits a simple local integer `priority` in the frontmatter. Starvation prevention becomes a runtime ranking algorithm for the `pebble next` command. 
-`pebble next` finds the "ready frontier" and ranks it using the sort key tuple: `(Count of Downstream Tasks Blocked DESC, Local Priority ASC, Created At ASC)`. Blocking count is the primary key — a small task blocking a massive Epic naturally bubbles to the top of the queue seamlessly.
+`pebble next` finds the "ready frontier" and ranks it using the sort key tuple: `(Transitive Blocking Count DESC, Local Priority ASC, Created At ASC)`. The transitive blocking count (all downstream tasks recursively reachable through dependency edges, not just direct dependents) is the primary key — a small task blocking a massive Epic naturally bubbles to the top of the queue seamlessly.
