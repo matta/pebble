@@ -35,7 +35,7 @@ pub enum TaskStatus {
 /// ```
 /// use pebble::models::{TaskFrontmatter, TaskStatus};
 ///
-/// let yaml = "id: 123\ntitle: Test\nstatus: todo\ncreated_at: 2023-01-01T00:00:00Z";
+/// let yaml = "id: issue-123\ntitle: Test\nstatus: todo\ncreated_at: 2023-01-01T00:00:00Z";
 /// let fm: TaskFrontmatter = serde_yaml::from_str(yaml).unwrap();
 /// assert_eq!(fm.title, "Test");
 /// assert_eq!(fm.status, TaskStatus::Todo);
@@ -69,9 +69,9 @@ pub struct TaskFrontmatter {
 /// use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
 ///
 /// let node = TaskNode {
-///     path: PathBuf::from("tasks/123.md"),
+///     path: PathBuf::from("tasks/issue-123.md"),
 ///     frontmatter: TaskFrontmatter {
-///         id: "123".into(),
+///         id: "issue-123".into(),
 ///         title: "My Task".into(),
 ///         status: TaskStatus::Todo,
 ///         priority: None,
