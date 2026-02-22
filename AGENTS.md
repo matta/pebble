@@ -2,6 +2,10 @@
 
 This project is a CLI task tracker written in Rust, built upon a Markdown-native graph design.
 
+## Pebble is self hosting
+
+Read @.pebble/AGENTS.md to understand tool usage.
+
 ## Project Goals & Immutable Invariants
 
 1. **Markdown-Native Storage**: 
