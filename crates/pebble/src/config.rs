@@ -1,65 +1,65 @@
-use color_eyre::eyre::Result;
-use color_eyre::eyre::eyre;
-use serde::{Deserialize, Serialize};
+#![allow(dead_code)]
+
+use color_eyre::eyre::{Result, eyre};
+use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-pub fn validate_branch_name(branch: &str) -> Result<()> {
-    if branch.starts_with('-') {
-        return Err(color_eyre::eyre::eyre!("sync-branch cannot start with '-'"));
-    }
-    Ok(())
-}
-
-/// Represents the configuration for the Pebble application.
-///
-/// This struct maps to the TOML configuration file, typically located at `.pebble/config.toml`.
-/// It holds settings that control the behavior of the application, such as the branch used for
-/// synchronization and ID generation prefixes.
-///
-/// # Examples
-///
-/// ```
-/// use pebble::config::Config;
-///
-/// let config = Config {
-///     sync_branch: Some("pebble-sync".to_string()),
-///     issue_prefix: Some("issue".to_string()),
-/// };
-/// ```
-#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Config {
-    #[serde(rename = "sync-branch", skip_serializing_if = "Option::is_none")]
-    pub sync_branch: Option<String>,
+    #[serde(default = "default_issue_prefix")]
+    #[serde(rename = "issue-prefix")]
+    pub issue_prefix: String,
 
-    /// Used in `main.rs` to generate issue IDs (e.g., `issue-123`).
-    #[serde(rename = "issue-prefix", skip_serializing_if = "Option::is_none")]
-    pub issue_prefix: Option<String>,
+    #[serde(default = "default_tasks_dir")]
+    #[serde(rename = "tasks-dir")]
+    pub tasks_dir: PathBuf,
 }
 
-impl Config {
-    pub fn default_path(root: &Path) -> PathBuf {
-        root.join(crate::CONFIG_DIR).join(crate::CONFIG_FILE)
-    }
+fn default_issue_prefix() -> String {
+    "issue".to_string()
+}
 
-    pub fn is_initialized(root: &Path) -> bool {
-        root.join(crate::CONFIG_DIR).is_dir()
-    }
+fn default_tasks_dir() -> PathBuf {
+    PathBuf::from("docs/pebble/")
+}
 
-    pub fn save(&self, path: &Path) -> color_eyre::Result<()> {
-        let content = toml::to_string(self)?;
-        std::fs::write(path, content)?;
-        Ok(())
-    }
-
-    pub fn validate(&self) -> Result<()> {
-        if let Some(branch) = &self.sync_branch {
-            validate_branch_name(branch)?;
-        } else {
-            return Err(eyre!("sync-branch is required in configuration"));
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            issue_prefix: default_issue_prefix(),
+            tasks_dir: default_tasks_dir(),
         }
-        Ok(())
     }
+}
+
+/// Resolves the project root by walking up from the given directory until
+/// it finds a `.pebble` directory. Returns None if it hits the filesystem root.
+pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
+    for ancestor in start_dir.ancestors() {
+        if ancestor.join(".pebble").is_dir() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
+}
+
+/// Parses the config from the given string and validates it according to the CLI contract.
+/// Specifically: `tasks-dir` MUST be a relative path.
+pub fn parse_config(toml_str: &str) -> Result<Config> {
+    let config: Config = if toml_str.trim().is_empty() {
+        Config::default()
+    } else {
+        toml::from_str(toml_str)?
+    };
+
+    if config.tasks_dir.is_absolute() {
+        return Err(eyre!(
+            "Configuration error: 'tasks-dir' must be a relative path to the project root. Found: {}",
+            config.tasks_dir.display()
+        ));
+    }
+
+    Ok(config)
 }
 
 #[cfg(test)]
@@ -67,78 +67,58 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_config_sync_branch_starts_with_dash() {
-        let content = "sync-branch = \"-bad\"\n";
-        let config: Config = toml::from_str(content).expect("Failed to parse config");
-        assert!(config.validate().is_err());
+    fn test_parse_default_config() {
+        let toml = "";
+        let config = parse_config(toml).unwrap();
+        assert_eq!(config.issue_prefix, "issue");
+        assert_eq!(config.tasks_dir, PathBuf::from("docs/pebble/"));
     }
 
     #[test]
-    fn test_config_parsing() {
-        let content = "sync-branch = \"pebble-sync\"\nissue-prefix = \"pebble\"\n";
-        let config: Config = toml::from_str(content).expect("Failed to parse config");
-        config.validate().expect("Validation failed");
-
-        assert_eq!(config.sync_branch, Some("pebble-sync".to_string()));
-        assert_eq!(config.issue_prefix, Some("pebble".to_string()));
+    fn test_parse_custom_config() {
+        let toml = r#"
+        issue-prefix = "TKT"
+        tasks-dir = "my-tasks/"
+        "#;
+        let config = parse_config(toml).unwrap();
+        assert_eq!(config.issue_prefix, "TKT");
+        assert_eq!(config.tasks_dir, PathBuf::from("my-tasks/"));
     }
 
     #[test]
-    fn test_config_all_fields() {
-        let content = r#"
-sync-branch = "pebble-sync"
-issue-prefix = "pebble"
-"#;
-        let config: Config = toml::from_str(content).expect("Failed to parse config");
-        config.validate().expect("Validation failed");
-
-        assert_eq!(config.sync_branch, Some("pebble-sync".to_string()));
-        assert_eq!(config.issue_prefix, Some("pebble".to_string()));
+    fn test_parse_config_rejects_absolute_tasks_dir() {
+        let toml = r#"
+        tasks-dir = "/absolute/path/to/tasks"
+        "#;
+        let err = parse_config(toml).unwrap_err();
+        assert!(
+            err.to_string().contains("must be a relative path"),
+            "Error was: {}",
+            err
+        );
     }
 
     #[test]
-    fn test_config_empty() {
-        let content = "";
-        let config: Config = toml::from_str(content).expect("Failed to parse config");
-        assert!(config.validate().is_err()); // Validation should fail without sync-branch
+    fn test_find_project_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
 
-        assert_eq!(config.sync_branch, None);
-        assert_eq!(config.issue_prefix, None);
-    }
+        let pebble_dir = root.join(".pebble");
+        std::fs::create_dir(&pebble_dir).unwrap();
 
-    #[test]
-    fn test_config_validation() {
-        let config = Config {
-            sync_branch: None,
-            ..Default::default()
-        };
-        assert!(config.validate().is_err());
+        let deeply_nested = root.join("some").join("deep").join("path");
+        std::fs::create_dir_all(&deeply_nested).unwrap();
 
-        let config = Config {
-            sync_branch: Some("main".to_string()),
-            ..Default::default()
-        };
-        assert!(config.validate().is_ok());
-    }
+        // Should find the root when starting from the nested directory
+        let found = find_project_root(&deeply_nested).expect("Should find root");
+        assert_eq!(found, root);
 
-    #[test]
-    fn test_config_invalid_toml() {
-        let content = "sync-branch = pebble-sync\n: invalid\n";
-        let result: Result<Config, _> = toml::from_str(content);
-        assert!(result.is_err());
-    }
+        // Should find the root when starting from the root itself
+        let found2 = find_project_root(root).expect("Should find root");
+        assert_eq!(found2, root);
 
-    #[test]
-    fn test_config_invalid_types() {
-        let content = "sync-branch = 123\n";
-        let result: Result<Config, _> = toml::from_str(content);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_config_unknown_field() {
-        let content = "unknown-field = \"some-value\"\n";
-        let result: Result<Config, _> = toml::from_str(content);
-        assert!(result.is_err());
+        // Should return None when there is no .pebble dir
+        let empty_temp = tempfile::tempdir().unwrap();
+        assert_eq!(find_project_root(empty_temp.path()), None);
     }
 }
