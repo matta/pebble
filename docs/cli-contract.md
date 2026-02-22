@@ -16,6 +16,13 @@ Pebble locates its configuration and task files using strict path resolution rul
     * If a relative path is provided, it is strictly resolved relative to the **user's current working directory (cwd)**.
 * **Precedence**: `--dir` flag > `tasks-dir` in config > default `docs/pebble/`.
 
+## File Scanning & Error Handling
+
+* The CLI **recursively** treats every `*.md` file under `tasks-dir` as a potential task file.
+* If a file contains unparseable YAML frontmatter, the CLI skips it with a warning to `stderr`.
+* If multiple files share the same `id`, read commands skip all files with that ID (logging a warning to `stderr`). Write commands targeting a duplicated ID fail with a clear error.
+* Renaming or moving a file within `tasks-dir` does not change the `id` and does not break references — the frontmatter `id` is canonical; filenames are advisory.
+
 ## Global Options
 
 * `--json`: Outputs a single JSON value to `stdout` per invocation. On failure, no JSON is emitted; `stdout` is empty, an error message is written to `stderr`, and the exit code is non-zero.
@@ -29,6 +36,14 @@ A `TaskObject` includes:
 * **Basic Fields**: `id`, `title`, `status`, `priority` (optional), `created_at`, `modified_at` (optional), `resolved_at` (optional), `deps` (array), `tags` (array).
 * **Computed Fields**: `is_ready` (boolean), `blocked_by` (array of ID strings), `blocking` (array of ID strings).
 * **Content & Location**: `body` (raw Markdown content string), `path` (file path relative to `tasks-dir`).
+
+## Timestamp Rules
+
+* `created_at` is set to the current UTC time on `pebble add`.
+* `modified_at` is automatically set to the current UTC time on every `pebble update` invocation.
+* `resolved_at` is automatically set to the current UTC time when `pebble update` transitions a task's status to `done` or `canceled` (if not already set).
+* `resolved_at` is automatically cleared when `pebble update` transitions a task's status away from `done` or `canceled`.
+* `pebble fix` backfills a missing `created_at` with the current UTC time.
 
 ## Repository Management
 
@@ -89,6 +104,7 @@ Full-text substring search across titles and Markdown bodies.
 Creates a new task file with generated boilerplate.
 * **Inputs**: `<title>` (string).
     * Flags: `--status <status>`, `--priority <N>`, `--body <text>`, `--dep <id>` (repeatable), `--tag <tag>` (repeatable).
+* **ID Generation**: The generated ID follows the pattern `<issue-prefix>-<suffix>`, where `issue-prefix` comes from the `issue-prefix` config key (default: `issue`). The suffix uses the alphabet `a-z0-9` (36 characters). The suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox sizing).
 * **Output (`--json`)**: A single unwrapped `<TaskObject>` representing the newly created task.
 
 ### `pebble update <id>`
@@ -98,7 +114,7 @@ Safely modifies existing frontmatter properties or appends body content.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>` representing the modified task.
 
 ### `pebble archive`
-Automated lifecycle manager that sweeps completed (`done`, `canceled`) tasks beyond a `resolved_at` age threshold to an `archive/` subdirectory.
+Automated lifecycle manager that sweeps completed (`done`, `canceled`) tasks whose `resolved_at` timestamp is older than a configurable threshold (e.g., 30 days) into an `archive/` subdirectory under `tasks-dir`. If a filename collision occurs, a numeric suffix (`-2`, `-3`, etc.) is appended.
 * **Inputs**: None (thresholds are configurable).
 * **Output (`--json`)**: `{"archived": [{"id": "...", "moved_to": "..."}]}`
 
@@ -115,6 +131,6 @@ Strict verification tool. Functions identically to `pebble doctor` but exits wit
 * **Output (`--json`)**: Same shape as `pebble doctor`.
 
 ### `pebble fix`
-Applies safe, deterministic repairs such as whitespace normalization or timestamp backfilling. Does not rewrite dependency edges.
+Applies safe, deterministic repairs such as whitespace normalization or backfilling missing `created_at`. Does not rewrite dependency edges.
 * **Inputs**: None.
 * **Output (`--json`)**: Typically returns status of operations; follows the repair output format.
