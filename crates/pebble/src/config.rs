@@ -111,28 +111,21 @@ mod tests {
 
     #[test]
     fn test_parse_config_rejects_parent_dir_components() {
-        let toml = r#"
-        tasks-dir = "../parent/dir"
-        "#;
-        let err = parse_config(toml).unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("must not contain parent directory components"),
-            "Error was: {}",
-            err
-        );
+        let cases = [
+            r#"tasks-dir = "../parent/dir""#,
+            r#"tasks-dir = "nested/../parent""#,
+        ];
 
-        let toml_nested = r#"
-        tasks-dir = "nested/../parent"
-        "#;
-        let err_nested = parse_config(toml_nested).unwrap_err();
-        assert!(
-            err_nested
-                .to_string()
-                .contains("must not contain parent directory components"),
-            "Error was: {}",
-            err_nested
-        );
+        for toml in cases {
+            let err = parse_config(toml).unwrap_err();
+            assert!(
+                err.to_string()
+                    .contains("must not contain parent directory components"),
+                "Failed to reject invalid config: {}. Error was: {}",
+                toml,
+                err
+            );
+        }
     }
 
     #[test]
