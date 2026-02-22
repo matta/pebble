@@ -50,7 +50,7 @@ Pebble locates its configuration and task files using strict path resolution rul
 ## File Scanning & Error Handling
 
 * The CLI **recursively** treats every `*.md` file under `tasks-dir` as a potential task file.
-* If a file contains unparseable YAML frontmatter, the CLI skips it with a warning to `stderr`.
+* If a file contains unparseable TOML frontmatter, the CLI skips it with a warning to `stderr`.
 * If multiple files share the same `id`, read commands skip all files with that ID (logging a warning to `stderr`). Write commands targeting a duplicated ID fail with a clear error.
 * Unknown frontmatter keys are ignored by read commands (no warnings). `pebble doctor` and `pebble fix` emit warnings. `pebble check` treats them as errors. `pebble fix` does not remove unknown fields.
 * Renaming or moving a file within `tasks-dir` does not change the `id` and does not break references — the frontmatter `id` is canonical; filenames are advisory.
