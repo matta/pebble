@@ -55,12 +55,19 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--priority <N>`: Filters by priority (OR'ed).
     * `--is-ready`: Filters to tasks where all `deps` are `done` or `canceled`.
     * `--all`: Disables default omission of `done` and `canceled` tasks.
-    * `--sort <field>`: Sort by a specific field. Valid fields: `priority`, `created_at`, `modified_at`, `status`, `title`. Prefix with `-` for descending. Ex: `--sort -created_at`.
+    * `--sort <field>`: Sort by a specific field. Valid fields: `priority`, `blocking`, `created_at`, `modified_at`, `status`, `title`. Prefix with `-` for descending. Ex: `--sort -created_at`.
     * `--limit <N>`: Limits returned rows.
+* **Default sort order**: Deterministic and dependency-aware:
+    1. **Topological order** (respecting `deps`): if B depends on A, A appears before B.
+    2. **Blocking count** descending (`len(blocking)`): tasks blocking more downstream tasks appear first.
+    3. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
+    4. **`created_at`** ascending (oldest first) as the final tiebreaker.
+* When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field.
+* When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the order is effectively: blocking count → priority → created_at.
 * **Output (`--json`)**: `{"tasks": [<TaskObject>, ...]}`
 
 ### `pebble next`
-Returns the single highest-scoring ready task based on the dynamic scoring algorithm. Equivalent to `pebble list --is-ready --limit 1` under default sorting.
+Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(len(blocking) DESC, priority ASC, created_at ASC)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.
 * **Inputs**: None.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>`, or `null` if no ready tasks exist.
 

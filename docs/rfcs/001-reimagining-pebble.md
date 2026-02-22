@@ -25,7 +25,7 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - `pebble next` is a convenience command that returns the highest-priority ready task.
-- Default list order: topological (respecting `deps`), then `priority`, then `created_at`.
+- Default list order: topological (respecting `deps`), then blocking count, then `priority`, then `created_at`.
 - Agents MAY read and edit task bodies directly (a core benefit); frontmatter mutations SHOULD use the CLI.
 - `.pebble/AGENTS.md` provides agent bootstrapping instructions; `pebble init` creates it.
 - One-time migration via a throw-away script from the existing JSONL.
@@ -310,7 +310,7 @@ The default sort order for `pebble list` (and by extension `pebble next`) is det
 3. **Priority** ascending (lower number = higher priority), using `priority`. Tasks with no `priority` sort after all prioritized tasks.
 4. **`created_at`** ascending (oldest first) as the final tiebreaker.
 
-The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `priority`), `created_at`, `modified_at`, `status` (which sorts by `status`), `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `done`, `canceled`.
+The `--sort <field>` flag overrides this default. Supported fields: `priority` (which sorts by `priority`), `blocking`, `created_at`, `modified_at`, `status` (which sorts by `status`), `title`. When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. `--sort` defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the order is: `todo`, `in_progress`, `done`, `canceled`.
 
 Note: when `--is-ready` is active, all returned tasks are at the dependency frontier (their prerequisites are all `done` or `canceled`), so the topological component of the default sort has no effect and the order is effectively blocking count → priority → created_at.
 

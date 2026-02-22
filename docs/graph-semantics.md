@@ -31,6 +31,8 @@ The write path allows these structures without failing. Preemptive validation an
 Because structural hierarchy has been flattened, the risk of priority inversion (where a low-priority task blocks a massive, high-priority epic) exists. Instead of calculating and storing transitive `effective_priority` up the chain, Pebble utilizes runtime dynamic scoring.
 
 `pebble next` (or `pebble list --is-ready`) ranks the ready frontier using the following sort key tuple: **`(len(blocking) DESC, priority ASC, created_at ASC)`**.
+
+The general default sort for `pebble list` prepends a topological tier: (1) topological order respecting `deps`, (2) blocking count descending, (3) priority ascending, (4) `created_at` ascending. When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the sort reduces to the tuple above. See `cli-contract.md` for the full specification.
 1. **Count of Downstream Tasks Blocked (Primary Key)**: A task blocking a larger number of downstream tasks is forced to the top of the queue. This mathematically ensures that a critical bottleneck—even if its local priority is low—is surfaced over isolated tasks.
 2. **Local Priority (Tiebreaker 1)**: The `priority` field defined in the task's frontmatter.
 3. **Creation Time (Tiebreaker 2)**: The oldest task wins.
