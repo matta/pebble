@@ -8,7 +8,7 @@
 - [x] Task: Verify current `Cargo.toml` and existing `toml` crate usage.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Research & Setup' (Protocol in workflow.md)
 
-## Phase 2: Core Logic Migration
+## Phase 2: Core Logic Migration [checkpoint: 5e611f0]
 - [x] Task: Remove `serde_yaml` dependency and update `Cargo.toml`.
 - [x] Task: Update `models.rs` to reflect TOML frontmatter.
     - [x] Update doc comments and any internal "YAML" mentions.
@@ -24,7 +24,7 @@
     - [x] Implement the change and pass tests.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core Logic Migration' (Protocol in workflow.md)
 
-## Phase 3: Documentation & Source Scrubbing
+## Phase 3: Documentation & Source Scrubbing [checkpoint: 5e611f0]
 - [x] Task: Remove all mentions of "YAML" from `crates/pebble/src/`.
     - [x] Update error messages (e.g., "Failed to parse YAML frontmatter" -> "Failed to parse TOML frontmatter").
     - [x] Update variable names if any (e.g., `yaml_block` -> `toml_block`).
