@@ -166,7 +166,7 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
     } else if ctx.json {
         println!("null");
     } else {
-        println!("No ready tasks found.");
+        eprintln!("No ready tasks found.");
     }
     Ok(())
 }
