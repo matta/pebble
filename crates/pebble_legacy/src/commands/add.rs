@@ -1,8 +1,8 @@
 use crate::commands::{get_git_config, get_store};
 use color_eyre::Result;
-use pebble::cli::OutputFormat;
-use pebble::config::Config;
-use pebble::id::generate_unique_id;
+use pebble_legacy::cli::OutputFormat;
+use pebble_legacy::config::Config;
+use pebble_legacy::id::generate_unique_id;
 pub fn run(
     config: &Config,
     title: String,
@@ -16,14 +16,14 @@ pub fn run(
     // TODO(matt): Keep add resilient to malformed JSONL by tolerating bad lines.
     let existing_ids = store.read_issue_ids()?;
 
-    let suffix_length = pebble::recommended_id_length(existing_ids.len());
+    let suffix_length = pebble_legacy::recommended_id_length(existing_ids.len());
     let id = generate_unique_id(prefix, &existing_ids, suffix_length);
 
     let now = chrono::Local::now().to_rfc3339();
     let user_name = get_git_config("user.name").unwrap_or_else(|_| "unknown".to_string());
     let user_email = get_git_config("user.email").unwrap_or_else(|_| "unknown".to_string());
 
-    let issue = pebble::store::Issue {
+    let issue = pebble_legacy::store::Issue {
         id: id.clone(),
         title,
         description,

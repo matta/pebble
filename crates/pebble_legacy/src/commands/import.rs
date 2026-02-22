@@ -1,8 +1,8 @@
 use crate::commands::get_store;
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
-use pebble::cli::OutputFormat;
-use pebble::config::Config;
+use pebble_legacy::cli::OutputFormat;
+use pebble_legacy::config::Config;
 use std::path::PathBuf;
 
 pub fn run(config: &Config, path: PathBuf, format: OutputFormat) -> Result<()> {
@@ -17,7 +17,7 @@ pub fn run(config: &Config, path: PathBuf, format: OutputFormat) -> Result<()> {
     let mut issues = store.read_issues()?;
 
     let external_store =
-        pebble::store::JsonlStore::new(path.to_str().ok_or_else(|| eyre!("Invalid path"))?);
+        pebble_legacy::store::JsonlStore::new(path.to_str().ok_or_else(|| eyre!("Invalid path"))?);
     let external_issues = external_store.read_issues()?;
 
     let mut updated_count = 0;

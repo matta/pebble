@@ -1,8 +1,8 @@
 use crate::commands::get_store;
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
-use pebble::cli::OutputFormat;
-use pebble::config::Config;
+use pebble_legacy::cli::OutputFormat;
+use pebble_legacy::config::Config;
 
 pub fn run(config: &Config, id: String, format: OutputFormat) -> Result<()> {
     let (store, _, _) = get_store(config)?;

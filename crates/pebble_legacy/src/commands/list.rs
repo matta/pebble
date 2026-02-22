@@ -1,7 +1,7 @@
 use crate::commands::{IssueFilters, get_store};
 use color_eyre::Result;
-use pebble::cli::OutputFormat;
-use pebble::config::Config;
+use pebble_legacy::cli::OutputFormat;
+use pebble_legacy::config::Config;
 
 pub fn run(config: &Config, filters: IssueFilters, format: OutputFormat) -> Result<()> {
     let (store, _, jsonl_path) = get_store(config)?;

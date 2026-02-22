@@ -19,7 +19,7 @@ pub fn validate_branch_name(branch: &str) -> Result<()> {
 /// # Examples
 ///
 /// ```
-/// use pebble::config::Config;
+/// use pebble_legacy::config::Config;
 ///
 /// let config = Config {
 ///     sync_branch: Some("pebble-sync".to_string()),

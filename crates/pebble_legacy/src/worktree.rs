@@ -406,7 +406,7 @@ impl<G: GitProvider> WorktreeManager<G> {
     /// # Examples
     ///
     /// ```no_run
-    /// use pebble::worktree::WorktreeManager;
+    /// use pebble_legacy::worktree::WorktreeManager;
     /// use std::path::PathBuf;
     ///
     /// let manager = WorktreeManager::new(

@@ -15,7 +15,7 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```
-/// use pebble::store::Issue;
+/// use pebble_legacy::store::Issue;
 ///
 /// let issue = Issue {
 ///     id: "PROJECT-123".to_string(),
@@ -94,7 +94,7 @@ impl Issue {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::Issue;
+    /// use pebble_legacy::store::Issue;
     ///
     /// let mut issue1 = Issue {
     ///     id: "1".to_string(),
@@ -181,7 +181,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::JsonlStore;
+    /// use pebble_legacy::store::JsonlStore;
     ///
     /// let store = JsonlStore::new("issues.jsonl");
     /// ```
@@ -216,7 +216,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::{JsonlStore, Issue};
+    /// use pebble_legacy::store::{JsonlStore, Issue};
     /// use std::io::Write;
     /// use tempfile::NamedTempFile;
     ///
@@ -295,7 +295,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::{JsonlStore, Issue};
+    /// use pebble_legacy::store::{JsonlStore, Issue};
     /// use tempfile::NamedTempFile;
     ///
     /// # fn main() -> color_eyre::Result<()> {
@@ -365,7 +365,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::{JsonlStore, Issue};
+    /// use pebble_legacy::store::{JsonlStore, Issue};
     /// use tempfile::NamedTempFile;
     ///
     /// # fn main() -> color_eyre::Result<()> {
@@ -447,7 +447,7 @@ impl JsonlStore {
     /// # Examples
     ///
     /// ```
-    /// use pebble::store::{JsonlStore, Issue};
+    /// use pebble_legacy::store::{JsonlStore, Issue};
     /// use std::io::Write;
     ///
     /// # fn main() -> color_eyre::Result<()> {

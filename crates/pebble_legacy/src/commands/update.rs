@@ -1,9 +1,9 @@
 use crate::commands::get_store;
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
-use pebble::cli::{OutputFormat, UsageError};
-use pebble::config::Config;
-use pebble::store::Issue;
+use pebble_legacy::cli::{OutputFormat, UsageError};
+use pebble_legacy::config::Config;
+use pebble_legacy::store::Issue;
 
 #[derive(Debug, Default)]
 pub struct UpdateFields {

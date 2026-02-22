@@ -1,15 +1,15 @@
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
-use pebble::CONFIG_DIR;
-use pebble::cli::OutputFormat;
-use pebble::config::Config;
+use pebble_legacy::CONFIG_DIR;
+use pebble_legacy::cli::OutputFormat;
+use pebble_legacy::config::Config;
 
 pub fn run(sync_branch: String, format: OutputFormat) -> Result<()> {
-    pebble::config::validate_branch_name(&sync_branch)?;
+    pebble_legacy::config::validate_branch_name(&sync_branch)?;
 
     let current_dir = std::env::current_dir()?;
 
-    if !pebble::worktree::WorktreeManager::<pebble::git_provider::RealGit>::is_inside_git_repo(
+    if !pebble_legacy::worktree::WorktreeManager::<pebble_legacy::git_provider::RealGit>::is_inside_git_repo(
         &current_dir,
     ) {
         return Err(eyre!(
@@ -17,10 +17,10 @@ pub fn run(sync_branch: String, format: OutputFormat) -> Result<()> {
         ));
     }
 
-    let repo_root = pebble::worktree::find_git_root(&current_dir)?;
+    let repo_root = pebble_legacy::worktree::find_git_root(&current_dir)?;
 
     let manager =
-        pebble::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());
+        pebble_legacy::worktree::WorktreeManager::new(repo_root.clone(), sync_branch.to_string());
 
     if matches!(format, OutputFormat::Human) {
         println!("Creating orphaned sync branch: {}...", sync_branch);

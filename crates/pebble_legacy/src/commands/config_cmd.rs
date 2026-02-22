@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
-use pebble::cli::{OutputFormat, UsageError};
-use pebble::config::Config;
+use pebble_legacy::cli::{OutputFormat, UsageError};
+use pebble_legacy::config::Config;
 
 pub enum ConfigCommand {
     Get { key: String, format: OutputFormat },

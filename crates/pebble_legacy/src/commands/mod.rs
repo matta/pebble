@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use color_eyre::eyre::{Context, eyre};
-use pebble::command::CommandExt;
-use pebble::config::Config;
+use pebble_legacy::command::CommandExt;
+use pebble_legacy::config::Config;
 use std::path::Path;
 
 pub mod add;
@@ -43,7 +43,7 @@ pub fn load_config(path: Option<&Path>) -> Result<Config> {
         Some(p) => std::path::PathBuf::from(p),
         None => {
             let current_dir = std::env::current_dir()?;
-            let repo_root = pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+            let repo_root = pebble_legacy::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
             Config::default_path(&repo_root)
         }
     };
@@ -57,13 +57,13 @@ pub fn load_config(path: Option<&Path>) -> Result<Config> {
 pub fn get_worktree_manager(
     config: &Config,
     repo_root: std::path::PathBuf,
-) -> Result<pebble::worktree::WorktreeManager> {
+) -> Result<pebble_legacy::worktree::WorktreeManager> {
     let sync_branch = config
         .sync_branch
         .as_deref()
         .ok_or_else(|| eyre!("sync-branch not configured"))?;
 
-    Ok(pebble::worktree::WorktreeManager::new(
+    Ok(pebble_legacy::worktree::WorktreeManager::new(
         repo_root,
         sync_branch.to_string(),
     ))
@@ -72,15 +72,15 @@ pub fn get_worktree_manager(
 pub fn get_store(
     config: &Config,
 ) -> Result<(
-    pebble::store::JsonlStore,
-    pebble::worktree::WorktreeManager,
+    pebble_legacy::store::JsonlStore,
+    pebble_legacy::worktree::WorktreeManager,
     std::path::PathBuf,
 )> {
     let current_dir = std::env::current_dir()?;
-    let repo_root = pebble::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
+    let repo_root = pebble_legacy::worktree::find_git_root(&current_dir).unwrap_or(current_dir);
     let manager = get_worktree_manager(config, repo_root)?;
     let jsonl_path = manager.get_absolute_jsonl_path()?;
-    let store = pebble::store::JsonlStore::new(
+    let store = pebble_legacy::store::JsonlStore::new(
         jsonl_path
             .to_str()
             .ok_or_else(|| eyre!("Path contains invalid UTF-8 characters"))?,
