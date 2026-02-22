@@ -21,8 +21,7 @@ fn test_next_stdout_is_clean_when_no_tasks() {
     .unwrap();
     fs::create_dir(root.join("tasks")).unwrap();
 
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
     cmd.current_dir(root)
         .arg("next")
         .assert()
@@ -49,8 +48,7 @@ fn test_add_stdout_is_clean_non_json() {
     .unwrap();
     fs::create_dir(root.join("tasks")).unwrap();
 
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
     cmd.current_dir(root)
         .arg("add")
         .arg("Clean Task")
@@ -62,8 +60,7 @@ fn test_add_stdout_is_clean_non_json() {
 
 #[test]
 fn test_global_help_descriptions() {
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
     cmd.arg("--help")
         .assert()
         .success()
