@@ -1,12 +1,12 @@
 # Implementation Plan: TOML Frontmatter Migration
 
 ## Phase 1: Research & Setup
-- [ ] Task: Audit codebase for "YAML" references and identify all test fixtures.
-    - [ ] Grep for `YAML`, `yaml`, `Yaml` in `crates/pebble/src/`.
-    - [ ] Grep for `YAML`, `yaml`, `Yaml` in `docs/*.md` (excluding `docs/rfcs/`).
-    - [ ] List all `.md` files in `crates/pebble/tests/` and `.pebble-test/`.
-- [ ] Task: Verify current `Cargo.toml` and existing `toml` crate usage.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Research & Setup' (Protocol in workflow.md)
+- [x] Task: Audit codebase for "YAML" references and identify all test fixtures.
+    - [x] Grep for `YAML`, `yaml`, `Yaml` in `crates/pebble/src/`.
+    - [x] Grep for `YAML`, `yaml`, `Yaml` in `docs/*.md` (excluding `docs/rfcs/`).
+    - [x] List all `.md` files in `crates/pebble/tests/` and `.pebble-test/`.
+- [x] Task: Verify current `Cargo.toml` and existing `toml` crate usage.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Research & Setup' (Protocol in workflow.md)
 
 ## Phase 2: Core Logic Migration
 - [ ] Task: Remove `serde_yaml` dependency and update `Cargo.toml`.
