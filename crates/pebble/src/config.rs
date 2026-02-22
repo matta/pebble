@@ -1,0 +1,124 @@
+#![allow(dead_code)]
+
+use color_eyre::eyre::{Result, eyre};
+use serde::Deserialize;
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Config {
+    #[serde(default = "default_issue_prefix")]
+    #[serde(rename = "issue-prefix")]
+    pub issue_prefix: String,
+
+    #[serde(default = "default_tasks_dir")]
+    #[serde(rename = "tasks-dir")]
+    pub tasks_dir: PathBuf,
+}
+
+fn default_issue_prefix() -> String {
+    "issue".to_string()
+}
+
+fn default_tasks_dir() -> PathBuf {
+    PathBuf::from("docs/pebble/")
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            issue_prefix: default_issue_prefix(),
+            tasks_dir: default_tasks_dir(),
+        }
+    }
+}
+
+/// Resolves the project root by walking up from the given directory until
+/// it finds a `.pebble` directory. Returns None if it hits the filesystem root.
+pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
+    for ancestor in start_dir.ancestors() {
+        if ancestor.join(".pebble").is_dir() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
+}
+
+/// Parses the config from the given string and validates it according to the CLI contract.
+/// Specifically: `tasks-dir` MUST be a relative path.
+pub fn parse_config(toml_str: &str) -> Result<Config> {
+    let config: Config = if toml_str.trim().is_empty() {
+        Config::default()
+    } else {
+        toml::from_str(toml_str)?
+    };
+
+    if config.tasks_dir.is_absolute() {
+        return Err(eyre!(
+            "Configuration error: 'tasks-dir' must be a relative path to the project root. Found: {}",
+            config.tasks_dir.display()
+        ));
+    }
+
+    Ok(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_default_config() {
+        let toml = "";
+        let config = parse_config(toml).unwrap();
+        assert_eq!(config.issue_prefix, "issue");
+        assert_eq!(config.tasks_dir, PathBuf::from("docs/pebble/"));
+    }
+
+    #[test]
+    fn test_parse_custom_config() {
+        let toml = r#"
+        issue-prefix = "TKT"
+        tasks-dir = "my-tasks/"
+        "#;
+        let config = parse_config(toml).unwrap();
+        assert_eq!(config.issue_prefix, "TKT");
+        assert_eq!(config.tasks_dir, PathBuf::from("my-tasks/"));
+    }
+
+    #[test]
+    fn test_parse_config_rejects_absolute_tasks_dir() {
+        let toml = r#"
+        tasks-dir = "/absolute/path/to/tasks"
+        "#;
+        let err = parse_config(toml).unwrap_err();
+        assert!(
+            err.to_string().contains("must be a relative path"),
+            "Error was: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_find_project_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+
+        let pebble_dir = root.join(".pebble");
+        std::fs::create_dir(&pebble_dir).unwrap();
+
+        let deeply_nested = root.join("some").join("deep").join("path");
+        std::fs::create_dir_all(&deeply_nested).unwrap();
+
+        // Should find the root when starting from the nested directory
+        let found = find_project_root(&deeply_nested).expect("Should find root");
+        assert_eq!(found, root);
+
+        // Should find the root when starting from the root itself
+        let found2 = find_project_root(root).expect("Should find root");
+        assert_eq!(found2, root);
+
+        // Should return None when there is no .pebble dir
+        let empty_temp = tempfile::tempdir().unwrap();
+        assert_eq!(find_project_root(empty_temp.path()), None);
+    }
+}
