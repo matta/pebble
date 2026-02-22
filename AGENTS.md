@@ -51,11 +51,11 @@ This workflow prepares the codebase for a push:
 2. `just check` -- required, ensures code is free of errors.
 3. `just test` -- required, ensures tests pass.
 
-### Push the Pebbles
+### Push Gauntlet
 This workflow requires the following steps to be done in order:
 1. Run the just gauntlet.
-3. `git commit`.
-4. `git push`.
+2. `git commit`.
+3. `git push`.
 
 ## Gates
 
@@ -70,5 +70,6 @@ This workflow requires the following steps to be done in order:
 - .agents/checks/docs-discoverability.md
 - .agents/checks/warning-suppression-review.md
 - docs/pebble/pebble-add-should-pring-the-relative-pathname.md
+- docs/pebble/taskstatus-enum-representation-actionable-closed-nested-enums.md
 - docs/pebble/toctou-race-in-slug-collision-loop.md
 - docs/pebble/transliterate-non-ascii-characters-in-slugify.md

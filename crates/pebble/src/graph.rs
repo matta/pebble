@@ -1,4 +1,4 @@
-use crate::models::{TaskNode, TaskStatus};
+use crate::models::TaskNode;
 use crate::parser::parse_task_file;
 use color_eyre::eyre::Result;
 use std::collections::{HashMap, HashSet};
@@ -74,19 +74,13 @@ impl TaskGraph {
             return false;
         };
 
-        if !matches!(
-            node.frontmatter.status,
-            TaskStatus::Todo | TaskStatus::InProgress
-        ) {
+        if !node.frontmatter.status.is_actionable() {
             return false;
         }
 
         for dep_id in &node.frontmatter.deps {
             if let Some(dep_node) = self.nodes.get(dep_id) {
-                if !matches!(
-                    dep_node.frontmatter.status,
-                    TaskStatus::Done | TaskStatus::Canceled
-                ) {
+                if !dep_node.frontmatter.status.is_closed() {
                     return false; // Dep is not in terminal state
                 }
             } else {
@@ -97,19 +91,29 @@ impl TaskGraph {
         true
     }
 
-    /// Returns the number of downstream tasks (transitively) blocked by the given task.
-    /// We use a BFS/DFS to count all reachable downstream nodes.
+    /// Returns the number of downstream non-terminal tasks (transitively) blocked by the given task.
+    /// Uses a DFS to count unique reachable tasks while excluding the task itself.
     pub fn count_blocking(&self, task_id: &str) -> usize {
         let mut visited = HashSet::new();
-        let mut stack = vec![task_id];
+        let mut stack = vec![task_id.to_string()];
         let mut count = 0;
 
+        visited.insert(task_id.to_string());
+
         while let Some(current) = stack.pop() {
-            if let Some(downstream_ids) = self.reverse_deps.get(current) {
+            if let Some(downstream_ids) = self.reverse_deps.get(&current) {
                 for downstream_id in downstream_ids {
-                    if visited.insert(downstream_id) {
+                    if !visited.insert(downstream_id.clone()) {
+                        continue;
+                    }
+
+                    let Some(node) = self.nodes.get(downstream_id) else {
+                        continue;
+                    };
+
+                    if node.frontmatter.status.is_actionable() {
                         count += 1;
-                        stack.push(downstream_id);
+                        stack.push(downstream_id.clone());
                     }
                 }
             }
@@ -168,6 +172,7 @@ impl TaskGraph {
 mod tests {
     use super::*;
     use crate::models::TaskFrontmatter;
+    use crate::models::TaskStatus;
     use std::str::FromStr;
 
     fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
@@ -240,6 +245,47 @@ mod tests {
         // A blocks 0 things.
         assert_eq!(next_tasks[0].frontmatter.id, "B");
         assert_eq!(next_tasks[1].frontmatter.id, "A");
+    }
+
+    #[test]
+    fn test_count_blocking_excludes_terminal_and_self() {
+        let mut nodes = HashMap::new();
+
+        let a = make_test_node("A", TaskStatus::Todo, vec![]);
+        let b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
+        let c = make_test_node("C", TaskStatus::Done, vec!["B"]);
+        let d = make_test_node("D", TaskStatus::Todo, vec!["C"]);
+        let e = make_test_node("E", TaskStatus::Todo, vec!["B"]);
+
+        nodes.insert("A".to_string(), a);
+        nodes.insert("B".to_string(), b);
+        nodes.insert("C".to_string(), c);
+        nodes.insert("D".to_string(), d);
+        nodes.insert("E".to_string(), e);
+
+        let graph = TaskGraph::new(nodes);
+
+        // Reachable non-terminal tasks from A are B and E.
+        // C is terminal and stops traversal, so D is not counted.
+        assert_eq!(graph.count_blocking("A"), 2);
+    }
+
+    #[test]
+    fn test_count_blocking_cycle_excludes_self() {
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            "A".to_string(),
+            make_test_node("A", TaskStatus::Todo, vec!["B"]),
+        );
+        nodes.insert(
+            "B".to_string(),
+            make_test_node("B", TaskStatus::Todo, vec!["A"]),
+        );
+
+        let graph = TaskGraph::new(nodes);
+
+        // A should only count B (self excluded despite the cycle).
+        assert_eq!(graph.count_blocking("A"), 1);
     }
 
     #[test]
