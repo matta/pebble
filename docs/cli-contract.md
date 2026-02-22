@@ -2,6 +2,28 @@
 
 This document defines the strict specification for the Pebble Command Line Interface, detailing input arguments, flags, expected JSON output shapes, and configuration validation. This functions as the Interface Layer contract.
 
+## Streams
+
+- `stdout`: Primary command output only. Human-readable by default, machine-readable with `--json`.
+- `stderr`: Diagnostics, warnings, progress logs, and error messages. Never emit JSON data to `stderr`.
+
+## Exit Codes
+
+- `0`: Success.
+- `1`: Runtime error (I/O failure, config error, missing data).
+- `2`: Usage error (invalid arguments or unsupported options).
+
+## Command Surface Principles
+
+- Every command has a **clear, distinct purpose**. Avoid redundant commands that do the same thing.
+- All commands that produce output **must** support `--json`.
+- No interactive prompts. If confirmation is needed, require `--yes` / `--force` or fail with a usage error.
+- Use ubiquitous language: **one concept, one word** for both nouns and verbs. Do not abbreviate. Use the same term consistently (e.g., always `dependency`, never `dependencies` or `dep`; pick one verb such as `remove` or `delete` and use it everywhere).
+- For list/set fields, the `update` command must use **consistent incremental flags** across all such fields:
+    - Add items with `--add-<field> <value>` (repeatable).
+    - Remove items with `--remove-<field> <value>` (repeatable).
+    - If whole-list replacement is supported, it must be explicit via `--set-<field> <value>` (repeatable) and must not share flags with incremental operations.
+
 ## Configuration & Path Resolution
 
 Pebble locates its configuration and task files using strict path resolution rules:
@@ -39,6 +61,18 @@ Pebble locates its configuration and task files using strict path resolution rul
 * `--json`: Outputs a single JSON value to `stdout` per invocation. On failure, no JSON is emitted; `stdout` is empty, an error message is written to `stderr`, and the exit code is non-zero.
 * `--dir <PATH>`: Override the configured `tasks-dir`.
 * `--help-json`: Emits a machine-readable JSON schema of commands, flags, and output shapes to `stdout`, then exits.
+
+## JSON Mode
+
+* `--json` outputs **valid JSON to stdout and nothing else**.
+* JSON output is stable and schema-backed (see `--help-json` schemas).
+* When `--json` is set, suppress color/formatting and any extra decorations.
+
+## Help and Discoverability
+
+* `--help` **must describe every option** for the command, including defaults, not just list the argument name.
+* `--help` must include concrete usage examples for the common path.
+* `--help-json` provides a machine-readable description of commands, flags, and output schemas.
 
 ## JSON Shape: `TaskObject`
 
@@ -147,3 +181,17 @@ Strict verification tool. Functions identically to `pebble doctor` but exits wit
 Applies safe, deterministic repairs such as whitespace normalization or backfilling missing `created_at`. Does not rewrite dependency edges.
 * **Inputs**: None.
 * **Output (`--json`)**: Typically returns status of operations; follows the repair output format.
+
+## Output Semantics
+
+* Human output should be readable and may emit diagnostics to `stderr`.
+* Structured output must never be mixed with diagnostics.
+* Commands that return structured data:
+    * `list`, `search` => `{"tasks": [<TaskObject>, ...]}`
+    * `show`, `add`, `update` => single unwrapped `<TaskObject>`
+    * `config get`, `init` => structured JSON response
+
+## Idempotency and Safety
+
+* Commands should be safe to re-run; `archive` is expected to be idempotent.
+* When failing due to invalid usage, return exit code `2` with a clear error message on `stderr`.
