@@ -272,7 +272,7 @@ pub struct TaskNode {
 
 **CLI Command Surface (Authoritative)**
 
-This RFC supersedes `docs/cli-contract.md`; that document will be updated during implementation.
+This RFC supersedes the earlier `003-cli-contract.md` snapshot in this directory; the live `docs/cli-contract.md` is the authoritative interface specification and will be kept in sync during implementation.
 
 **Global options**
 - `--json`: Universal structured output flag. Also accepted at the sub-command level with the same effect. Intended usage: `pebble --json <command> <args>` or `pebble <command> <args> --json`.
