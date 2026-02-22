@@ -53,7 +53,7 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--tag <tag>`: Filters by tag (AND'ed).
     * `--dep <id>`: Filters by dependency (OR'ed).
     * `--priority <N>`: Filters by priority (OR'ed).
-    * `--is-ready`: Filters to tasks where all `deps` are `done` or `canceled`.
+    * `--is-ready`: Filters to tasks whose status is actionable (`todo` or `in_progress`), whose `deps` all exist, and whose `deps` are all `done` or `canceled`.
     * `--all`: Disables default omission of `done` and `canceled` tasks.
     * `--sort <field>`: Sort by a specific field. Valid fields: `priority`, `blocking`, `created_at`, `modified_at`, `status`, `title`. Prefix with `-` for descending. Ex: `--sort -created_at`.
     * `--limit <N>`: Limits returned rows.
