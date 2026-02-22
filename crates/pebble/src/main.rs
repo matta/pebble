@@ -81,8 +81,10 @@ enum Commands {
         remove_deps: Vec<String>,
     },
     Archive,
+    /// Output a specific task in various formats.
     Show {
         id: String,
+        /// Output just the raw filepath instead of the task entity.
         #[arg(long)]
         path_only: bool,
     },

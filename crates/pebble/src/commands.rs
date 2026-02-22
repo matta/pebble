@@ -188,13 +188,22 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
                 )?
             );
         } else {
-            println!("{}", node.path.display()); // or rel_path? The contract says "raw string filepath"
+            println!("{}", rel_path.display());
         }
     } else if ctx.json {
         let obj = TaskObject::from_node(node, &graph, &ctx.tasks_dir);
         println!("{}", serde_json::to_string(&obj)?);
     } else {
-        println!("{node:#?}"); // Basic debug output for CLI
+        let obj = TaskObject::from_node(node, &graph, &ctx.tasks_dir);
+        println!("Task: {} ({})", obj.frontmatter.title, obj.frontmatter.id);
+        println!("Status: {:?}", obj.frontmatter.status);
+        println!("Path: {}", obj.path);
+        if !obj.frontmatter.tags.is_empty() {
+            println!("Tags: {:?}", obj.frontmatter.tags);
+        }
+        println!("Blocked by: {:?}", obj.blocked_by);
+        println!("Blocking: {:?}", obj.blocking);
+        println!("\n{}", obj.body.trim());
     }
     Ok(())
 }
