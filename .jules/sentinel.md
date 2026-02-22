@@ -4,3 +4,10 @@
 **Prevention:**
 1. Validate all user-supplied git refs (branches, tags) to ensure they do not start with `-`.
 2. Use `--` delimiter in git commands wherever supported (e.g., `git worktree add -- <branch>`).
+
+## 2025-01-23 - Path Traversal in Configuration Parsing
+**Vulnerability:** The `tasks-dir` configuration option allowed `..` components, enabling path traversal outside the project root (e.g., `tasks-dir = "../../../etc"`). This bypassed the `is_absolute()` check and allowed reading arbitrary `.md` files on the system if a user loaded a malicious config.
+**Learning:** `Path::is_absolute()` is insufficient to sandbox file access to a directory. Relative paths starting with `..` are not absolute but can still traverse upwards. Rust's `Path::components()` iterator provides a reliable way to detect `ParentDir` components.
+**Prevention:**
+1. Explicitly check for and reject `std::path::Component::ParentDir` in configuration paths intended to be sandbox-relative.
+2. Consider canonicalizing paths (resolving symlinks and `..`) and verifying they start with the intended root prefix, though this can be complex with symlinks.
