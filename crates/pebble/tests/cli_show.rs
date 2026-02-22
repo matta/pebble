@@ -25,13 +25,13 @@ fn test_show_path_only_relative() {
     let task_path = tasks_dir.join("PROJ-1.md");
     fs::write(
         &task_path,
-        r#"---
-id: PROJ-1
-title: "First Task"
-status: todo
-deps: []
-created_at: "2024-01-01T00:00:00Z"
----
+        r#"+++
+id = "PROJ-1"
+title = "First Task"
+status = "todo"
+deps = []
+created_at = 2024-01-01T00:00:00Z
++++
 Body text
 "#,
     )
@@ -74,14 +74,14 @@ fn test_show_formatted_output() {
     let task_path = tasks_dir.join("PROJ-2.md");
     fs::write(
         &task_path,
-        r#"---
-id: PROJ-2
-title: "A Formatted Task"
-status: todo
-deps: []
-tags: ["frontend"]
-created_at: "2024-01-01T00:00:00Z"
----
+        r#"+++
+id = "PROJ-2"
+title = "A Formatted Task"
+status = "todo"
+deps = []
+tags = ["frontend"]
+created_at = 2024-01-01T00:00:00Z
++++
 Body text explaining the task.
 "#,
     )

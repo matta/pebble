@@ -9,8 +9,8 @@ chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive", "env"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
 toml.workspace = true
+toml_datetime = { version = "0.7", features = ["serde"] }
 nanoid.workspace = true
 
 [dev-dependencies]

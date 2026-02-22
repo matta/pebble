@@ -27,8 +27,8 @@ impl TaskGraph {
                     }
 
                     let content = std::fs::read_to_string(&path)?;
-                    // Skip files that don't start with ---
-                    if content.starts_with("---") {
+                    // Skip files that don't start with +++
+                    if content.starts_with("+++") {
                         match parse_task_file(&path, &content) {
                             Ok(node) => {
                                 nodes.insert(node.frontmatter.id.clone(), node);
@@ -168,7 +168,7 @@ impl TaskGraph {
 mod tests {
     use super::*;
     use crate::models::TaskFrontmatter;
-    use chrono::TimeZone;
+    use std::str::FromStr;
 
     fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
         TaskNode {
@@ -179,7 +179,7 @@ mod tests {
                 title: id.to_string(),
                 status,
                 priority: None,
-                created_at: chrono::Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
+                created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap(),
                 modified_at: None,
                 resolved_at: None,
                 deps: deps.into_iter().map(|s| s.to_string()).collect(),

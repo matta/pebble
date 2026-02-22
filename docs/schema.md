@@ -11,9 +11,9 @@ The file consists of two parts:
 The data layer is strictly defined by the following Rust structures. AI agents and CLI tooling must adhere to these definitions when parsing or generating task files.
 
 ```rust
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use toml_datetime::Datetime;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "snake_case")] // Ensures TOML matches exactly "todo", "in_progress", "done", "canceled".
@@ -33,9 +33,9 @@ pub struct TaskFrontmatter {
     pub status: TaskStatus,
     // Valid range: 0..99. Lower number = higher priority.
     pub priority: Option<u32>,
-    pub created_at: DateTime<Utc>,
-    pub modified_at: Option<DateTime<Utc>>,
-    pub resolved_at: Option<DateTime<Utc>>,
+    pub created_at: Datetime,
+    pub modified_at: Option<Datetime>,
+    pub resolved_at: Option<Datetime>,
     #[serde(default)]
     pub deps: Vec<String>,
     #[serde(default)]

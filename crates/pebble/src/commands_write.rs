@@ -4,6 +4,7 @@ use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
 use std::env;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub fn run_init(
     cli_dir_override: Option<PathBuf>,
@@ -69,7 +70,7 @@ pub fn run_add(
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
 
     let parsed_status = if let Some(s) = status {
-        serde_yaml::from_str::<TaskStatus>(&s).map_err(|_| {
+        serde_json::from_str::<TaskStatus>(&format!("\"{s}\"")).map_err(|_| {
             eyre!("Invalid status: {s}. Expected todo, in_progress, done, or canceled.")
         })?
     } else {
@@ -77,22 +78,25 @@ pub fn run_add(
     };
 
     let now = chrono::Utc::now();
+    let created_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
+        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))?;
+
     let fm = TaskFrontmatter {
         id: new_id.clone(),
         title: title.clone(),
         status: parsed_status,
         priority,
-        created_at: now,
+        created_at,
         modified_at: None,
         resolved_at: None,
         deps,
         tags,
     };
 
-    let fm_yaml = serde_yaml::to_string(&fm)?;
+    let fm_toml = toml::to_string(&fm)?;
     let body_text = body.unwrap_or_default();
 
-    let content = format!("---\n{}---\n{}", fm_yaml, body_text);
+    let content = format!("+++\n{}+++\n{}", fm_toml, body_text);
 
     std::fs::create_dir_all(&ctx.tasks_dir)?;
     let filepath = ctx.tasks_dir.join(format!("{}.md", new_id));
@@ -141,7 +145,7 @@ pub fn run_update(
     }
     if let Some(s) = status {
         let new_status: TaskStatus =
-            serde_yaml::from_str(&s).map_err(|_| eyre!("Invalid status"))?;
+            serde_json::from_str(&format!("\"{s}\"")).map_err(|_| eyre!("Invalid status"))?;
 
         // Handle transitions
         if !matches!(
@@ -149,7 +153,10 @@ pub fn run_update(
             TaskStatus::Done | TaskStatus::Canceled
         ) && matches!(new_status, TaskStatus::Done | TaskStatus::Canceled)
         {
-            node.frontmatter.resolved_at = Some(chrono::Utc::now());
+            let now = chrono::Utc::now();
+            let resolved_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
+                .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))?;
+            node.frontmatter.resolved_at = Some(resolved_at);
         } else if matches!(
             node.frontmatter.status,
             TaskStatus::Done | TaskStatus::Canceled
@@ -167,7 +174,10 @@ pub fn run_update(
         node.frontmatter.priority = None;
     }
 
-    node.frontmatter.modified_at = Some(chrono::Utc::now());
+    let now = chrono::Utc::now();
+    let modified_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
+        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))?;
+    node.frontmatter.modified_at = Some(modified_at);
 
     for t in add_tags {
         if !node.frontmatter.tags.contains(&t) {
@@ -198,8 +208,8 @@ pub fn run_update(
         }
     }
 
-    let fm_yaml = serde_yaml::to_string(&node.frontmatter)?;
-    let content = format!("---\n{}---\n{}", fm_yaml, node.body);
+    let fm_toml = toml::to_string(&node.frontmatter)?;
+    let content = format!("+++\n{}+++\n{}", fm_toml, node.body);
     std::fs::write(&node.path, content)?;
 
     if ctx.json {
@@ -230,19 +240,24 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
         if matches!(
             node.frontmatter.status,
             TaskStatus::Done | TaskStatus::Canceled
-        ) && let Some(resolved_at) = node.frontmatter.resolved_at
-            && now.signed_duration_since(resolved_at) > threshold_days
+        ) && let Some(resolved_at_toml) = node.frontmatter.resolved_at
         {
-            let new_path = archive_dir.join(node.path.file_name().unwrap());
-            std::fs::rename(&node.path, &new_path)?;
+            let resolved_at = chrono::DateTime::parse_from_rfc3339(&resolved_at_toml.to_string())
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .map_err(|e| eyre!("Failed to parse resolved_at from TOML: {}", e))?;
 
-            if ctx.json {
-                archived.push(serde_json::json!({
-                            "id": node.frontmatter.id,
-                            "moved_to": new_path.strip_prefix(&ctx.tasks_dir).unwrap_or(&new_path).display().to_string()
-                        }));
-            } else {
-                println!("Archived {}", node.frontmatter.id);
+            if now.signed_duration_since(resolved_at) > threshold_days {
+                let new_path = archive_dir.join(node.path.file_name().unwrap());
+                std::fs::rename(&node.path, &new_path)?;
+
+                if ctx.json {
+                    archived.push(serde_json::json!({
+                                "id": node.frontmatter.id,
+                                "moved_to": new_path.strip_prefix(&ctx.tasks_dir).unwrap_or(&new_path).display().to_string()
+                            }));
+                } else {
+                    println!("Archived {}", node.frontmatter.id);
+                }
             }
         }
     }

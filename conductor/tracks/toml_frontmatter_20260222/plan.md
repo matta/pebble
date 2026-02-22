@@ -9,31 +9,31 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Research & Setup' (Protocol in workflow.md)
 
 ## Phase 2: Core Logic Migration
-- [ ] Task: Remove `serde_yaml` dependency and update `Cargo.toml`.
-- [ ] Task: Update `models.rs` to reflect TOML frontmatter.
-    - [ ] Update doc comments and any internal "YAML" mentions.
-- [ ] Task: Implement TOML parsing in `parser.rs`.
-    - [ ] Update `split_frontmatter` to detect `+++` instead of `---`.
-    - [ ] Update `parse_frontmatter` to use `toml::from_str`.
-    - [ ] Add failing unit tests for TOML parsing (TDD).
-    - [ ] Implement the change and pass tests.
-- [ ] Task: Implement TOML serialization in `commands_write.rs`.
-    - [ ] Update `serialize_frontmatter` to use `toml` and `+++` delimiters.
-    - [ ] Ensure datetimes are serialized as native TOML types.
-    - [ ] Add failing unit tests for TOML serialization (TDD).
-    - [ ] Implement the change and pass tests.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Logic Migration' (Protocol in workflow.md)
+- [x] Task: Remove `serde_yaml` dependency and update `Cargo.toml`.
+- [x] Task: Update `models.rs` to reflect TOML frontmatter.
+    - [x] Update doc comments and any internal "YAML" mentions.
+- [x] Task: Implement TOML parsing in `parser.rs`.
+    - [x] Update `split_frontmatter` to detect `+++` instead of `---`.
+    - [x] Update `parse_frontmatter` to use `toml::from_str`.
+    - [x] Add failing unit tests for TOML parsing (TDD).
+    - [x] Implement the change and pass tests.
+- [x] Task: Implement TOML serialization in `commands_write.rs`.
+    - [x] Update `serialize_frontmatter` to use `toml` and `+++` delimiters.
+    - [x] Ensure datetimes are serialized as native TOML types.
+    - [x] Add failing unit tests for TOML serialization (TDD).
+    - [x] Implement the change and pass tests.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core Logic Migration' (Protocol in workflow.md)
 
 ## Phase 3: Documentation & Source Scrubbing
-- [ ] Task: Remove all mentions of "YAML" from `crates/pebble/src/`.
-    - [ ] Update error messages (e.g., "Failed to parse YAML frontmatter" -> "Failed to parse TOML frontmatter").
-    - [ ] Update variable names if any (e.g., `yaml_block` -> `toml_block`).
-- [ ] Task: Update active documentation.
-    - [ ] Update `AGENTS.md`.
-    - [ ] Update `docs/schema.md`.
-    - [ ] Update `docs/cli-contract.md`.
-    - [ ] Update `GEMINI.md` and `AGENTS.md` if they mention YAML.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Documentation & Source Scrubbing' (Protocol in workflow.md)
+- [x] Task: Remove all mentions of "YAML" from `crates/pebble/src/`.
+    - [x] Update error messages (e.g., "Failed to parse YAML frontmatter" -> "Failed to parse TOML frontmatter").
+    - [x] Update variable names if any (e.g., `yaml_block` -> `toml_block`).
+- [x] Task: Update active documentation.
+    - [x] Update `AGENTS.md`.
+    - [x] Update `docs/schema.md`.
+    - [x] Update `docs/cli-contract.md`.
+    - [x] Update `GEMINI.md` and `AGENTS.md` if they mention YAML.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Documentation & Source Scrubbing' (Protocol in workflow.md)
 
 ## Phase 4: Test Migration & Final Verification
 - [ ] Task: Migrate all test fixtures and task files.

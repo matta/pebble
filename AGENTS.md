@@ -5,7 +5,7 @@ This project is a CLI task tracker written in Rust, built upon a Markdown-native
 ## Project Goals & Immutable Invariants
 
 1. **Markdown-Native Storage**: 
-    - Task data is stored entirely in Markdown files with YAML frontmatter.
+    - Task data is stored entirely in Markdown files with TOML frontmatter.
     - There is no JSONL database, no SQLite database, and no hidden Git worktrees.
     - The files themselves act as the directed graph.
 

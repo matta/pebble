@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: move the pebble implementation from YAML frontmatter to TOML, as called for in @docs/rfcs/004-toml-frontmatter.md and associated @docs/ .**
+- [~] **Track: move the pebble implementation from YAML frontmatter to TOML, as called for in @docs/rfcs/004-toml-frontmatter.md and associated @docs/ .**
 *Link: [./tracks/toml_frontmatter_20260222/](./tracks/toml_frontmatter_20260222/)*
