@@ -2,6 +2,10 @@
 
 This project is a CLI task tracker written in Rust, built upon a Markdown-native graph design.
 
+## Pebble is self hosting
+
+Read @.pebble/AGENTS.md to understand tool usage.
+
 ## Project Goals & Immutable Invariants
 
 1. **Markdown-Native Storage**: 
@@ -41,10 +45,15 @@ When implementing, strictly rely on the specifications extracted from the RFC:
 
 ## Workflows
 
+### Just Gauntlet
+This workflow prepares the codebase for a push:
+1. `just fix` -- optional, fixes formatting and some clippy warnings.
+2. `just check` -- required, ensures code is free of errors.
+3. `just test` -- required, ensures tests pass.
+
 ### Push the Pebbles
 This workflow requires the following steps to be done in order:
-1. `just check` must pass.
-2. `just test` must pass.
+1. Run the just gauntlet.
 3. `git commit`.
 4. `git push`.
 
@@ -53,3 +62,13 @@ This workflow requires the following steps to be done in order:
 ### Push Gate
 - **Requirement**: `just check` must pass cleanly.
 - **Enforcement**: Agents must run `just check` and ensure it exits with code 0 before pushing any code to the repository.
+
+## Documentation Index
+- .agents/README.md
+- .agents/checks/gemini-styleguide.md
+- .agents/checks/specifications.md
+- .agents/checks/docs-discoverability.md
+- .agents/checks/warning-suppression-review.md
+- docs/pebble/pebble-add-should-pring-the-relative-pathname.md
+- docs/pebble/toctou-race-in-slug-collision-loop.md
+- docs/pebble/transliterate-non-ascii-characters-in-slugify.md
