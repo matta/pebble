@@ -118,8 +118,8 @@ fn validate_close_reason(
     status_next: &str,
     close_reason: &Option<String>,
 ) -> Result<()> {
-    let closing_transition =
-        status_next == pebble::store::STATUS_CLOSED && current_status != pebble::store::STATUS_CLOSED;
+    let closing_transition = status_next == pebble::store::STATUS_CLOSED
+        && current_status != pebble::store::STATUS_CLOSED;
 
     if close_reason.is_some() && status_next != pebble::store::STATUS_CLOSED {
         return Err(UsageError::new("close_reason requires status 'closed'").into());
