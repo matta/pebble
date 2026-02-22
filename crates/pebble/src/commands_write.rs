@@ -81,10 +81,10 @@ pub fn slugify(s: &str) -> String {
         }
     }
 
-    let mut slug = slug.trim_end_matches('-').to_string();
+    slug.truncate(slug.trim_end_matches('-').len());
     if slug.len() > MAX_SLUG_LEN {
         slug.truncate(MAX_SLUG_LEN);
-        slug = slug.trim_end_matches('-').to_string();
+        slug.truncate(slug.trim_end_matches('-').len());
     }
     if slug.is_empty() {
         "task".to_string()
