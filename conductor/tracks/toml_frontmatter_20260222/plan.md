@@ -35,12 +35,12 @@
     - [x] Update `GEMINI.md` and `AGENTS.md` if they mention YAML.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Documentation & Source Scrubbing' (Protocol in workflow.md)
 
-## Phase 4: Test Migration & Final Verification
-- [ ] Task: Migrate all test fixtures and task files.
-    - [ ] Update all `.md` files in `crates/pebble/tests/` to use `+++` and TOML syntax.
-    - [ ] Update any tasks in `.pebble-test/tasks/`.
-- [ ] Task: Final Verification.
-    - [ ] Run `just check` to ensure no linting/type errors.
-    - [ ] Run `just test` to ensure all tests pass with TOML.
-    - [ ] Manually verify `pebble add` and `pebble show` with the new format.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Test Migration & Final Verification' (Protocol in workflow.md)
+## Phase 4: Test Migration & Final Verification [checkpoint: 6e1bf45]
+- [x] Task: Migrate all test fixtures and task files.
+    - [x] Update all `.md` files in `crates/pebble/tests/` to use `+++` and TOML syntax.
+    - [x] Update any tasks in `.pebble-test/tasks/`.
+- [x] Task: Final Verification.
+    - [x] Run `just check` to ensure no linting/type errors.
+    - [x] Run `just test` to ensure all tests pass with TOML.
+    - [x] Manually verify `pebble add` and `pebble show` with the new format.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Test Migration & Final Verification' (Protocol in workflow.md)
