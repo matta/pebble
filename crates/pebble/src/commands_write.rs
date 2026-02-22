@@ -49,7 +49,7 @@ See documentation for implementation details.
     std::fs::create_dir_all(current_dir.join(tasks_dir_path))?;
 
     if !json {
-        println!("Initialized Pebble repository in {}", current_dir.display());
+        eprintln!("Initialized Pebble repository in {}", current_dir.display());
     }
 
     Ok(())
@@ -109,7 +109,7 @@ pub fn run_add(
         let obj = TaskObject::from_node(&node, &graph, &ctx.tasks_dir);
         println!("{}", serde_json::to_string(&obj)?);
     } else {
-        println!("Created task {} at {}", new_id, node.path.display());
+        eprintln!("Created task {} at {}", new_id, node.path.display());
     }
 
     Ok(())
@@ -210,7 +210,7 @@ pub fn run_update(
         let obj = TaskObject::from_node(&node, &updated_graph, &ctx.tasks_dir);
         println!("{}", serde_json::to_string(&obj)?);
     } else {
-        println!("Updated task {}", node.frontmatter.id);
+        eprintln!("Updated task {}", node.frontmatter.id);
     }
 
     Ok(())
@@ -242,7 +242,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
                             "moved_to": new_path.strip_prefix(&ctx.tasks_dir).unwrap_or(&new_path).display().to_string()
                         }));
             } else {
-                println!("Archived {}", node.frontmatter.id);
+                eprintln!("Archived {}", node.frontmatter.id);
             }
         }
     }
