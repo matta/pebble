@@ -2,8 +2,8 @@ use crate::models::TaskNode;
 use crate::parser::parse_task_file;
 use color_eyre::eyre::Result;
 use std::cmp::Reverse;
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 mod ordering;
 
@@ -28,9 +28,28 @@ pub struct TaskGraph {
     pub nodes: HashMap<String, TaskNode>,
     /// Maps a task ID to the list of task IDs that depend on it.
     pub blocking: HashMap<String, Vec<String>>,
+    /// IDs that appeared in multiple task files during load.
+    pub duplicate_ids: HashSet<String>,
 }
 
 impl TaskGraph {
+    /// Recursively collect all Markdown files under `dir` in deterministic order.
+    fn collect_markdown_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
+        let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<std::result::Result<_, _>>()?;
+        entries.sort_by_key(|entry| entry.path());
+
+        for entry in entries {
+            let path = entry.path();
+            if path.is_dir() {
+                Self::collect_markdown_files(&path, out)?;
+            } else if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
+                out.push(path);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Builds a graph from a directory of task files.
     ///
     /// Scans the directory for Markdown (`.md`) files, parsing each as a [`TaskNode`].
@@ -42,40 +61,75 @@ impl TaskGraph {
     ///
     /// Returns an `Err` if the directory cannot be read or if any file read operation fails.
     pub fn load_from_dir(tasks_dir: &Path) -> Result<Self> {
-        let mut nodes = HashMap::new();
+        let mut parsed_nodes = Vec::new();
 
         if tasks_dir.exists() {
-            for entry in std::fs::read_dir(tasks_dir)? {
-                let entry = entry?;
-                let path = entry.path();
+            let mut markdown_files = Vec::new();
+            Self::collect_markdown_files(tasks_dir, &mut markdown_files)?;
 
-                if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
-                    // Ignore AGENTS.md or other known non-task files if they live here.
-                    if path.file_name().and_then(|n| n.to_str()) == Some("AGENTS.md") {
-                        continue;
-                    }
+            for path in markdown_files {
+                // Ignore AGENTS.md or other known non-task files if they live here.
+                if path.file_name().and_then(|n| n.to_str()) == Some("AGENTS.md") {
+                    continue;
+                }
 
-                    let content = std::fs::read_to_string(&path)?;
-                    // Skip files that don't start with +++
-                    if content.starts_with("+++") {
-                        match parse_task_file(&path, &content) {
-                            Ok(node) => {
-                                nodes.insert(node.frontmatter.id.clone(), node);
-                            }
-                            Err(e) => {
-                                eprintln!("Warning: Failed to parse {}: {}", path.display(), e);
-                            }
+                let content = std::fs::read_to_string(&path)?;
+                // Skip files that don't start with +++
+                if content.starts_with("+++") {
+                    match parse_task_file(&path, &content) {
+                        Ok(node) => {
+                            parsed_nodes.push(node);
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Failed to parse {}: {}", path.display(), e);
                         }
                     }
                 }
             }
         }
 
-        Ok(Self::new(nodes))
+        let mut grouped: BTreeMap<String, Vec<TaskNode>> = BTreeMap::new();
+        for node in parsed_nodes {
+            grouped
+                .entry(node.frontmatter.id.clone())
+                .or_default()
+                .push(node);
+        }
+
+        let mut nodes = HashMap::new();
+        let mut duplicate_ids = HashSet::new();
+
+        for (id, mut id_nodes) in grouped {
+            if id_nodes.len() > 1 {
+                id_nodes.sort_by(|a, b| a.path.cmp(&b.path));
+                let paths: Vec<String> = id_nodes
+                    .iter()
+                    .map(|node| node.path.display().to_string())
+                    .collect();
+                eprintln!(
+                    "Warning: Duplicate task ID '{}' found in files: {}. Skipping all files with this ID.",
+                    id,
+                    paths.join(", ")
+                );
+                duplicate_ids.insert(id);
+            } else if let Some(node) = id_nodes.pop() {
+                nodes.insert(node.frontmatter.id.clone(), node);
+            }
+        }
+
+        Ok(Self::new_with_duplicates(nodes, duplicate_ids))
     }
 
     /// Creates a TaskGraph from an existing map of nodes, precomputing reverse indices.
     pub fn new(nodes: HashMap<String, TaskNode>) -> Self {
+        Self::new_with_duplicates(nodes, HashSet::new())
+    }
+
+    /// Creates a TaskGraph from nodes and a set of duplicated IDs.
+    pub fn new_with_duplicates(
+        nodes: HashMap<String, TaskNode>,
+        duplicate_ids: HashSet<String>,
+    ) -> Self {
         let mut blocking: HashMap<String, Vec<String>> = HashMap::new();
 
         for (id, node) in &nodes {
@@ -84,7 +138,16 @@ impl TaskGraph {
             }
         }
 
-        Self { nodes, blocking }
+        Self {
+            nodes,
+            blocking,
+            duplicate_ids,
+        }
+    }
+
+    /// Returns true if the given ID was found in multiple files.
+    pub fn is_duplicate_id(&self, task_id: &str) -> bool {
+        self.duplicate_ids.contains(task_id)
     }
 
     /// Determines if a task is "ready" according to absolute readiness rules.

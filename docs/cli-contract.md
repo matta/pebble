@@ -73,6 +73,67 @@ Pebble locates its configuration and task files using strict path resolution rul
 * `--help` **must describe every option** for the command, including defaults, not just list the argument name.
 * `--help` must include concrete usage examples for the common path.
 * `--help-json` provides a machine-readable description of commands, flags, and output schemas.
+* Command-level help text is a normative interface contract and must be kept in sync with behavior.
+
+### Required `--help` Content (Must-Have)
+
+For every command, `--help` output **MUST** include all of the following:
+
+* A one-line purpose statement that explains what the command does at a high level.
+* A default behavior summary (for example, what is included/excluded when no flags are supplied).
+* A complete argument/flag table where each entry includes:
+    * semantic behavior (not just type/name),
+    * repeatability and combination semantics (OR/AND/replace),
+    * default values or omission behavior,
+    * valid ranges/enums and validation rules when applicable.
+* Interaction semantics for commonly combined flags (for example, how explicit filters interact with default omission behavior).
+* At least one concrete usage example for the default path and one example that combines non-trivial flags.
+
+If any of the required content above is missing for a command, that command's help is incomplete and non-conformant with this contract.
+
+### Command-Specific Help Minimums (All Commands)
+
+In addition to the general requirements above, each command's `--help` **MUST** include the following command-specific semantics:
+
+* `pebble init`
+    * What project initialization creates (`.pebble/`, config, tasks dir, `AGENTS.md`).
+    * `--dir` relative-path requirement and failure behavior for absolute paths.
+    * `--issue-prefix` meaning and default behavior.
+* `pebble config get <key>`
+    * Supported keys and behavior for unknown keys.
+    * Output semantics in human mode vs `--json`.
+* `pebble list` / `pebble ls`
+    * Full filter semantics and combined-flag behavior as defined below in `pebble list --help` must-haves.
+* `pebble next`
+    * That it returns one highest-ranked ready task.
+    * Ranking tuple and equivalence to `pebble list --is-ready --limit 1`.
+    * Behavior when no ready tasks exist.
+* `pebble show <id>`
+    * Full-object vs `--path-only` behavior.
+    * Not-found behavior and stream/exit semantics.
+* `pebble search <query>`
+    * Search surface (title + body), case-insensitive substring semantics, and non-regex behavior.
+    * Result ordering (default list ordering).
+* `pebble add <title>`
+    * Generated fields and defaults (`id`, timestamps, status defaults).
+    * Repeatable flags (`--need`, `--tag`) and semantics.
+    * Priority validation range (`0..99`).
+* `pebble update <id>`
+    * Mutability surface (what can be changed and what cannot, especially immutable `id`).
+    * Incremental list operations semantics (`--add-*`, `--remove-*`, and any clear/set behavior).
+    * Timestamp transition semantics (`modified_at`, `resolved_at` transitions).
+* `pebble archive`
+    * Selection criteria (terminal status + age threshold).
+    * Destination path behavior and filename collision handling.
+* `pebble doctor`
+    * Read-only diagnostics scope and non-mutating behavior.
+    * Warning/error reporting shape and exit behavior.
+* `pebble check`
+    * How it differs from `doctor` (strictness and non-zero exit on issues).
+* `pebble fix`
+    * What repairs are allowed, what is explicitly not rewritten, and warning behavior for unknown keys.
+
+If any command omits its command-specific semantics above, its `--help` output is incomplete.
 
 ## JSON Shape: `TaskObject`
 
@@ -126,6 +187,21 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
 * When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. Ties are broken by `created_at` ascending, then `id` ascending.
 * When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the order is effectively: blocking count → priority → created_at → id.
 * **Output (`--json`)**: `{"tasks": [<TaskObject>, ...]}`
+
+#### `pebble list --help` Must-Have Semantics
+
+The `pebble list --help` output **MUST** explicitly document:
+
+* What `list` does in general (scan, graph build, and task listing behavior).
+* The default omission rule for `done`/`canceled`.
+* `--status` OR semantics, including that explicit closed statuses include closed tasks even without `--all`.
+* `--tag` AND semantics.
+* `--need` OR semantics.
+* `--priority` OR semantics and valid range `0..99`.
+* `--is-ready` absolute readiness criteria summary.
+* `--all` interaction with default omission behavior.
+* `--limit` semantics (applied after ordering/filtering).
+* `--sort` field set and tie-breaker behavior.
 
 ### `pebble next`
 Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.

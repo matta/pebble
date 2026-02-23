@@ -34,7 +34,7 @@ When implementing, strictly rely on the specifications extracted from the RFC:
 - [Data Layer (`schema.md`)](docs/schema.md) - Contains the strict Rust struct mappings and details dropped audit fields.
 - [Interface Layer (`cli-contract.md`)](docs/cli-contract.md) - Exact command, flag, and JSON output specifications.
 - [Logic Layer (`graph-semantics.md`)](docs/graph-semantics.md) - Definition of traversal rules, absolute readiness, and dynamic starvation prevention scoring.
-- [Historical RFCs](docs/rfcs/) - Frozen design proposals preserved for context only. Never use for active implementation details.
+- [Historical RFCs](docs/rfcs/) - Frozen design proposals preserved as historical records. These are expected to diverge from current code and normative specs. Never use for active implementation details or to flag code inconsistencies.
 
 ## Constraints
 

@@ -86,12 +86,12 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P0.4.c Tests validating JSON purity and stdout/stderr separation for these commands.
 
 ## Phase 1: Core CLI Contract Coverage (Non-Blocking for Planning)
-- [ ] P1.0 Deferred scan/duplicate handling (immediately after Phase Zero).
-- [ ] P1.0.a Recursive scan of `tasks-dir` for all `*.md` files.
-- [ ] P1.0.b Duplicate ID handling (required for correct graph semantics).
-- [ ] P1.0.c Read commands warn to `stderr` and skip **all** files with duplicated IDs.
-- [ ] P1.0.d Write commands fail with a clear error if target ID is duplicated.
-- [ ] P1.1 `list` filters: `--status` (OR), `--tag` (AND), `--need` (OR), `--priority` (OR), `--is-ready`, `--all`, `--limit`.
+- [x] P1.0 Deferred scan/duplicate handling (immediately after Phase Zero).
+- [x] P1.0.a Recursive scan of `tasks-dir` for all `*.md` files.
+- [x] P1.0.b Duplicate ID handling (required for correct graph semantics).
+- [x] P1.0.c Read commands warn to `stderr` and skip **all** files with duplicated IDs.
+- [x] P1.0.d Write commands fail with a clear error if target ID is duplicated.
+- [x] P1.1 `list` filters: `--status` (OR), `--tag` (AND), `--need` (OR), `--priority` (OR), `--is-ready`, `--all`, `--limit`.
 - [ ] P1.2 `list` alias `ls`.
 - [ ] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
 - [ ] P1.4 `search` command (case-insensitive substring over title + body; default list ordering).
