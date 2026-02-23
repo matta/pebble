@@ -12,6 +12,7 @@ pub struct TestEnv {
     /// Root directory of the temporary test workspace.
     pub root: PathBuf,
     /// Tasks directory within the temporary workspace.
+    #[allow(dead_code)]
     pub tasks_dir: PathBuf,
 }
 
