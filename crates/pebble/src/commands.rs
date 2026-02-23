@@ -123,27 +123,92 @@ impl RunContext {
     }
 }
 
-/// List tasks using the default ordering, optionally filtering to ready tasks.
-pub fn run_list(ctx: &RunContext, is_ready: bool) -> Result<()> {
-    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
+/// Filter tasks based on provided criteria.
+/// Public for testing.
+pub fn filter_tasks<'a>(
+    graph: &'a TaskGraph,
+    is_ready: bool,
+    status: &[String],
+    priority: &[u8],
+    tags: &[String],
+    deps: &[String],
+) -> Vec<&'a TaskNode> {
+    let mut tasks: Vec<&TaskNode> = graph.nodes.values().collect();
 
-    // Default: omit done/canceled
-    let mut tasks: Vec<&TaskNode> = graph
-        .nodes
-        .values()
-        .filter(|n| {
+    // 1. Status Filter
+    if !status.is_empty() {
+        // Parse status strings into TaskStatus
+        // We do loose matching (case insensitive)
+        let target_statuses: Vec<TaskStatus> = status
+            .iter()
+            .filter_map(|s| serde_json::from_str(&format!("\"{}\"", s)).ok())
+            .collect();
+
+        if !target_statuses.is_empty() {
+            tasks.retain(|n| target_statuses.contains(&n.frontmatter.status));
+        } else {
+            // If statuses were provided but none parsed validly, strictly we should probably match nothing?
+            // Or maybe the user meant custom status? Currently TaskStatus is an enum.
+            // If they pass garbage, filter everything out.
+             tasks.retain(|_| false);
+        }
+    } else {
+        // Default behavior: omit done/canceled if no status filter provided
+        // EXCEPT if is_ready is true, which implies actionable tasks anyway.
+        // But the original code said: "Default: omit done/canceled".
+        tasks.retain(|n| {
             !matches!(
                 n.frontmatter.status,
                 TaskStatus::Done | TaskStatus::Canceled
             )
-        })
-        .collect();
+        });
+    }
 
+    // 2. Priority Filter (OR)
+    if !priority.is_empty() {
+        tasks.retain(|n| {
+            if let Some(p) = n.frontmatter.priority {
+                priority.contains(&p)
+            } else {
+                false
+            }
+        });
+    }
+
+    // 3. Tags Filter (AND)
+    if !tags.is_empty() {
+        tasks.retain(|n| {
+            tags.iter().all(|tag| n.frontmatter.tags.contains(tag))
+        });
+    }
+
+    // 4. Deps Filter (OR) - Task must depend on ANY of these
+    if !deps.is_empty() {
+        tasks.retain(|n| {
+            deps.iter().any(|dep_id| n.frontmatter.deps.contains(dep_id))
+        });
+    }
+
+    // 5. Readiness Filter
     if is_ready {
         tasks.retain(|n| graph.is_ready(&n.frontmatter.id));
     }
 
-    let tasks = graph.default_order(tasks);
+    graph.default_order(tasks)
+}
+
+/// List tasks using the default ordering, optionally filtering to ready tasks.
+pub fn run_list(
+    ctx: &RunContext,
+    is_ready: bool,
+    status: Vec<String>,
+    priority: Vec<u8>,
+    tags: Vec<String>,
+    deps: Vec<String>,
+) -> Result<()> {
+    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
+
+    let tasks = filter_tasks(&graph, is_ready, &status, &priority, &tags, &deps);
 
     if ctx.json {
         let objects: Vec<TaskObject> = tasks
@@ -155,11 +220,81 @@ pub fn run_list(ctx: &RunContext, is_ready: bool) -> Result<()> {
             serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
         );
     } else {
-        for task in tasks {
-            println!(
-                "{} {} ({:?})",
-                task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
-            );
+        if tasks.is_empty() {
+            eprintln!("No tasks found.");
+        } else {
+            for task in tasks {
+                println!(
+                    "{} {} ({:?})",
+                    task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn search_tasks<'a>(graph: &'a TaskGraph, query: &str) -> Vec<&'a TaskNode> {
+    let query_lower = query.to_lowercase();
+
+    let tasks: Vec<&TaskNode> = graph
+        .nodes
+        .values()
+        .filter(|n| {
+            n.frontmatter.title.to_lowercase().contains(&query_lower)
+                || n.body.to_lowercase().contains(&query_lower)
+        })
+        .collect();
+
+    graph.default_order(tasks)
+}
+
+pub fn run_search(ctx: &RunContext, query: &str) -> Result<()> {
+    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
+    let tasks = search_tasks(&graph, query);
+
+    if ctx.json {
+        let objects: Vec<TaskObject> = tasks
+            .into_iter()
+            .map(|n| TaskObject::from_node(n, &graph, &ctx.tasks_dir))
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
+        );
+    } else {
+        if tasks.is_empty() {
+            eprintln!("No tasks found matching '{}'.", query);
+        } else {
+            for task in tasks {
+                println!(
+                    "{} {} ({:?})",
+                    task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
+    let value = match key {
+        "issue-prefix" => serde_json::json!(ctx.config.issue_prefix),
+        "tasks-dir" => serde_json::json!(ctx.config.tasks_dir),
+        _ => return Err(eyre!("Unknown config key: {}", key)),
+    };
+
+    if ctx.json {
+        println!("{}", serde_json::to_string(&serde_json::json!({ key: value }))?);
+    } else {
+        // For simple string values, just print the string? Or the JSON value representation?
+        // "Get" usually implies raw value.
+        if let Some(s) = value.as_str() {
+            println!("{}", s);
+        } else {
+             println!("{}", value);
         }
     }
 

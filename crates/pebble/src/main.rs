@@ -10,7 +10,7 @@ pub mod parser;
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use commands::{RunContext, run_list, run_next, run_show};
+use commands::{RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_write::{run_add, run_archive, run_init, run_update};
 use std::path::PathBuf;
 
@@ -33,6 +33,10 @@ struct Cli {
     #[arg(long, global = true)]
     json: bool,
 
+    /// Output help in JSON format
+    #[arg(long, global = true)]
+    help_json: bool,
+
     /// Path to the tasks directory (overrides config)
     #[arg(long, global = true)]
     dir: Option<PathBuf>,
@@ -46,8 +50,19 @@ enum Commands {
     List {
         #[arg(long)]
         is_ready: bool,
+        #[arg(long)]
+        status: Vec<String>,
+        #[arg(long)]
+        priority: Vec<u8>,
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+        #[arg(long = "dep")]
+        deps: Vec<String>,
     },
     Next,
+    Search {
+        query: String,
+    },
     Add {
         title: String,
         #[arg(long)]
@@ -109,9 +124,37 @@ enum ConfigCommands {
     Get { key: String },
 }
 
+fn dump_help_json(cmd: &clap::Command) {
+    fn build_json(cmd: &clap::Command) -> serde_json::Value {
+        serde_json::json!({
+            "name": cmd.get_name(),
+            "about": cmd.get_about().map(|s| s.to_string()),
+            "args": cmd.get_arguments().map(|a| {
+                serde_json::json!({
+                    "name": a.get_id().as_str(),
+                    "help": a.get_help().map(|s| s.to_string()),
+                    "required": a.is_required_set(),
+                })
+            }).collect::<Vec<_>>(),
+            "subcommands": cmd.get_subcommands().map(|sub| {
+                 build_json(sub)
+            }).collect::<Vec<_>>()
+        })
+    }
+
+    let json = build_json(cmd);
+    println!("{}", serde_json::to_string(&json).unwrap());
+}
+
 fn main() -> Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();
+
+    if cli.help_json {
+        use clap::CommandFactory;
+        dump_help_json(&Cli::command());
+        return Ok(());
+    }
 
     if let Some(ref dir) = cli.directory {
         std::env::set_current_dir(dir)?;
@@ -122,10 +165,17 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Init { issue_prefix, dir } => run_init(cli.dir.or(dir), issue_prefix, cli.json),
         Commands::Config { cmd } => match cmd {
-            ConfigCommands::Get { key } => todo!("config get {}", key),
+            ConfigCommands::Get { key } => run_config_get(&ctx, &key),
         },
-        Commands::List { is_ready } => run_list(&ctx, is_ready),
+        Commands::List {
+            is_ready,
+            status,
+            priority,
+            tags,
+            deps,
+        } => run_list(&ctx, is_ready, status, priority, tags, deps),
         Commands::Next => run_next(&ctx),
+        Commands::Search { query } => run_search(&ctx, &query),
         Commands::Add {
             title,
             status,

@@ -150,3 +150,57 @@ fn test_add_slug_filename() {
         .to_string();
     assert!(stem.len() <= 80, "slug was {} chars", stem.len());
 }
+
+#[test]
+fn test_filtering_and_search() {
+    let dir = tempdir().unwrap();
+    let current_dir = dir.path();
+    let tasks_dir = current_dir.join("docs/pebble");
+
+    let ctx = RunContext {
+        project_root: Some(current_dir.to_path_buf()),
+        config: Config {
+            issue_prefix: "TEST".to_string(),
+            tasks_dir: PathBuf::from("docs/pebble"),
+        },
+        tasks_dir: tasks_dir.clone(),
+        json: false,
+    };
+
+    // Create tasks
+    // 1. Todo, High Priority, Tag: "urgent"
+    run_add(&ctx, "Task 1".to_string(), Some("todo".to_string()), Some(90), Some("body1".to_string()), vec![], vec!["urgent".to_string()]).unwrap();
+    // 2. InProgress, Low Priority
+    run_add(&ctx, "Task 2".to_string(), Some("in_progress".to_string()), Some(10), Some("body2 search_me".to_string()), vec![], vec![]).unwrap();
+    // 3. Done
+    run_add(&ctx, "Task 3".to_string(), Some("done".to_string()), None, None, vec![], vec![]).unwrap();
+
+    let graph = TaskGraph::load_from_dir(&tasks_dir).unwrap();
+
+    // Test Status Filter
+    let filtered = crate::commands::filter_tasks(&graph, false, &["todo".to_string()], &[], &[], &[]);
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].frontmatter.title, "Task 1");
+
+    // Test Priority Filter
+    let filtered = crate::commands::filter_tasks(&graph, false, &[], &[90], &[], &[]);
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].frontmatter.title, "Task 1");
+
+    // Test Tag Filter
+    let filtered = crate::commands::filter_tasks(&graph, false, &[], &[], &["urgent".to_string()], &[]);
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].frontmatter.title, "Task 1");
+
+    // Test Search
+    let searched = crate::commands::search_tasks(&graph, "search_me");
+    assert_eq!(searched.len(), 1);
+    assert_eq!(searched[0].frontmatter.title, "Task 2");
+
+    // Test Default List (omit done)
+    let filtered = crate::commands::filter_tasks(&graph, false, &[], &[], &[], &[]);
+    assert_eq!(filtered.len(), 2); // Task 1 and Task 2
+
+    // Verify Task 3 (done) is filtered out by default
+    assert!(!filtered.iter().any(|t| t.frontmatter.title == "Task 3"));
+}
