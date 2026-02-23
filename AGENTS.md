@@ -66,9 +66,11 @@ This workflow requires the following steps to be done in order:
 ## Documentation Index
 - .agents/README.md
 - .agents/checks/gemini-styleguide.md
+- .agents/checks/rust-api-docs.md
 - .agents/checks/specifications.md
 - .agents/checks/docs-discoverability.md
 - .agents/checks/warning-suppression-review.md
+- docs/rust-api-docs.md
 - docs/pebble/pebble-add-should-pring-the-relative-pathname.md
 - docs/pebble/taskstatus-enum-representation-actionable-closed-nested-enums.md
 - docs/pebble/toctou-race-in-slug-collision-loop.md
