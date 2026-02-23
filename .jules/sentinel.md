@@ -12,9 +12,10 @@
 1. Explicitly check for and reject `std::path::Component::ParentDir` in configuration paths intended to be sandbox-relative.
 2. Consider canonicalizing paths (resolving symlinks and `..`) and verifying they start with the intended root prefix, though this can be complex with symlinks.
 
-## 2025-02-21 - Denial of Service via Large Task Files
-**Vulnerability:** The application attempted to read and parse the entire contents of any `.md` file in the tasks directory into memory. A malicious or accidentally large file could cause excessive memory consumption (OOM) and crash the application.
-**Learning:** `std::fs::read_to_string` loads the entire file at once. When processing user-controlled files in a loop (like loading a graph), always check file metadata (size) before reading content.
+
+## 2025-02-21 - TOCTOU in Task File Creation
+**Vulnerability:** `run_add` checked for file existence (`exists()`) and then wrote (`write()`) in a separate step. This created a race condition (TOCTOU) where a file could be created by another process in between, leading to unintended overwrite or data loss.
+**Learning:** Checking for file existence before creation is not atomic. Always use atomic file creation primitives.
 **Prevention:**
-1. Check `std::fs::metadata(path)?.len()` before reading file content.
-2. Enforce a reasonable maximum file size (e.g., 5MB) for user-generated content like task descriptions.
+1. Use `std::fs::OpenOptions::new().create_new(true)` to atomically create a file only if it does not exist.
+2. Handle the `AlreadyExists` error to implement retry/backoff logic or fail safely.

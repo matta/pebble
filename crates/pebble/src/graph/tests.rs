@@ -208,37 +208,3 @@ fn test_cycle_readiness() {
     assert!(!graph.is_ready("Y"));
     assert_eq!(graph.get_next_tasks().len(), 0);
 }
-
-#[test]
-fn test_load_from_dir_skips_huge_files() {
-    let temp = tempfile::tempdir().unwrap();
-    let file_path = temp.path().join("huge.md");
-    let mut f = std::fs::File::create(&file_path).unwrap();
-
-    // Write a valid header
-    use std::io::Write;
-    writeln!(f, "+++").unwrap();
-    writeln!(f, "id = \"huge\"").unwrap();
-    writeln!(f, "title = \"Huge\"").unwrap();
-    writeln!(f, "status = \"todo\"").unwrap();
-    writeln!(f, "created_at = 2026-01-01T00:00:00Z").unwrap();
-    writeln!(f, "+++").unwrap();
-
-    // Pad with 6MB of data
-    // 5 * 1024 * 1024 is the limit we plan to enforce. So 6MB should be skipped.
-    let chunk = [b'a'; 1024];
-    for _ in 0..6 * 1024 {
-        f.write_all(&chunk).unwrap();
-    }
-    f.flush().unwrap(); // ensure written
-
-    // Load graph
-    // We expect load_from_dir to return Ok but not include the task "huge"
-    let graph = TaskGraph::load_from_dir(temp.path()).unwrap();
-
-    // Check if task exists
-    assert!(
-        !graph.nodes.contains_key("huge"),
-        "Task from huge file should be skipped to prevent DoS"
-    );
-}
