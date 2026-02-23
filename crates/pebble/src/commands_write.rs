@@ -6,6 +6,7 @@ use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+/// Generate the current UTC time as a TOML-compatible datetime.
 fn current_toml_time() -> Result<toml_datetime::Datetime> {
     let now = chrono::Utc::now();
     toml_datetime::Datetime::from_str(&now.to_rfc3339())
