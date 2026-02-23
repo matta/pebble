@@ -1,3 +1,7 @@
+//! `xtask` — workspace automation for the Pebble project.
+//!
+//! Provides CI-style checks that are run via `just check`: forbidden-word scanning,
+//! and Rust file token-count enforcement.
 use anyhow::Result as AnyhowResult;
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
@@ -10,11 +14,13 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+/// Default maximum number of non-comment, non-whitespace tokens allowed per Rust file.
 const DEFAULT_TOKEN_LIMIT: usize = 2500;
 
 mod forbidden_words;
 use forbidden_words::check_forbidden_words;
 
+/// Top-level CLI entry point for the xtask binary.
 #[derive(Parser)]
 struct Cli {
     #[command(subcommand)]
@@ -79,6 +85,11 @@ fn main() -> Result<()> {
     }
 }
 
+/// Returns the set of file paths to check, relative to `root`.
+///
+/// When `all` is `false`, returns only files that are changed (staged, unstaged,
+/// or untracked) relative to `HEAD`. Falls back to all tracked files when no
+/// changes are detected, or when `all` is `true`.
 fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
     let mut files: HashSet<String> = get_git_files(root, &["ls-files"])?.into_iter().collect();
     let untracked = get_git_files(root, &["ls-files", "--others", "--exclude-standard"])?;
@@ -100,12 +111,21 @@ fn get_files_to_check(root: &Path, all: bool) -> Result<HashSet<String>> {
     Ok(files)
 }
 
+/// TOML schema for `.rust-line-count-exceptions.toml`.
+///
+/// Lists regex patterns for files that are exempt from the token-count limit.
 #[derive(Deserialize, Default)]
 struct ExceptionsConfig {
+    /// Regex patterns matched against relative file paths to exempt from the limit.
     #[serde(default)]
     exceptions: Vec<String>,
 }
 
+/// Checks that every Rust file in the workspace stays under `limit` tokens.
+///
+/// Files matching patterns in `.rust-line-count-exceptions.toml` are skipped.
+/// When `print_counts` is set, prints per-file counts and exits without failing.
+/// Returns an error listing all violating files when any exceed `limit`.
 fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result<()> {
     let root = std::env::current_dir()?;
     let config_path = root.join(".rust-line-count-exceptions.toml");
@@ -191,6 +211,10 @@ fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result
     Ok(())
 }
 
+/// Counts non-comment, non-whitespace tokens in a Rust source file.
+///
+/// Uses `ra_ap_rustc_lexer` to tokenize the file, filtering out
+/// `LineComment`, `BlockComment`, and `Whitespace` tokens.
 fn count_tokens(path: &Path) -> AnyhowResult<usize> {
     let content = fs::read_to_string(path)?;
     let count = ra_ap_rustc_lexer::tokenize(&content, FrontmatterAllowed::Yes)
@@ -206,6 +230,9 @@ fn count_tokens(path: &Path) -> AnyhowResult<usize> {
     Ok(count)
 }
 
+/// Runs a `git` subcommand with `args` under `root` and returns the lines of stdout.
+///
+/// Fails if the git invocation returns a non-zero exit code.
 fn get_git_files(root: &Path, args: &[&str]) -> Result<Vec<String>> {
     let output = Command::new("git").current_dir(root).args(args).output()?;
 

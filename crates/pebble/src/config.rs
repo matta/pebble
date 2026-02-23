@@ -4,12 +4,15 @@ use color_eyre::eyre::{Result, eyre};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
+/// Resolved project configuration loaded from `.pebble/config.toml`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Config {
+    /// Prefix prepended to generated task IDs (e.g. `"issue"` produces `"issue-abc123"`).
     #[serde(default = "default_issue_prefix")]
     #[serde(rename = "issue-prefix")]
     pub issue_prefix: String,
 
+    /// Path to the tasks directory, relative to the project root.
     #[serde(default = "default_tasks_dir")]
     #[serde(rename = "tasks-dir")]
     pub tasks_dir: PathBuf,

@@ -3,11 +3,15 @@ use crate::models::TaskNode;
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
+/// Adjacency list mapping each task ID to the IDs of tasks that depend on it.
 type Adjacency = HashMap<String, Vec<String>>;
 
+/// Output of Tarjan's SCC algorithm: groups of tasks and a reverse-lookup index.
 #[derive(Clone, Debug)]
 struct SccData {
+    /// Strongly connected components; each inner `Vec` is one SCC (may be a cycle).
     sccs: Vec<Vec<String>>,
+    /// Maps each task ID to the index of its SCC in `sccs`.
     index: HashMap<String, usize>,
 }
 
@@ -38,6 +42,7 @@ pub(super) fn default_order<'a>(
     ordered_nodes
 }
 
+/// Builds a [`NodeKey`] for a single task, using the pre-computed blocking count.
 fn node_key(node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKey {
     let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
     let priority = node.frontmatter.priority.map(u32::from).unwrap_or(u32::MAX);
@@ -50,6 +55,7 @@ fn node_key(node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKe
     }
 }
 
+/// Extracts task IDs from a node slice, sorted and deduplicated.
 fn collect_ids(nodes: &[&TaskNode]) -> Vec<String> {
     let mut ids: Vec<String> = nodes
         .iter()
@@ -60,6 +66,7 @@ fn collect_ids(nodes: &[&TaskNode]) -> Vec<String> {
     ids
 }
 
+/// Builds a map from task ID to node reference for fast lookup.
 fn build_id_to_node<'a>(nodes: &[&'a TaskNode]) -> HashMap<String, &'a TaskNode> {
     let mut map = HashMap::new();
     for node in nodes {
@@ -68,6 +75,10 @@ fn build_id_to_node<'a>(nodes: &[&'a TaskNode]) -> HashMap<String, &'a TaskNode>
     map
 }
 
+/// Builds the forward adjacency list restricted to the given task IDs.
+///
+/// Each entry maps a task ID to the IDs of tasks within `ids` that list it as a dep
+/// (i.e. "who depends on me among the given set"). Edges to IDs outside `ids` are ignored.
 fn build_adjacency(ids: &[String], id_to_node: &HashMap<String, &TaskNode>) -> Adjacency {
     let mut adjacency: Adjacency = HashMap::new();
     let included: HashSet<String> = ids.iter().cloned().collect();
@@ -95,6 +106,7 @@ fn build_adjacency(ids: &[String], id_to_node: &HashMap<String, &TaskNode>) -> A
     adjacency
 }
 
+/// Computes the graph-wide transitive blocking count for each ID in `ids`.
 fn compute_blocking_counts(graph: &TaskGraph, ids: &[String]) -> HashMap<String, usize> {
     let mut counts = HashMap::new();
     for id in ids {
@@ -103,6 +115,7 @@ fn compute_blocking_counts(graph: &TaskGraph, ids: &[String]) -> HashMap<String,
     counts
 }
 
+/// Returns the representative [`NodeKey`] for each SCC (the minimum key among its members).
 fn scc_keys(
     sccs: &[Vec<String>],
     id_to_node: &HashMap<String, &TaskNode>,
@@ -119,6 +132,11 @@ fn scc_keys(
         .collect()
 }
 
+/// Produces a topological ordering of SCCs, breaking ties using their representative keys.
+///
+/// Runs a modified Kahn's algorithm on the SCC DAG: at each step the available
+/// (zero in-degree) SCC with the smallest key is emitted, so the overall order
+/// is both topologically valid and deterministic.
 fn topo_order_sccs(
     sccs: &[Vec<String>],
     scc_index: &HashMap<String, usize>,
@@ -168,6 +186,10 @@ fn topo_order_sccs(
     ordered
 }
 
+/// Returns `true` if the given SCC represents a dependency cycle.
+///
+/// An SCC is a cycle when it contains more than one node, or when a single node
+/// lists itself as a dependency (self-loop).
 fn is_cycle(scc: &[String], adjacency: &Adjacency) -> bool {
     scc.len() > 1
         || scc
@@ -176,6 +198,10 @@ fn is_cycle(scc: &[String], adjacency: &Adjacency) -> bool {
             .unwrap_or(false)
 }
 
+/// Orders the nodes within a single SCC for output.
+///
+/// For acyclic SCCs (single nodes with no self-loop) the original order is
+/// preserved. For cycles, nodes are sorted by `created_at` then ID.
 fn order_scc_nodes<'a>(
     scc: &[String],
     id_to_node: &HashMap<String, &'a TaskNode>,
@@ -199,6 +225,7 @@ fn order_scc_nodes<'a>(
     scc_nodes
 }
 
+/// Runs Tarjan's SCC algorithm on the given IDs and adjacency list.
 fn compute_sccs(ids: &[String], adjacency: &Adjacency) -> SccData {
     Tarjan::new(adjacency).run(ids)
 }
@@ -218,6 +245,7 @@ struct Tarjan<'a> {
 }
 
 impl<'a> Tarjan<'a> {
+    /// Creates a new Tarjan walker over the given adjacency list.
     fn new(adjacency: &'a Adjacency) -> Self {
         Self {
             index: 0,
@@ -230,6 +258,7 @@ impl<'a> Tarjan<'a> {
         }
     }
 
+    /// Executes the algorithm over all provided IDs and returns the grouped [`SccData`].
     fn run(mut self, ids: &[String]) -> SccData {
         for id in ids {
             if !self.indices.contains_key(id) {
@@ -250,6 +279,8 @@ impl<'a> Tarjan<'a> {
         }
     }
 
+    /// Visits a single node, recursively visiting unvisited neighbors and
+    /// emitting an SCC when a root is detected.
     fn strongconnect(&mut self, v: &str) {
         self.indices.insert(v.to_string(), self.index);
         self.lowlink.insert(v.to_string(), self.index);

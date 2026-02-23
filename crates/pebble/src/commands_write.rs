@@ -6,6 +6,11 @@ use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+/// Initializes a new Pebble project in the current directory.
+///
+/// Creates a `.pebble/` directory containing `config.toml` and `AGENTS.md`,
+/// and ensures the configured tasks directory exists. Fails if the project is
+/// already initialized.
 pub fn run_init(
     cli_dir_override: Option<PathBuf>,
     issue_prefix: Option<String>,
@@ -93,6 +98,12 @@ pub fn slugify(s: &str) -> String {
     }
 }
 
+/// Creates a new task file in the tasks directory and prints the result.
+///
+/// Generates a unique ID using the configured `issue-prefix` and a 6-character
+/// nanoid suffix, then writes a Markdown file with TOML frontmatter. If a file
+/// with the same slug already exists, a numeric suffix is appended to the name.
+/// Outputs JSON when `ctx.json` is set; otherwise prints a human-readable line to stderr.
 #[allow(clippy::too_many_arguments)]
 pub fn run_add(
     ctx: &RunContext,
@@ -168,6 +179,12 @@ pub fn run_add(
     Ok(())
 }
 
+/// Updates an existing task's metadata and/or body in place.
+///
+/// Reads the task identified by `id` from the graph, applies all supplied
+/// mutations (title, status, priority, tags, deps, body), updates `modified_at`,
+/// and rewrites the file. Transitioning to a terminal status sets `resolved_at`;
+/// transitioning away from one clears it. Outputs JSON when `ctx.json` is set.
 #[allow(clippy::too_many_arguments, clippy::cognitive_complexity)]
 pub fn run_update(
     ctx: &RunContext,
@@ -275,6 +292,11 @@ pub fn run_update(
     Ok(())
 }
 
+/// Moves completed or canceled tasks older than 30 days into an `archive/` subdirectory.
+///
+/// Reads the graph from the configured tasks directory, then moves any task whose
+/// `resolved_at` timestamp is more than 30 days in the past. Outputs a JSON array
+/// of moved tasks when `ctx.json` is set; otherwise prints each archived ID to stderr.
 pub fn run_archive(ctx: &RunContext) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let archive_dir = ctx.tasks_dir.join("archive");
