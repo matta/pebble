@@ -232,8 +232,10 @@ pub fn run_update(
 
     node.frontmatter.modified_at = Some(current_toml_time()?);
 
+    let mut existing_tags: std::collections::HashSet<_> =
+        node.frontmatter.tags.iter().cloned().collect();
     for t in add_tags {
-        if !node.frontmatter.tags.contains(&t) {
+        if existing_tags.insert(t.clone()) {
             node.frontmatter.tags.push(t);
         }
     }
@@ -241,8 +243,10 @@ pub fn run_update(
         node.frontmatter.tags.retain(|tag| tag != &t);
     }
 
+    let mut existing_needs: std::collections::HashSet<_> =
+        node.frontmatter.needs.iter().cloned().collect();
     for d in add_needs {
-        if !node.frontmatter.needs.contains(&d) {
+        if existing_needs.insert(d.clone()) {
             node.frontmatter.needs.push(d);
         }
     }

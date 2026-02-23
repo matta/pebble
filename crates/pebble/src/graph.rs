@@ -80,17 +80,11 @@ impl TaskGraph {
 
         for (id, node) in &nodes {
             for dep_id in &node.frontmatter.needs {
-                blocking
-                    .entry(dep_id.clone())
-                    .or_default()
-                    .push(id.clone());
+                blocking.entry(dep_id.clone()).or_default().push(id.clone());
             }
         }
 
-        Self {
-            nodes,
-            blocking,
-        }
+        Self { nodes, blocking }
     }
 
     /// Determines if a task is "ready" according to absolute readiness rules.
