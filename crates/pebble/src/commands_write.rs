@@ -114,6 +114,8 @@ pub fn run_add(
     deps: Vec<String>,
     tags: Vec<String>,
 ) -> Result<()> {
+    // TODO(pebl-7Rnb6B): SAFE alphabet includes uppercase and symbols; should
+    // use a custom [a-z0-9] alphabet per cli-contract.md.
     let id_str = nanoid::nanoid!(6, &nanoid::alphabet::SAFE); // Short ID
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
 

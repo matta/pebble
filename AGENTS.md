@@ -40,7 +40,7 @@ When implementing, strictly rely on the specifications extracted from the RFC:
 
 - Strictly adhere to TDD.
 - **Style Guide**: Adhere to the [.gemini/styleguide.md](.gemini/styleguide.md).
-- **Docs Discoverability**: Any new documentation added to the repository must be linked from this file.
+- **Docs Discoverability**: Any new documentation added to the repository must be linked from this file. Exception: files under `docs/pebble/` are Pebble task files managed by the tool and do not require individual index entries.
 - **Clippy Changes Require Approval**: Any modifications to clippy configuration or suppression of clippy warnings must be explicitly discussed and approved by the operator before applying.
 - **Rust Language Baseline**: Before flagging Rust syntax compatibility concerns, check `edition` and `rust-version` in `Cargo.toml`. This repository treats Rust 2024 syntax as canonical.
 
@@ -52,11 +52,13 @@ Pebble task tracking is the execution mechanism for Pebble's own development, wi
 1. **Driver authority**:
     - `implementation_plan.md` is canonical for phase structure, process Rules, and completion state.
 2. **Task execution**:
-    - Implement work through Pebble tasks derived from `implementation_plan.md` items.
-    - Use `deps` to model sequencing between implementation tasks.
+    - Default graph shape is root task + phase tasks.
+    - Implement phase details as markdown checklists in phase task bodies.
+    - Promote checklist items to child Pebble tasks only when Adaptive Task Decomposition criteria are met.
+    - Use `deps` to model sequencing between phases and any promoted child tasks.
 3. **Sync discipline**:
     - Update `implementation_plan.md` checkboxes whenever task state changes (`[ ]` -> `[-]` -> `[x]`).
-    - Keep the plan's "Task ID Index" aligned with actual Pebble IDs.
+    - Keep the plan's "Task ID Index" aligned with actual Pebble IDs (root/phase always; child IDs only when promoted).
 4. **Policy vs graph**:
     - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `deps`.
 
@@ -75,6 +77,7 @@ Agents must avoid unnecessary task explosion while still exposing meaningful gra
     - Rule: promote on any `MUST`, or at least two `SHOULD` conditions.
 3. **Do not split by default**:
     - Do not create Pebble tasks merely to mirror every checklist line.
+    - Never auto-expand a full phase checklist into one-task-per-checkmark.
 4. **Recursive decomposition**:
     - Re-assess remaining checklist items after each child completion.
     - Further split only where criteria are still met.
@@ -116,7 +119,4 @@ Before marking a Pebble task complete for implementation work, agents must verif
 - .agents/checks/warning-suppression-review.md
 - docs/rust-api-docs.md
 - implementation_plan.md
-- docs/pebble/pebble-add-should-pring-the-relative-pathname.md
-- docs/pebble/taskstatus-enum-representation-actionable-closed-nested-enums.md
-- docs/pebble/toctou-race-in-slug-collision-loop.md
-- docs/pebble/transliterate-non-ascii-characters-in-slugify.md
+- docs/pebble/ (Pebble task files; exempt from individual index entries)

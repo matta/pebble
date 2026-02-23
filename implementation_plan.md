@@ -9,9 +9,9 @@ This file remains the governance and process driver. Execution happens through P
 
 ### Translation Rules
 1. Create one root Pebble task for the full implementation program.
-2. Create one Pebble task per phase (`P1`, `P2`, ...), each depending on its actionable items.
-3. Create one Pebble task per actionable checklist item (`P1.0.a`, `P1.1`, ...).
-4. Keep fine-grained acceptance details in task bodies as checklist bullets; do not explode every sentence into separate tasks.
+2. Create one Pebble task per phase (`P1`, `P2`, ...).
+3. Keep actionable checklist items in the phase task body by default.
+4. Promote checklist items into child Pebble tasks only when split criteria are met, and keep a `Child Tasks` mapping in the parent body.
 
 ### Adaptive Decomposition Rules
 Use checklist-first decomposition and only promote checklist items into child Pebble tasks when complexity justifies it.
@@ -38,24 +38,35 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 
 ### Dependency Rules
 1. Root task depends on phase tasks.
-2. Phase tasks depend on leaf implementation tasks.
-3. Leaf tasks depend on predecessor leaves only when sequencing is required.
-4. Process policies (TDD, gauntlets, gate checks) are enforced by Rules and AGENTS instructions, not by `deps`.
+2. Phase tasks depend on prior phases when strict phase sequencing is desired.
+3. Child tasks (when created) are dependencies of their parent phase task.
+4. Leaf tasks depend on predecessor leaves only when sequencing is required.
+5. Process policies (TDD, gauntlets, gate checks) are enforced by Rules and AGENTS instructions, not by `deps`.
 
 ### Sync Rules
 1. Keep this plan's checkboxes synchronized with Pebble task status.
-2. When a task moves to in progress, mark the matching plan item `[-]`.
-3. When a task is complete and verified, mark the matching plan item `[x]`.
-4. If scope changes, update this plan first, then create/update Pebble tasks to match.
+2. For plan items represented as Pebble tasks, map status directly (`[ ]`/`[-]`/`[x]`).
+3. For checklist-only plan items, update checkboxes in this file and in the parent phase task body.
+4. When a task moves to in progress, mark the matching plan item `[-]`.
+5. When a task is complete and verified, mark the matching plan item `[x]`.
+6. If scope changes, update this plan first, then create/update Pebble tasks to match.
 
 ### Task ID Index
-- Root program task: `TBD`
+- Root program task: `pebl-YNBL34`
+- Root program task file: `docs/pebble/pebble-self-hosted-implementation-program.md`
 - Phase task IDs:
-- `P1`: `TBD`
-- `P2`: `TBD`
-- `P3`: `TBD`
-- `P4`: `TBD`
-- `P5`: `TBD`
+- `P1`: `pebl-cdIZGN`
+- `P2`: `pebl--yb8d4`
+- `P3`: `pebl-hRuKk1`
+- `P4`: `pebl-fFdi_z`
+- `P5`: `pebl-pCyebx`
+- Child task IDs:
+- None currently. Add only when Adaptive Decomposition split criteria are met.
+- Standalone task IDs:
+- `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
+- `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
+- `pebl-rWaJHG`: Rename deps field to needs for clarity
+- `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.

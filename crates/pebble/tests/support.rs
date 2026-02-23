@@ -6,6 +6,7 @@ use tempfile::TempDir;
 
 /// Temp Pebble workspace with an initialized config and tasks directory.
 pub struct TestEnv {
+    // TODO(pebl-Vs0xNh): Refactor TestEnv ownership/usage so this dead_code allowance is unnecessary.
     #[allow(dead_code)]
     dir: TempDir,
     /// Root directory of the temporary test workspace.
@@ -59,6 +60,7 @@ Body
 }
 
 /// Write a simple task file with title equal to the id.
+// TODO(pebl-Vs0xNh): Remove this helper or expand usage so this dead_code allowance is unnecessary.
 #[allow(dead_code)]
 pub fn write_task_with_id(tasks_dir: &std::path::Path, id: &str) {
     write_task(tasks_dir, id, id, "todo");
