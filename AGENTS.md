@@ -60,6 +60,27 @@ Pebble task tracking is the execution mechanism for Pebble's own development, wi
 4. **Policy vs graph**:
     - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `deps`.
 
+### Adaptive Task Decomposition Policy
+Agents must avoid unnecessary task explosion while still exposing meaningful graph structure.
+
+1. **Default**:
+    - Keep sub-steps as markdown checklist items in the parent task body.
+2. **Promote checklist item to child Pebble task when**:
+    - `MUST`: it has independent `deps` or blocks other work.
+    - `MUST`: it needs independent status tracking for planning value.
+    - `MUST`: it likely spans multiple sessions or PRs.
+    - `SHOULD`: it touches multiple subsystems or high-risk surfaces.
+    - `SHOULD`: it requires design/spike/uncertainty reduction.
+    - `SHOULD`: it exceeds one focused implementation session.
+    - Rule: promote on any `MUST`, or at least two `SHOULD` conditions.
+3. **Do not split by default**:
+    - Do not create Pebble tasks merely to mirror every checklist line.
+4. **Recursive decomposition**:
+    - Re-assess remaining checklist items after each child completion.
+    - Further split only where criteria are still met.
+5. **Parent traceability**:
+    - When decomposition occurs, keep a `Child Tasks` mapping in the parent task body.
+
 ### Just Gauntlet
 This workflow prepares the codebase for a push:
 1. `just fix` -- optional, fixes formatting and some clippy warnings.
