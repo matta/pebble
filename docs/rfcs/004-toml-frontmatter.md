@@ -37,7 +37,7 @@ TOML refuses to guess. Strings require quotes. Booleans are strictly `true`/`fal
 
 Pebble already uses TOML for its configuration file (`.pebble/config.toml`). Adopting TOML for frontmatter means the entire project uses **one serialization format** for all structured data, reducing cognitive overhead for contributors and eliminating a dependency (`serde_yaml`).
 
-Pebble's frontmatter schema is flat — a handful of scalar fields plus two small arrays (`deps`, `tags`). This is exactly the structure TOML excels at. TOML's verbosity penalty for deeply nested data is irrelevant here.
+Pebble's frontmatter schema is flat — a handful of scalar fields plus two small arrays (`needs`, `tags`). This is exactly the structure TOML excels at. TOML's verbosity penalty for deeply nested data is irrelevant here.
 
 ### 2.4 Native Datetime Support
 
@@ -59,7 +59,7 @@ id = "proj-0kq"
 title = "Deploy staging environment"
 status = "todo"
 created_at = 2026-01-15T10:30:00Z
-deps = ["proj-abc", "proj-def"]
+needs = ["proj-abc", "proj-def"]
 tags = ["infra", "deploy"]
 +++
 
@@ -71,7 +71,7 @@ Run the canary deploy pipeline against the `staging` cluster.
 - All string values must be quoted.
 - `status` is a quoted string matching the enum: `"todo"`, `"in_progress"`, `"done"`, `"canceled"`.
 - `created_at`, `modified_at`, `resolved_at` are bare RFC 3339 datetimes (TOML native type — no quotes).
-- `deps` and `tags` are TOML arrays of quoted strings.
+- `needs` and `tags` are TOML arrays of quoted strings.
 - `priority` is a bare integer (no quotes).
 - Comments (`#`) are permitted in frontmatter (useful for human notes about metadata).
 - Field meanings, optionality, and validation constraints are defined by the data-layer schema in [`docs/schema.md`](../schema.md). This RFC only specifies TOML encoding and delimiters.

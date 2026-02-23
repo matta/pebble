@@ -3,7 +3,7 @@ id = "pebl--yb8d4"
 title = "Phase 2 Mutation Semantics and Validation"
 status = "todo"
 created_at = 2026-02-23T01:36:06.025417+00:00
-deps = ["pebl-cdIZGN"]
+needs = ["pebl-cdIZGN"]
 tags = ["bootstrap", "self_hosted"]
 +++
 Checklist:

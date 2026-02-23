@@ -3,7 +3,7 @@ id = "pebl-YNBL34"
 title = "Pebble self-hosted implementation program"
 status = "todo"
 created_at = 2026-02-23T01:36:07.056866+00:00
-deps = ["pebl-cdIZGN", "pebl--yb8d4", "pebl-hRuKk1", "pebl-fFdi_z", "pebl-pCyebx"]
+needs = ["pebl-cdIZGN", "pebl--yb8d4", "pebl-hRuKk1", "pebl-fFdi_z", "pebl-pCyebx"]
 tags = ["bootstrap", "self_hosted"]
 +++
 Driver Document:

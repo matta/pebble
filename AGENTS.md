@@ -16,8 +16,8 @@ Read @.pebble/AGENTS.md to understand tool usage.
 2. **Strict Project Invariants**:
     - **The `id` field is immutable**: The CLI must never change an ID after generation.
     - **No Preemptive Cycle Prevention**: Do **NOT** write cycle-prevention or deadlock-handling logic in the storage/write layer. The read layer naturally handles cycles by refusing to consider a cyclical task as "ready".
-    - **One True Edge (`deps`)**: Hierarchy and temporal ordering are entirely collapsed into a single edge: `deps`. Do not re-introduce `parent`/`child` relationships.
-    - **Absolute Readiness**: A task is ready if and only if all of its `deps` exist and have a terminal status. Dangling pointers structurally block readiness forever without panicking.
+    - **One True Edge (`needs`)**: Hierarchy and temporal ordering are entirely collapsed into a single edge: `needs`. Do not re-introduce `parent`/`child` relationships.
+    - **Absolute Readiness**: A task is ready if and only if all of its `needs` exist and have a terminal status. Dangling pointers structurally block readiness forever without panicking.
 
 3. **Test-Driven Development (TDD) Mandated**:
     - **Test-Driven Development (TDD)** is strictly mandatory.
@@ -55,12 +55,12 @@ Pebble task tracking is the execution mechanism for Pebble's own development, wi
     - Default graph shape is root task + phase tasks.
     - Implement phase details as markdown checklists in phase task bodies.
     - Promote checklist items to child Pebble tasks only when Adaptive Task Decomposition criteria are met.
-    - Use `deps` to model sequencing between phases and any promoted child tasks.
+    - Use `needs` to model sequencing between phases and any promoted child tasks.
 3. **Sync discipline**:
     - Update `implementation_plan.md` checkboxes whenever task state changes (`[ ]` -> `[-]` -> `[x]`).
     - Keep the plan's "Task ID Index" aligned with actual Pebble IDs (root/phase always; child IDs only when promoted).
 4. **Policy vs graph**:
-    - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `deps`.
+    - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `needs`.
 
 ### Adaptive Task Decomposition Policy
 Agents must avoid unnecessary task explosion while still exposing meaningful graph structure.
@@ -68,8 +68,8 @@ Agents must avoid unnecessary task explosion while still exposing meaningful gra
 1. **Default**:
     - Keep sub-steps as markdown checklist items in the parent task body.
 2. **Promote checklist item to child Pebble task when**:
-    - `MUST`: it has independent `deps` or blocks other work.
-    - `MUST`: it needs independent status tracking for planning value.
+    - `MUST`: it has independent `needs` or blocks other work.
+    - `MUST`: it requires independent status tracking for planning value.
     - `MUST`: it likely spans multiple sessions or PRs.
     - `SHOULD`: it touches multiple subsystems or high-risk surfaces.
     - `SHOULD`: it requires design/spike/uncertainty reduction.

@@ -3,7 +3,7 @@ id = "pebl-uekcwU"
 title = "count_blocking traversal should not propagate through terminal nodes"
 status = "todo"
 created_at = 2026-02-22T23:50:49.737541+00:00
-deps = []
+needs = []
 tags = ["bug"]
 +++
 In graph.rs, count_blocking() continues DFS traversal through closed (Done/Canceled) nodes. This inflates blocking counts incorrectly.

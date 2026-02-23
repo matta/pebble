@@ -25,7 +25,7 @@ impl<'a> TaskObject<'a> {
 
         let blocked_by: Vec<String> = node
             .frontmatter
-            .deps
+            .needs
             .iter()
             .filter_map(|dep_id| {
                 if let Some(dep_node) = graph.nodes.get(dep_id) {
@@ -40,10 +40,10 @@ impl<'a> TaskObject<'a> {
             .collect();
 
         let blocking: Vec<String> = graph
-            .reverse_deps
+            .blocking
             .get(&node.frontmatter.id)
             .into_iter()
-            .flat_map(|deps| deps.iter())
+            .flat_map(|ids| ids.iter())
             .filter(|dep_id| {
                 graph
                     .nodes
@@ -222,7 +222,7 @@ mod tests {
     use std::path::PathBuf;
     use std::str::FromStr;
 
-    fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
+    fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
         TaskNode {
             path: PathBuf::from(format!("{id}.md")),
             body: String::new(),
@@ -234,7 +234,7 @@ mod tests {
                 created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap(),
                 modified_at: None,
                 resolved_at: None,
-                deps: deps.into_iter().map(|s| s.to_string()).collect(),
+                needs: needs.into_iter().map(|s| s.to_string()).collect(),
                 tags: vec![],
             },
         }

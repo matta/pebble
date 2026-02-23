@@ -37,7 +37,7 @@ pub struct TaskFrontmatter {
     pub modified_at: Option<Datetime>,
     pub resolved_at: Option<Datetime>,
     #[serde(default)]
-    pub deps: Vec<String>,
+    pub needs: Vec<String>,
     #[serde(default)]
     pub tags: Vec<String>,
 }

@@ -121,7 +121,7 @@ pub fn run_add(
     status: Option<TaskStatus>,
     priority: Option<u8>,
     body: Option<String>,
-    deps: Vec<String>,
+    needs: Vec<String>,
     tags: Vec<String>,
 ) -> Result<()> {
     // TODO(pebl-7Rnb6B): SAFE alphabet includes uppercase and symbols; should
@@ -141,7 +141,7 @@ pub fn run_add(
         created_at,
         modified_at: None,
         resolved_at: None,
-        deps,
+        needs,
         tags,
     };
 
@@ -186,7 +186,7 @@ pub fn run_add(
 /// Updates an existing task's metadata and/or body in place.
 ///
 /// Reads the task identified by `id` from the graph, applies all supplied
-/// mutations (title, status, priority, tags, deps, body), updates `modified_at`,
+/// mutations (title, status, priority, tags, needs, body), updates `modified_at`,
 /// and rewrites the file. Transitioning to a terminal status sets `resolved_at`;
 /// transitioning away from one clears it. Outputs JSON when `ctx.json` is set.
 #[allow(clippy::too_many_arguments, clippy::cognitive_complexity)]
@@ -201,8 +201,8 @@ pub fn run_update(
     append_body: Option<String>,
     add_tags: Vec<String>,
     remove_tags: Vec<String>,
-    add_deps: Vec<String>,
-    remove_deps: Vec<String>,
+    add_needs: Vec<String>,
+    remove_needs: Vec<String>,
 ) -> Result<()> {
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut node = graph
@@ -232,8 +232,10 @@ pub fn run_update(
 
     node.frontmatter.modified_at = Some(current_toml_time()?);
 
+    let mut existing_tags: std::collections::HashSet<_> =
+        node.frontmatter.tags.iter().cloned().collect();
     for t in add_tags {
-        if !node.frontmatter.tags.contains(&t) {
+        if existing_tags.insert(t.clone()) {
             node.frontmatter.tags.push(t);
         }
     }
@@ -241,13 +243,15 @@ pub fn run_update(
         node.frontmatter.tags.retain(|tag| tag != &t);
     }
 
-    for d in add_deps {
-        if !node.frontmatter.deps.contains(&d) {
-            node.frontmatter.deps.push(d);
+    let mut existing_needs: std::collections::HashSet<_> =
+        node.frontmatter.needs.iter().cloned().collect();
+    for d in add_needs {
+        if existing_needs.insert(d.clone()) {
+            node.frontmatter.needs.push(d);
         }
     }
-    for d in remove_deps {
-        node.frontmatter.deps.retain(|dep| dep != &d);
+    for d in remove_needs {
+        node.frontmatter.needs.retain(|dep| dep != &d);
     }
 
     if let Some(b) = body {

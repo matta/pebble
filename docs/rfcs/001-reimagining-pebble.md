@@ -18,14 +18,14 @@ While the current implementation relies on a Rust CLI with a JSONL storage backb
 - Store tasks as Markdown files in `tasks-dir` (default `docs/pebble/`).
 - YAML frontmatter defines metadata; the Markdown body is free-form description.
 - `id` is canonical and user-editable; the CLI never changes it.
-- Relationships: There is only one structural edge: `deps` (dependencies). Hierarchy (`parent/child`) and ordering (`after`) are collapsed. Epics simply depend on their subtasks.
+- Relationships: There is only one structural edge: `needs` (dependencies). Hierarchy (`parent/child`) and ordering (`after`) are collapsed. Epics simply depend on their subtasks.
 - Status model: `todo`, `in_progress`, `done`, `canceled`. Note: `paused` has been removed. Waiting is a task (e.g., "Wait for vendor").
-- Readiness is beautifully simple: A task is `ready` if and only if all of its `deps` exist and have a terminal status (`done` or `canceled`).
+- Readiness is beautifully simple: A task is `ready` if and only if all of its `needs` exist and have a terminal status (`done` or `canceled`).
 - Cycles naturally deadlock (they never surface as `ready`), and dangling pointers naturally block. The CLI accepts all writes; strict cyclic/pointer validation is moved out of the read/write path and into a diagnostic `pebble doctor` command.
 - Omit audit fields (`owner`, `created_by`, `updated_at`, `closed_at`, `close_reason`); rely on git history. The `resolved_at` timestamp is explicitly maintained for archival purposes.
 - CLI reads/writes Markdown directly; no hidden worktrees.
 - `pebble next` is a convenience command that returns the highest-priority ready task.
-- Default list order: topological (respecting `deps`), then transitive blocking count, then `priority`, then `created_at`, then `id`.
+- Default list order: topological (respecting `needs`), then transitive blocking count, then `priority`, then `created_at`, then `id`.
 - Agents MAY read and edit task bodies directly (a core benefit); frontmatter mutations SHOULD use the CLI.
 - `.pebble/AGENTS.md` provides agent bootstrapping instructions; `pebble init` creates it.
 - One-time migration via a throw-away script from the existing JSONL.
@@ -37,7 +37,7 @@ Based on the `golden.jsonl` data and typical single-repo development flows, the 
 1. **Task Tracking:** Ability to define a task with an ID, title, description, and status.
    - States: `todo`, `in_progress`, `done`, `canceled`.
    - `canceled` means "not done and will never be done."
-2. **The One True Edge (`deps`):** Both hierarchical composition (Epics) and temporal ordering (execution steps) are modeled as a single directed edge: `deps`. If an Epic is composed of 3 subtasks, it `deps` on them. If task A must finish before task B, B `deps` on A.
+2. **The One True Edge (`needs`):** Both hierarchical composition (Epics) and temporal ordering (execution steps) are modeled as a single directed edge: `needs`. If an Epic is composed of 3 subtasks, it `needs` on them. If task A must finish before task B, B `needs` on A.
 3. **Backlinks (`related`):** Directional linking simply leverages standard Markdown links inside the body, powering a dynamic "backlinks" experience. No symmetric enforcement.
 4. **Basic Metadata:** Time-based metadata is restricted to creation (`created_at`), last modification (`modified_at`), and completion (`resolved_at`) timestamps. The `modified_at` field helps identify stalled or forgotten work (e.g., to review neglected tasks). The `resolved_at` field enables querying completed work and powers the deterministic `archive` feature without relying on volatile filesystem `mtime` or requiring expensive Git history lookups. Audit trail (owner, `updated_at`, `closed_at`, `close_reason`) is intentionally omitted and delegated to Git history. **Decision:** the schema uses `modified_at` (not `updated_at`); `updated_at` is legacy and appears only in migration mapping.
 
@@ -121,8 +121,8 @@ Pebble embraces the liquid, unstructured nature of Markdown. It fundamentally vi
 - Updating a task title never renames the file. Filenames are stable unless moved explicitly by `pebble archive`.
 
 **Reference Resolution Rules**
-- `deps` must reference existing task IDs to allow the task to become ready.
-- Missing dependencies act as permanent blocks. The task will not evaluate as `ready` until the `deps` exist or are manually removed.
+- `needs` must reference existing task IDs to allow the task to become ready.
+- Missing dependencies act as permanent blocks. The task will not evaluate as `ready` until the `needs` exist or are manually removed.
 - Cycles are permitted at the storage level. A cycle simply means all nodes in the cycle will forever evaluate as "blocked by a dependency" and never surface as `ready`.
 - `pebble add`/`update` blindly accept valid YAML. They do not fail on unresolved edges or potential cycle introduction.
 - `pebble doctor` is the diagnostic tool that walks the graph and warns the user about dangling dependencies, deadlocked cycles, and other health issues.
@@ -161,7 +161,7 @@ Required:
 - `created_at` (RFC3339 string)
 
 Optional:
-- `deps` (string array; the single dependency edge)
+- `needs` (string array; the single dependency edge)
 - `tags` (string array)
 - `priority` (integer, `0..99`; lower number = higher priority)
 - `modified_at` (RFC3339 string; automatically updated on modification; replaces legacy `updated_at`)
@@ -171,9 +171,9 @@ Intentionally omitted:
 - `updated_at`, `closed_at`, `owner`, `close_reason`, `created_by`, `type` (or `task_type`)
 
 Computed:
-- `is_ready` (boolean; true only when all `deps` exist and are terminal: `done` or `canceled`)
-- `blocked_by` (list of `deps` that are missing or non-terminal, where non-terminal means `todo` or `in_progress`)
-- `blocking` (list of non-terminal task IDs whose `deps` directly include this task — the inverse edge of `deps`, excluding terminal dependents)
+- `is_ready` (boolean; true only when all `needs` exist and are terminal: `done` or `canceled`)
+- `blocked_by` (list of `needs` that are missing or non-terminal, where non-terminal means `todo` or `in_progress`)
+- `blocking` (list of non-terminal task IDs whose `needs` directly include this task — the inverse edge of `needs`, excluding terminal dependents)
 
 **Unknown Frontmatter Fields**
 - Unknown frontmatter keys are ignored by read commands (no warnings).
@@ -216,7 +216,7 @@ pub struct TaskFrontmatter {
     pub modified_at: Option<DateTime<Utc>>,
     pub resolved_at: Option<DateTime<Utc>>,
     #[serde(default)]
-    pub deps: Vec<String>,
+    pub needs: Vec<String>,
     #[serde(default)]
     pub tags: Vec<String>,
 }
@@ -249,26 +249,26 @@ pub struct TaskNode {
 
 ### 4.5 Graph Semantics
 
-**The One True Edge (`deps`)**
-- All relationships are collapsed into a single directed edge: `deps` (dependencies).
-- If Task E is an Epic requiring tasks X and Y, Task E simply lists `deps: [X, Y]`.
-- If Task B must wait for Task A, Task B lists `deps: [A]`.
-- This removes the need for cascading effective statuses or complex hierarchy traversal. An epic isn't "done" until its deps are done, exactly like a sequential step.
+**The One True Edge (`needs`)**
+- All relationships are collapsed into a single directed edge: `needs` (dependencies).
+- If Task E is an Epic requiring tasks X and Y, Task E simply lists `needs: [X, Y]`.
+- If Task B must wait for Task A, Task B lists `needs: [A]`.
+- This removes the need for cascading effective statuses or complex hierarchy traversal. An epic isn't "done" until its needs are done, exactly like a sequential step.
 
 **Status & Readiness**
 - Task statuses are absolute, local enum values (`todo`, `in_progress`, `done`, `canceled`). There is no `paused` state. "Waiting" is modeled by creating a task (e.g. "Wait on Legal") and depending on it.
 - **Ready (computed boolean):** A task is `ready` if:
   1. Its status is `todo` or `in_progress`
-  2. EVERY task listed in its `deps` array exists AND has a status of `done` or `canceled`.
-- Missing/Dangling IDs in `deps` cause the task to be strictly NOT ready.
+  2. EVERY task listed in its `needs` array exists AND has a status of `done` or `canceled`.
+- Missing/Dangling IDs in `needs` cause the task to be strictly NOT ready.
 - Cycles cause all tasks in the cycle to be strictly NOT ready.
 
 **Dynamic Scoring (Starvation Prevention)**
 - Starvation prevention is a runtime sorting concern, not a data-layer rule. There is no computed or inherited priority — the `priority` field in YAML is strictly local.
-- `pebble next` sorts the ready frontier using the sort key tuple: **`(transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC)`**. The transitive blocking count (unique, non-terminal tasks reachable by traversing reverse `deps` edges) is the primary key; local priority breaks ties; creation time is the next tiebreaker; `id` (lexicographic) is the absolute tiebreaker guaranteeing determinism. A task blocking 5 downstream others always ranks above a task blocking 0, regardless of local priority. This means a small task that is the sole blocker of a massive Epic naturally bubbles to the top of the queue.
+- `pebble next` sorts the ready frontier using the sort key tuple: **`(transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC)`**. The transitive blocking count (unique, non-terminal tasks reachable by traversing reverse `needs` edges) is the primary key; local priority breaks ties; creation time is the next tiebreaker; `id` (lexicographic) is the absolute tiebreaker guaranteeing determinism. A task blocking 5 downstream others always ranks above a task blocking 0, regardless of local priority. This means a small task that is the sole blocker of a massive Epic naturally bubbles to the top of the queue.
 - This replaces the old transitive `effective_priority` inheritance model. Priority information is never written back to YAML; it exists only as a runtime sort key.
 
-**Transitive Blocking Count (Definition)**: The count of **unique, non-terminal** tasks (`todo` or `in_progress`) reachable by traversing the **reverse** `deps` edges starting from this task (i.e., tasks that depend on this task, directly or indirectly). The current task is excluded from the count. Missing IDs are ignored because they do not exist as graph nodes. Cycles are handled by tracking visited nodes, so each task contributes at most 1 to the count.
+**Transitive Blocking Count (Definition)**: The count of **unique, non-terminal** tasks (`todo` or `in_progress`) reachable by traversing the **reverse** `needs` edges starting from this task (i.e., tasks that depend on this task, directly or indirectly). The current task is excluded from the count. Missing IDs are ignored because they do not exist as graph nodes. Cycles are handled by tracking visited nodes, so each task contributes at most 1 to the count.
 
 ### 4.6 CLI
 
@@ -291,7 +291,7 @@ This RFC supersedes the earlier `003-cli-contract.md` snapshot in this directory
 - `pebble init`: Bootstraps the environment, creates the tasks directory, creates `.pebble/AGENTS.md` (see §4.8), and prints a message advising the user to include it in their project's agent configuration.
 
 **Query commands**
-- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. By default, tasks with an `status` of `done` or `canceled` are implicitly filtered out. Filters: `--status`, `--tag`, `--dep`, `--priority`, `--is-ready` (computed; shows only tasks whose `deps` are all `done` or `canceled` and whose `status` is actionable), `--all` (bypass default omission to include `done` and `canceled` tasks). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
+- `pebble list` (alias: `ls`): Parses the directory and builds the DAG. By default, tasks with an `status` of `done` or `canceled` are implicitly filtered out. Filters: `--status`, `--tag`, `--need`, `--priority`, `--is-ready` (computed; shows only tasks whose `needs` are all `done` or `canceled` and whose `status` is actionable), `--all` (bypass default omission to include `done` and `canceled` tasks). Ordering: `--sort <field>` (see "Default Sort Order" below). Pagination: `--limit <N>` returns only the first N results after sorting.
 - `pebble next`: Returns the single highest-scoring ready task using dynamic scoring (see §4.5 "Dynamic Scoring"). Equivalent to `pebble list --is-ready --limit 1` with the dynamic score as the primary sort key. Accepts `--json`. This is the canonical "what should I work on?" entry point for agents and humans alike.
 - `pebble show <id>`: Prints the full details, tree-context, and Markdown body of a specific task. `--path-only` prints only the file path (relative to `tasks-dir`) and nothing else — useful for agents and scripts that want to read the file directly.
 - `pebble search <query>`: Full-text search across titles and Markdown bodies.
@@ -306,14 +306,14 @@ This RFC supersedes the earlier `003-cli-contract.md` snapshot in this directory
 - `--status <status>` matches tasks whose `status` equals `<status>`. The flag is repeatable; multiple values are OR'ed. Explicitly requesting `--status done` or `--status canceled` guarantees those tasks are included, overriding the default omission.
 - `--priority <N>` matches tasks whose `priority` equals `N` (valid range: `0..99`). The flag is repeatable; multiple values are OR'ed. Tasks with no `priority` never match `--priority`.
 - `--tag <tag>` matches tasks whose `tags` array contains `<tag>`. The flag is repeatable; multiple values are AND'ed (a task must possess all provided tags to match).
-- `--dep <id>` matches tasks whose `deps` array contains `<id>`. The flag is repeatable; multiple values are OR'ed (a task matches if it depends on any of the provided IDs).
+- `--need <id>` matches tasks whose `needs` array contains `<id>`. The flag is repeatable; multiple values are OR'ed (a task matches if it depends on any of the provided IDs).
 - `--all` disables the default omission, ensuring `done` and `canceled` tasks are evaluated alongside actionable ones.
 
 **Default Sort Order**
 
 The default sort order for `pebble list` (and by extension `pebble next`) is deterministic and dependency-aware:
 
-1. **Topological order** (respecting `deps`): if task B has `deps: [A]`, then A appears before B regardless of priority. Among tasks at the same topological level (no dependency relationship between them), the remaining tiebreakers apply.
+1. **Topological order** (respecting `needs`): if task B has `needs: [A]`, then A appears before B regardless of priority. Among tasks at the same topological level (no dependency relationship between them), the remaining tiebreakers apply.
    - Missing dependencies are ignored for ordering (only existing tasks participate).
    - Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
 2. **Transitive blocking count** descending. The number of **unique, non-terminal** tasks recursively reachable downstream through dependency edges (see definition in §4.5). Tasks blocking a larger number of downstream tasks appear first. This creates the dynamic scoring that surfaces critical bottlenecks.
@@ -329,8 +329,8 @@ Note: when `--is-ready` is active, all returned tasks are at the dependency fron
 - Keep simple flags for common cases, and add a small, explicit query language only if needed. A future `--filter <expr>` (or a dedicated `pebble query`) can provide compound conditions and ranges for both humans and agents without re-inventing SQL.
 
 **Mutation commands**
-- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--dep <id>`, `--tag <tag>`. The `--body` text becomes the Markdown body of the file.
-- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-dep <id>`, `--remove-dep <id>`. To unset optional singular fields, use `--clear-priority`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
+- `pebble add <title>`: Generates the boilerplate `.md` file. By default, `status` is initialized to `todo`. Options: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--need <id>`, `--tag <tag>`. The `--body` text becomes the Markdown body of the file.
+- `pebble update <id>`: Safely modifies the frontmatter, title, and/or body. Options: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>`, `--append-body <text>`, `--add-tag <tag>`, `--remove-tag <tag>`, `--add-need <id>`, `--remove-need <id>`. To unset optional singular fields, use `--clear-priority`. `--body` replaces the entire Markdown body; `--append-body` appends text to the existing body (separated by a blank line). If the existing body is empty, `--append-body` writes the text without a leading blank line. Both are provided as a convenience for simple mutations — for complex body editing (restructuring sections, checking off checklist items, etc.), direct file editing is the expected workflow (see §4.3 Direct File Access Contract). When modifying the task, the CLI automatically sets the `modified_at` timestamp. When setting `--status done` or `--status canceled`, the CLI automatically sets `resolved_at`. Updating a title never renames the file.
 - `pebble archive`: Automatically moves tasks with a status of `done` or `canceled` where `resolved_at` is older than a threshold (e.g., `> 30 days`) into an `archive/` subdirectory to reduce IDE clutter. If a filename collision occurs, the CLI appends a numeric suffix to the archived filename.
 - Agents and users are encouraged to edit Markdown bodies directly — this is a core benefit of the Markdown-native model. The CLI also provides `--body` and `--append-body` on `pebble update` for simple cases.
 
@@ -366,8 +366,8 @@ On failure, no JSON is emitted; `stdout` is empty, `stderr` contains a human-rea
 - **`config get --json`**: `{"key": "<key>", "value": "<value>"}`.
 
 A `TaskObject` includes:
-- All stored frontmatter fields (`id`, `title`, `status`, `priority`, `created_at`, `modified_at`, `resolved_at`, `deps`, `tags`).
-- Computed fields: `is_ready` (boolean), `blocked_by` (array of missing or open deps), `blocking` (array of non-terminal tasks that are blocked by this task).
+- All stored frontmatter fields (`id`, `title`, `status`, `priority`, `created_at`, `modified_at`, `resolved_at`, `needs`, `tags`).
+- Computed fields: `is_ready` (boolean), `blocked_by` (array of missing or open needs), `blocking` (array of non-terminal tasks that are blocked by this task).
 - `body`: the raw Markdown content after the frontmatter delimiter, verbatim.
 - `path`: the file path relative to `tasks-dir`.
 
@@ -536,7 +536,7 @@ Run the canary deploy pipeline against the `staging` cluster.
 *Manually organizing active tasks into nested folders (e.g., `docs/pebble/frontend/` or `docs/pebble/epics/epic-1/`) just to group them visually.*
 
 - **Pros:** Makes reading the raw file tree theoretically easier for humans.
-- **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`deps`), using directory structure and paths purely for automated lifecycle `archive` sorting.
+- **Cons:** Because directory paths are not indexed or surfaced by `pebble search` or `pebble list`, this organization becomes a "shadow taxonomy." It is completely invisible to the CLI's queries, meaning users cannot rely on it for actual task retrieval. Pebble enforces a flat semantic structure using `tags` and graph edges (`needs`), using directory structure and paths purely for automated lifecycle `archive` sorting.
 
 ## Appendix B: Migration Field Mapping
 
@@ -544,7 +544,7 @@ This is the authoritative and exhaustive mapping used by the one-time migration 
 
 **Compatibility & Data Loss**
 - The Markdown schema intentionally drops: `owner`, `created_by`, `updated_at`, `closed_at`, and `close_reason`.
-- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`). It preserves the logical dependency graph by collapsing structural edges into `deps` and converting `relates-to` into Markdown backlinks.
+- The migration script will **not** preserve per-edge audit metadata (`dependencies[].created_at`, `dependencies[].created_by`). It preserves the logical dependency graph by collapsing structural edges into `needs` and converting `relates-to` into Markdown backlinks.
 
 > **Rationale:** There is no concrete use case for these audit fields today; Git history remains the fallback for audit-style questions.
 
@@ -579,7 +579,7 @@ This is the authoritative and exhaustive mapping used by the one-time migration 
 - Any other status value is a migration error (explicitly surfaced).
 
 **Dependency type mapping**
-- All structural dependencies (`parent-child`, `blocks`, `depends-on`) are collapsed into the `deps` array. (e.g. if A blocks B, B lists A in `deps`. If Epic E has child C, Epic E lists C in `deps`).
+- All structural dependencies (`parent-child`, `blocks`, `depends-on`) are collapsed into the `needs` array. (e.g. if A blocks B, B lists A in `needs`. If Epic E has child C, Epic E lists C in `needs`).
 - `relates-to` → converted into Markdown backlinks appended to the `description` body as `[Related: <id>](path)`.
 - Edge audit metadata is dropped.
 

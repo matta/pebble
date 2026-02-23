@@ -55,6 +55,21 @@ fn test_show_json_stdout_only() {
 
     let value: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(value.get("id").and_then(|v| v.as_str()), Some("PROJ-2"));
+
+    // Verify renamed fields exist in JSON
+    assert!(value.get("needs").is_some(), "JSON missing 'needs' field");
+    assert!(
+        value.get("blocked_by").is_some(),
+        "JSON missing 'blocked_by' field"
+    );
+    assert!(
+        value.get("blocking").is_some(),
+        "JSON missing 'blocking' field"
+    );
+    assert!(
+        value.get("deps").is_none(),
+        "JSON still contains legacy 'deps' field"
+    );
 }
 
 #[test]

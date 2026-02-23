@@ -3,7 +3,7 @@ id = "pebl-hRuKk1"
 title = "Phase 3 Diagnostics and Repairs"
 status = "todo"
 created_at = 2026-02-23T01:36:06.284708+00:00
-deps = ["pebl--yb8d4"]
+needs = ["pebl--yb8d4"]
 tags = ["bootstrap", "self_hosted"]
 +++
 Checklist:

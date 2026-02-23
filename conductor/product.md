@@ -18,4 +18,4 @@ Pebble is a streamlined, Markdown-native CLI task tracker built upon a "Permissi
 
 ## Constraints
 - **Configuration Constraints**: Task directories are resolved strictly relative to the nearest `.pebble/` configuration folder.
-- **Single Structural Edge**: Task relationships are entirely flattened into a single `deps` link. Temporality and hierarchy share the same axis.
+- **Single Structural Edge**: Task relationships are entirely flattened into a single `needs` link. Temporality and hierarchy share the same axis.

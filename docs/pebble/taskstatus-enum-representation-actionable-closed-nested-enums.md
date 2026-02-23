@@ -3,7 +3,7 @@ id = "pebl-MqmhmZ"
 title = "TaskStatus enum representation: actionable/closed + nested enums"
 status = "todo"
 created_at = 2026-02-22T23:43:31.512707+00:00
-deps = []
+needs = []
 tags = ["design"]
 +++
 ## Context
