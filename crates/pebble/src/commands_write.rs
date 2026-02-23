@@ -10,8 +10,11 @@ use std::str::FromStr;
 fn current_toml_time() -> toml_datetime::Datetime {
     let now = chrono::Utc::now();
     let now_str = now.to_rfc3339();
-    // This unwrap is safe because RFC3339 strings are always valid TOML datetimes
-    toml_datetime::Datetime::from_str(&now_str).unwrap()
+    // TODO: Use `chrono::Utc::now().into()` once `toml_datetime` implements `From<chrono::DateTime<Utc>>`.
+    // Currently, it does not seem to be available in the version/feature set we are using.
+    // This unwrap is safe because RFC3339 strings are always valid TOML datetimes.
+    toml_datetime::Datetime::from_str(&now_str)
+        .expect("RFC3339 string should always be a valid TOML datetime")
 }
 
 pub fn run_init(
