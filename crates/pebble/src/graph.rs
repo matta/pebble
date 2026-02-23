@@ -101,7 +101,7 @@ impl TaskGraph {
 
         for (id, mut id_nodes) in grouped {
             if id_nodes.len() > 1 {
-                id_nodes.sort_by_key(|node| node.path.clone());
+                id_nodes.sort_by(|a, b| a.path.cmp(&b.path));
                 let paths: Vec<String> = id_nodes
                     .iter()
                     .map(|node| node.path.display().to_string())

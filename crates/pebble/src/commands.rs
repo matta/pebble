@@ -163,11 +163,12 @@ pub fn run_list(ctx: &RunContext, options: &ListOptions) -> Result<()> {
     }
 
     if !options.needs.is_empty() {
+        let filter_needs: HashSet<'_> = options.needs.iter().collect();
         tasks.retain(|n| {
             n.frontmatter
                 .needs
                 .iter()
-                .any(|need| options.needs.iter().any(|selected| selected == need))
+                .any(|need| filter_needs.contains(need))
         });
     }
 
