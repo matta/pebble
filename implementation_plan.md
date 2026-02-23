@@ -4,6 +4,36 @@ This plan reorganizes work so Pebble can be trusted to manage a hierarchical, ph
 
 TDD is mandatory: write a failing test before each behavior change.
 
+## Hybrid Execution Model (Driver + Pebble Tasks)
+This file remains the governance and process driver. Execution happens through Pebble tasks.
+
+### Translation Rules
+1. Create one root Pebble task for the full implementation program.
+2. Create one Pebble task per phase (`P1`, `P2`, ...), each depending on its actionable items.
+3. Create one Pebble task per actionable checklist item (`P1.0.a`, `P1.1`, ...).
+4. Keep fine-grained acceptance details in task bodies as checklist bullets; do not explode every sentence into separate tasks.
+
+### Dependency Rules
+1. Root task depends on phase tasks.
+2. Phase tasks depend on leaf implementation tasks.
+3. Leaf tasks depend on predecessor leaves only when sequencing is required.
+4. Process policies (TDD, gauntlets, gate checks) are enforced by Rules and AGENTS instructions, not by `deps`.
+
+### Sync Rules
+1. Keep this plan's checkboxes synchronized with Pebble task status.
+2. When a task moves to in progress, mark the matching plan item `[-]`.
+3. When a task is complete and verified, mark the matching plan item `[x]`.
+4. If scope changes, update this plan first, then create/update Pebble tasks to match.
+
+### Task ID Index
+- Root program task: `TBD`
+- Phase task IDs:
+- `P1`: `TBD`
+- `P2`: `TBD`
+- `P3`: `TBD`
+- `P4`: `TBD`
+- `P5`: `TBD`
+
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
 

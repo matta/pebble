@@ -46,6 +46,20 @@ When implementing, strictly rely on the specifications extracted from the RFC:
 
 ## Workflows
 
+### Self-Hosted Planning Protocol
+Pebble task tracking is the execution mechanism for Pebble's own development, with `implementation_plan.md` as the governance driver.
+
+1. **Driver authority**:
+    - `implementation_plan.md` is canonical for phase structure, process Rules, and completion state.
+2. **Task execution**:
+    - Implement work through Pebble tasks derived from `implementation_plan.md` items.
+    - Use `deps` to model sequencing between implementation tasks.
+3. **Sync discipline**:
+    - Update `implementation_plan.md` checkboxes whenever task state changes (`[ ]` -> `[-]` -> `[x]`).
+    - Keep the plan's "Task ID Index" aligned with actual Pebble IDs.
+4. **Policy vs graph**:
+    - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `deps`.
+
 ### Just Gauntlet
 This workflow prepares the codebase for a push:
 1. `just fix` -- optional, fixes formatting and some clippy warnings.
@@ -64,6 +78,12 @@ This workflow requires the following steps to be done in order:
 - **Requirement**: `just check` must pass cleanly.
 - **Enforcement**: Agents must run `just check` and ensure it exits with code 0 before pushing any code to the repository.
 
+### Process Gate Enforcement
+Before marking a Pebble task complete for implementation work, agents must verify:
+1. A failing test was written first (TDD) when behavior changed.
+2. `just check` and `just test` pass locally.
+3. `implementation_plan.md` status and task linkage are updated.
+
 ## Documentation Index
 - .agents/README.md
 - .agents/checks/gemini-styleguide.md
@@ -71,8 +91,10 @@ This workflow requires the following steps to be done in order:
 - .agents/checks/rust-api-docs.md
 - .agents/checks/specifications.md
 - .agents/checks/docs-discoverability.md
+- .agents/checks/rust-module-structure.md
 - .agents/checks/warning-suppression-review.md
 - docs/rust-api-docs.md
+- implementation_plan.md
 - docs/pebble/pebble-add-should-pring-the-relative-pathname.md
 - docs/pebble/taskstatus-enum-representation-actionable-closed-nested-enums.md
 - docs/pebble/toctou-race-in-slug-collision-loop.md
