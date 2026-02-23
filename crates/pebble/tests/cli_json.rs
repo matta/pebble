@@ -33,11 +33,9 @@ fn test_next_json_stdout_only() {
         .output()
         .unwrap();
 
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert!(value.is_null());
+    assert!(!output.status.success());
+    assert!(!output.stderr.is_empty());
+    assert!(output.stdout.is_empty());
 }
 
 #[test]
