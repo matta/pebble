@@ -49,7 +49,7 @@ fn test_init_and_add() {
         &ctx,
         id.clone(),
         Some("Updated Title".to_string()),
-        Some("in_progress".to_string()),
+        Some(TaskStatus::InProgress),
         None,
         true, // clear_priority
         None,

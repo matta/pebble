@@ -4,6 +4,70 @@ This plan reorganizes work so Pebble can be trusted to manage a hierarchical, ph
 
 TDD is mandatory: write a failing test before each behavior change.
 
+## Hybrid Execution Model (Driver + Pebble Tasks)
+This file remains the governance and process driver. Execution happens through Pebble tasks.
+
+### Translation Rules
+1. Create one root Pebble task for the full implementation program.
+2. Create one Pebble task per phase (`P1`, `P2`, ...).
+3. Keep actionable checklist items in the phase task body by default.
+4. Promote checklist items into child Pebble tasks only when split criteria are met, and keep a `Child Tasks` mapping in the parent body.
+
+### Adaptive Decomposition Rules
+Use checklist-first decomposition and only promote checklist items into child Pebble tasks when complexity justifies it.
+
+1. **Default behavior**:
+    - Keep checklist items in the parent task body.
+    - Promote to child Pebble tasks only when split criteria below are met.
+2. **Split criteria**:
+    - `MUST`: the item has independent `deps` or blocks other work.
+    - `MUST`: the item needs independent status tracking (`todo`/`in_progress`/`done`) for planning value.
+    - `MUST`: the item is expected to span multiple sessions or PRs.
+    - `SHOULD`: the item touches multiple subsystems or high-risk surfaces.
+    - `SHOULD`: the item requires a design decision, spike, or uncertainty reduction step.
+    - `SHOULD`: estimated effort exceeds a single focused implementation session.
+    - Promote when any `MUST` is true, or when at least two `SHOULD` criteria are true.
+3. **Anti-explosion rule**:
+    - Do not split work solely to mirror every checklist line.
+    - Prefer narrative markdown checklists unless graph structure materially improves planning.
+4. **Recursion rule**:
+    - Re-evaluate split criteria after each child task completes.
+    - Decompose further only where remaining checklist items meet split criteria.
+5. **Traceability rule**:
+    - Parent task body must include a `Child Tasks` section mapping checklist items to Pebble IDs when decomposition occurs.
+
+### Dependency Rules
+1. Root task depends on phase tasks.
+2. Phase tasks depend on prior phases when strict phase sequencing is desired.
+3. Child tasks (when created) are dependencies of their parent phase task.
+4. Leaf tasks depend on predecessor leaves only when sequencing is required.
+5. Process policies (TDD, gauntlets, gate checks) are enforced by Rules and AGENTS instructions, not by `deps`.
+
+### Sync Rules
+1. Keep this plan's checkboxes synchronized with Pebble task status.
+2. For plan items represented as Pebble tasks, map status directly (`[ ]`/`[-]`/`[x]`).
+3. For checklist-only plan items, update checkboxes in this file and in the parent phase task body.
+4. When a task moves to in progress, mark the matching plan item `[-]`.
+5. When a task is complete and verified, mark the matching plan item `[x]`.
+6. If scope changes, update this plan first, then create/update Pebble tasks to match.
+
+### Task ID Index
+- Root program task: `pebl-YNBL34`
+- Root program task file: `docs/pebble/pebble-self-hosted-implementation-program.md`
+- Phase task IDs:
+- `P1`: `pebl-cdIZGN`
+- `P2`: `pebl--yb8d4`
+- `P3`: `pebl-hRuKk1`
+- `P4`: `pebl-fFdi_z`
+- `P5`: `pebl-pCyebx`
+- Child task IDs:
+- None currently. Add only when Adaptive Decomposition split criteria are met.
+- Standalone task IDs:
+- `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
+- `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
+- `pebl-rWaJHG`: Rename deps field to needs for clarity
+- `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
+
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
 
@@ -17,10 +81,10 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P0.2.d Then `created_at` ASC.
 - [x] P0.2.e Then `id` ASC.
 - [x] P0.3 Tests for P0.1–P0.2 (TDD).
-- [ ] P0.4 JSON output is trustworthy for planning commands (`list`, `next`, `show`, `add`, `update`).
-- [ ] P0.4.a `--json` emits valid JSON to `stdout` and nothing else.
-- [ ] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
-- [ ] P0.4.c Tests validating JSON purity and stdout/stderr separation for these commands.
+- [x] P0.4 JSON output is trustworthy for planning commands (`list`, `next`, `show`, `add`, `update`).
+- [x] P0.4.a `--json` emits valid JSON to `stdout` and nothing else.
+- [x] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
+- [x] P0.4.c Tests validating JSON purity and stdout/stderr separation for these commands.
 
 ## Phase 1: Core CLI Contract Coverage (Non-Blocking for Planning)
 - [ ] P1.0 Deferred scan/duplicate handling (immediately after Phase Zero).

@@ -7,11 +7,19 @@ use std::path::Path;
 
 mod ordering;
 
+/// Composite sort key for ordering tasks in `pebble next` output.
+///
+/// Fields are compared lexicographically: tasks that block more downstream work
+/// rank first; ties are broken by priority, then creation time, then ID.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct NodeKey {
+    /// Descending blocking count (wrapped in [`Reverse`] so `Ord` sorts highest first).
     blocking_count: Reverse<usize>,
+    /// Raw priority value; `u32::MAX` is used when priority is unset (sorts last).
     priority: u32,
+    /// Creation timestamp, used as a tiebreaker after priority.
     created_at: toml_datetime::Datetime,
+    /// Task ID, used as the final deterministic tiebreaker.
     id: String,
 }
 
@@ -134,6 +142,10 @@ impl TaskGraph {
         count
     }
 
+    /// Builds the composite [`NodeKey`] for a task, used during sort comparisons.
+    ///
+    /// Looks up the pre-computed blocking count; falls back to 0 if the task is not
+    /// present in `blocking_counts`. Unset priority is mapped to `u32::MAX`.
     fn next_task_key(&self, node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKey {
         let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
         let priority = node.frontmatter.priority.map(u32::from).unwrap_or(u32::MAX);
