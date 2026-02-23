@@ -7,6 +7,9 @@ use std::path::Path;
 
 mod ordering;
 
+/// Maximum size for a task file (5MB). Files larger than this are skipped to prevent DoS.
+const MAX_FILE_SIZE: u64 = 5 * 1024 * 1024;
+
 /// Composite sort key for ordering tasks in `pebble next` output.
 ///
 /// Fields are compared lexicographically: tasks that block more downstream work
@@ -43,6 +46,16 @@ impl TaskGraph {
                 if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
                     // Ignore AGENTS.md or other known non-task files if they live here.
                     if path.file_name().and_then(|n| n.to_str()) == Some("AGENTS.md") {
+                        continue;
+                    }
+
+                    let metadata = std::fs::metadata(&path)?;
+                    if metadata.len() > MAX_FILE_SIZE {
+                        eprintln!(
+                            "Warning: Skipping {}, file size exceeds limit ({} bytes)",
+                            path.display(),
+                            MAX_FILE_SIZE
+                        );
                         continue;
                     }
 
