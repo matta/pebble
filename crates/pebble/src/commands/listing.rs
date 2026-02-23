@@ -140,13 +140,13 @@ fn sort_list_tasks<'a>(
                 let a_key = a
                     .frontmatter
                     .priority
-                    .map(|p| (0u8, p))
-                    .unwrap_or((1u8, u8::MAX));
+                    .map(|p| (false, p))
+                    .unwrap_or((true, 0));
                 let b_key = b
                     .frontmatter
                     .priority
-                    .map(|p| (0u8, p))
-                    .unwrap_or((1u8, u8::MAX));
+                    .map(|p| (false, p))
+                    .unwrap_or((true, 0));
                 a_key.cmp(&b_key)
             }
             ListSortField::Blocking => {
