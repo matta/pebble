@@ -1,73 +1,9 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{TaskNode, TaskObject, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
-use serde::Serialize;
 use std::env;
 use std::path::PathBuf;
-
-/// Serialized version of a TaskObject as expected by the JSON API contract.
-#[derive(Serialize)]
-pub struct TaskObject<'a> {
-    #[serde(flatten)]
-    pub frontmatter: &'a TaskFrontmatter,
-    pub is_ready: bool,
-    pub blocked_by: Vec<String>,
-    pub blocking: Vec<String>,
-    pub body: &'a str,
-    pub path: String,
-}
-
-impl<'a> TaskObject<'a> {
-    /// Build a serializable task view from a graph node and tasks directory.
-    pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &std::path::Path) -> Self {
-        let is_ready = graph.is_ready(&node.frontmatter.id);
-
-        let blocked_by: Vec<String> = node
-            .frontmatter
-            .deps
-            .iter()
-            .filter_map(|dep_id| {
-                if let Some(dep_node) = graph.nodes.get(dep_id) {
-                    if !matches!(
-                        dep_node.frontmatter.status,
-                        TaskStatus::Done | TaskStatus::Canceled
-                    ) {
-                        return Some(dep_id.clone());
-                    }
-                } else {
-                    return Some(dep_id.clone()); // Dangling pointers block
-                }
-                None
-            })
-            .collect();
-
-        let blocking: Vec<String> = graph
-            .reverse_deps
-            .get(&node.frontmatter.id)
-            .into_iter()
-            .flat_map(|deps| deps.iter())
-            .filter(|dep_id| {
-                graph
-                    .nodes
-                    .get(*dep_id)
-                    .is_some_and(|dep_node| dep_node.frontmatter.status.is_actionable())
-            })
-            .cloned()
-            .collect();
-
-        let rel_path = node.path.strip_prefix(tasks_dir).unwrap_or(&node.path);
-
-        TaskObject {
-            frontmatter: &node.frontmatter,
-            is_ready,
-            blocked_by,
-            blocking,
-            body: &node.body,
-            path: rel_path.display().to_string(),
-        }
-    }
-}
 
 /// Resolved runtime configuration and paths for command execution.
 pub struct RunContext {
@@ -125,6 +61,7 @@ impl RunContext {
 
 /// Filter tasks based on provided criteria.
 /// Public for testing.
+#[allow(clippy::too_many_arguments)]
 pub fn filter_tasks<'a>(
     graph: &'a TaskGraph,
     is_ready: bool,
@@ -150,7 +87,7 @@ pub fn filter_tasks<'a>(
             // If statuses were provided but none parsed validly, strictly we should probably match nothing?
             // Or maybe the user meant custom status? Currently TaskStatus is an enum.
             // If they pass garbage, filter everything out.
-             tasks.retain(|_| false);
+            tasks.retain(|_| false);
         }
     } else {
         // Default behavior: omit done/canceled if no status filter provided
@@ -177,15 +114,14 @@ pub fn filter_tasks<'a>(
 
     // 3. Tags Filter (AND)
     if !tags.is_empty() {
-        tasks.retain(|n| {
-            tags.iter().all(|tag| n.frontmatter.tags.contains(tag))
-        });
+        tasks.retain(|n| tags.iter().all(|tag| n.frontmatter.tags.contains(tag)));
     }
 
     // 4. Deps Filter (OR) - Task must depend on ANY of these
     if !deps.is_empty() {
         tasks.retain(|n| {
-            deps.iter().any(|dep_id| n.frontmatter.deps.contains(dep_id))
+            deps.iter()
+                .any(|dep_id| n.frontmatter.deps.contains(dep_id))
         });
     }
 
@@ -198,6 +134,7 @@ pub fn filter_tasks<'a>(
 }
 
 /// List tasks using the default ordering, optionally filtering to ready tasks.
+#[allow(clippy::too_many_arguments)]
 pub fn run_list(
     ctx: &RunContext,
     is_ready: bool,
@@ -219,16 +156,14 @@ pub fn run_list(
             "{}",
             serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
         );
+    } else if tasks.is_empty() {
+        eprintln!("No tasks found.");
     } else {
-        if tasks.is_empty() {
-            eprintln!("No tasks found.");
-        } else {
-            for task in tasks {
-                println!(
-                    "{} {} ({:?})",
-                    task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
-                );
-            }
+        for task in tasks {
+            println!(
+                "{} {} ({:?})",
+                task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
+            );
         }
     }
 
@@ -263,16 +198,14 @@ pub fn run_search(ctx: &RunContext, query: &str) -> Result<()> {
             "{}",
             serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
         );
+    } else if tasks.is_empty() {
+        eprintln!("No tasks found matching '{}'.", query);
     } else {
-        if tasks.is_empty() {
-            eprintln!("No tasks found matching '{}'.", query);
-        } else {
-            for task in tasks {
-                println!(
-                    "{} {} ({:?})",
-                    task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
-                );
-            }
+        for task in tasks {
+            println!(
+                "{} {} ({:?})",
+                task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
+            );
         }
     }
 
@@ -287,14 +220,17 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
     };
 
     if ctx.json {
-        println!("{}", serde_json::to_string(&serde_json::json!({ key: value }))?);
+        println!(
+            "{}",
+            serde_json::to_string(&serde_json::json!({ key: value }))?
+        );
     } else {
         // For simple string values, just print the string? Or the JSON value representation?
         // "Get" usually implies raw value.
         if let Some(s) = value.as_str() {
             println!("{}", s);
         } else {
-             println!("{}", value);
+            println!("{}", value);
         }
     }
 
@@ -365,6 +301,8 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::str::FromStr;
+
+    use crate::models::TaskFrontmatter;
 
     fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
         TaskNode {

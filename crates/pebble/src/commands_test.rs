@@ -169,16 +169,44 @@ fn test_filtering_and_search() {
 
     // Create tasks
     // 1. Todo, High Priority, Tag: "urgent"
-    run_add(&ctx, "Task 1".to_string(), Some("todo".to_string()), Some(90), Some("body1".to_string()), vec![], vec!["urgent".to_string()]).unwrap();
+    run_add(
+        &ctx,
+        "Task 1".to_string(),
+        Some("todo".to_string()),
+        Some(90),
+        Some("body1".to_string()),
+        vec![],
+        vec!["urgent".to_string()],
+    )
+    .unwrap();
     // 2. InProgress, Low Priority
-    run_add(&ctx, "Task 2".to_string(), Some("in_progress".to_string()), Some(10), Some("body2 search_me".to_string()), vec![], vec![]).unwrap();
+    run_add(
+        &ctx,
+        "Task 2".to_string(),
+        Some("in_progress".to_string()),
+        Some(10),
+        Some("body2 search_me".to_string()),
+        vec![],
+        vec![],
+    )
+    .unwrap();
     // 3. Done
-    run_add(&ctx, "Task 3".to_string(), Some("done".to_string()), None, None, vec![], vec![]).unwrap();
+    run_add(
+        &ctx,
+        "Task 3".to_string(),
+        Some("done".to_string()),
+        None,
+        None,
+        vec![],
+        vec![],
+    )
+    .unwrap();
 
     let graph = TaskGraph::load_from_dir(&tasks_dir).unwrap();
 
     // Test Status Filter
-    let filtered = crate::commands::filter_tasks(&graph, false, &["todo".to_string()], &[], &[], &[]);
+    let filtered =
+        crate::commands::filter_tasks(&graph, false, &["todo".to_string()], &[], &[], &[]);
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].frontmatter.title, "Task 1");
 
@@ -188,7 +216,8 @@ fn test_filtering_and_search() {
     assert_eq!(filtered[0].frontmatter.title, "Task 1");
 
     // Test Tag Filter
-    let filtered = crate::commands::filter_tasks(&graph, false, &[], &[], &["urgent".to_string()], &[]);
+    let filtered =
+        crate::commands::filter_tasks(&graph, false, &[], &[], &["urgent".to_string()], &[]);
     assert_eq!(filtered.len(), 1);
     assert_eq!(filtered[0].frontmatter.title, "Task 1");
 

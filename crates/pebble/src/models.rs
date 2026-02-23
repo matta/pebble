@@ -108,6 +108,73 @@ pub struct TaskNode {
     pub body: String,
 }
 
+/// Serialized version of a TaskObject as expected by the JSON API contract.
+#[derive(Serialize)]
+pub struct TaskObject<'a> {
+    #[serde(flatten)]
+    pub frontmatter: &'a TaskFrontmatter,
+    pub is_ready: bool,
+    pub blocked_by: Vec<String>,
+    pub blocking: Vec<String>,
+    pub body: &'a str,
+    pub path: String,
+}
+
+impl<'a> TaskObject<'a> {
+    /// Build a serializable task view from a graph node and tasks directory.
+    pub fn from_node(
+        node: &'a TaskNode,
+        graph: &crate::graph::TaskGraph,
+        tasks_dir: &std::path::Path,
+    ) -> Self {
+        let is_ready = graph.is_ready(&node.frontmatter.id);
+
+        let blocked_by: Vec<String> = node
+            .frontmatter
+            .deps
+            .iter()
+            .filter_map(|dep_id| {
+                if let Some(dep_node) = graph.nodes.get(dep_id) {
+                    if !matches!(
+                        dep_node.frontmatter.status,
+                        TaskStatus::Done | TaskStatus::Canceled
+                    ) {
+                        return Some(dep_id.clone());
+                    }
+                } else {
+                    return Some(dep_id.clone()); // Dangling pointers block
+                }
+                None
+            })
+            .collect();
+
+        let blocking: Vec<String> = graph
+            .reverse_deps
+            .get(&node.frontmatter.id)
+            .into_iter()
+            .flat_map(|deps| deps.iter())
+            .filter(|dep_id| {
+                graph
+                    .nodes
+                    .get(*dep_id)
+                    .is_some_and(|dep_node| dep_node.frontmatter.status.is_actionable())
+            })
+            .cloned()
+            .collect();
+
+        let rel_path = node.path.strip_prefix(tasks_dir).unwrap_or(&node.path);
+
+        TaskObject {
+            frontmatter: &node.frontmatter,
+            is_ready,
+            blocked_by,
+            blocking,
+            body: &node.body,
+            path: rel_path.display().to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
