@@ -92,9 +92,9 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P1.0.c Read commands warn to `stderr` and skip **all** files with duplicated IDs.
 - [x] P1.0.d Write commands fail with a clear error if target ID is duplicated.
 - [x] P1.1 `list` filters: `--status` (OR), `--tag` (AND), `--need` (OR), `--priority` (OR), `--is-ready`, `--all`, `--limit`.
-- [ ] P1.2 `list` alias `ls`.
-- [ ] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
-- [ ] P1.4 `search` command (case-insensitive substring over title + body; default list ordering).
+- [x] P1.2 `list` alias `ls`.
+- [x] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
+- [x] P1.4 `search` command (case-insensitive substring over title + body; default list ordering).
 - [ ] P1.5 `config get <key>` command.
 - [ ] P1.6 `--help-json` output schema.
 - [ ] P1.7 Help text completeness and examples for every command.

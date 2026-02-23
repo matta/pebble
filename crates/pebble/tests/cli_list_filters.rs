@@ -373,3 +373,29 @@ fn test_list_status_filter_uses_or_semantics() {
 
     assert_eq!(ids, vec!["PROJ-DONE", "PROJ-TODO"]);
 }
+
+#[test]
+fn test_ls_alias_matches_list_output() {
+    let env = setup_test_env();
+
+    write_task(&env.tasks_dir, "PROJ-A", "Task A", "todo");
+    write_task(&env.tasks_dir, "PROJ-B", "Task B", "todo");
+
+    let list_output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+        .current_dir(&env.root)
+        .args(["list", "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(list_output.status.success());
+
+    let ls_output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+        .current_dir(&env.root)
+        .args(["ls", "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(ls_output.status.success());
+
+    let list_value: Value = serde_json::from_slice(&list_output.stdout).unwrap();
+    let ls_value: Value = serde_json::from_slice(&ls_output.stdout).unwrap();
+    assert_eq!(ls_value, list_value);
+}

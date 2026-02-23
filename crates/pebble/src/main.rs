@@ -14,7 +14,7 @@ pub mod parser;
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use commands::{ListOptions, RunContext, run_list, run_next, run_show};
+use commands::{ListOptions, RunContext, run_list, run_next, run_search, run_show};
 use commands_write::{run_add, run_archive, run_init, run_update};
 use models::TaskStatus;
 use std::path::PathBuf;
@@ -48,6 +48,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(alias = "ls")]
     List {
         #[arg(long = "status", value_enum)]
         statuses: Vec<TaskStatus>,
@@ -63,8 +64,13 @@ enum Commands {
         all: bool,
         #[arg(long)]
         limit: Option<usize>,
+        #[arg(long, allow_hyphen_values = true)]
+        sort: Option<String>,
     },
     Next,
+    Search {
+        query: String,
+    },
     Add {
         title: String,
         #[arg(long, value_enum)]
@@ -149,6 +155,7 @@ fn main() -> Result<()> {
             is_ready,
             all,
             limit,
+            sort,
         } => {
             let options = ListOptions {
                 statuses,
@@ -158,10 +165,12 @@ fn main() -> Result<()> {
                 is_ready,
                 all,
                 limit,
+                sort,
             };
             run_list(&ctx, &options)
         }
         Commands::Next => run_next(&ctx),
+        Commands::Search { query } => run_search(&ctx, &query),
         Commands::Add {
             title,
             status,

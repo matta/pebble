@@ -1,11 +1,13 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{TaskFrontmatter, TaskNode};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
-use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
+
+mod listing;
+pub use listing::{ListOptions, run_list, run_search};
 
 /// Serialized version of a TaskObject as expected by the JSON API contract.
 #[derive(Serialize)]
@@ -119,95 +121,6 @@ impl RunContext {
             json,
         })
     }
-}
-
-/// Filters and switches accepted by `pebble list`.
-pub struct ListOptions {
-    /// Filter by status values (OR logic).
-    pub statuses: Vec<TaskStatus>,
-    /// Filter by tags (AND logic — task must have all specified tags).
-    pub tags: Vec<String>,
-    /// Filter by task dependencies (OR logic).
-    pub needs: Vec<String>,
-    /// Filter by priority values (OR logic).
-    pub priorities: Vec<u8>,
-    /// Show only tasks that are ready to start.
-    pub is_ready: bool,
-    /// Include closed tasks (done/canceled) in results.
-    pub all: bool,
-    /// Maximum number of results to return.
-    pub limit: Option<usize>,
-}
-
-/// List tasks using the default ordering, with optional filters.
-pub fn run_list(ctx: &RunContext, options: &ListOptions) -> Result<()> {
-    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
-
-    let mut tasks: Vec<&TaskNode> = graph.nodes.values().collect();
-
-    if !options.statuses.is_empty() {
-        let statuses: HashSet<TaskStatus> = options.statuses.iter().cloned().collect();
-        tasks.retain(|n| statuses.contains(&n.frontmatter.status));
-    } else if !options.all {
-        // Default: omit done/canceled unless --all is set.
-        tasks.retain(|n| !n.frontmatter.status.is_closed());
-    }
-
-    if !options.tags.is_empty() {
-        tasks.retain(|n| {
-            options
-                .tags
-                .iter()
-                .all(|tag| n.frontmatter.tags.iter().any(|task_tag| task_tag == tag))
-        });
-    }
-
-    if !options.needs.is_empty() {
-        let filter_needs: HashSet<_> = options.needs.iter().collect();
-        tasks.retain(|n| {
-            n.frontmatter
-                .needs
-                .iter()
-                .any(|need| filter_needs.contains(need))
-        });
-    }
-
-    if !options.priorities.is_empty() {
-        tasks.retain(|n| {
-            n.frontmatter
-                .priority
-                .is_some_and(|p| options.priorities.contains(&p))
-        });
-    }
-
-    if options.is_ready {
-        tasks.retain(|n| graph.is_ready(&n.frontmatter.id));
-    }
-
-    let mut tasks = graph.default_order(tasks);
-    if let Some(limit) = options.limit {
-        tasks.truncate(limit);
-    }
-
-    if ctx.json {
-        let objects: Vec<TaskObject> = tasks
-            .into_iter()
-            .map(|n| TaskObject::from_node(n, &graph, &ctx.tasks_dir))
-            .collect();
-        println!(
-            "{}",
-            serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
-        );
-    } else {
-        for task in tasks {
-            println!(
-                "{} {} ({:?})",
-                task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
-            );
-        }
-    }
-
-    Ok(())
 }
 
 /// Emit the highest-scoring ready task according to the default ranking.
