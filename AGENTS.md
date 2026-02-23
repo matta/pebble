@@ -40,11 +40,49 @@ When implementing, strictly rely on the specifications extracted from the RFC:
 
 - Strictly adhere to TDD.
 - **Style Guide**: Adhere to the [.gemini/styleguide.md](.gemini/styleguide.md).
-- **Docs Discoverability**: Any new documentation added to the repository must be linked from this file.
+- **Docs Discoverability**: Any new documentation added to the repository must be linked from this file. Exception: files under `docs/pebble/` are Pebble task files managed by the tool and do not require individual index entries.
 - **Clippy Changes Require Approval**: Any modifications to clippy configuration or suppression of clippy warnings must be explicitly discussed and approved by the operator before applying.
 - **Rust Language Baseline**: Before flagging Rust syntax compatibility concerns, check `edition` and `rust-version` in `Cargo.toml`. This repository treats Rust 2024 syntax as canonical.
 
 ## Workflows
+
+### Self-Hosted Planning Protocol
+Pebble task tracking is the execution mechanism for Pebble's own development, with `implementation_plan.md` as the governance driver.
+
+1. **Driver authority**:
+    - `implementation_plan.md` is canonical for phase structure, process Rules, and completion state.
+2. **Task execution**:
+    - Default graph shape is root task + phase tasks.
+    - Implement phase details as markdown checklists in phase task bodies.
+    - Promote checklist items to child Pebble tasks only when Adaptive Task Decomposition criteria are met.
+    - Use `deps` to model sequencing between phases and any promoted child tasks.
+3. **Sync discipline**:
+    - Update `implementation_plan.md` checkboxes whenever task state changes (`[ ]` -> `[-]` -> `[x]`).
+    - Keep the plan's "Task ID Index" aligned with actual Pebble IDs (root/phase always; child IDs only when promoted).
+4. **Policy vs graph**:
+    - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `deps`.
+
+### Adaptive Task Decomposition Policy
+Agents must avoid unnecessary task explosion while still exposing meaningful graph structure.
+
+1. **Default**:
+    - Keep sub-steps as markdown checklist items in the parent task body.
+2. **Promote checklist item to child Pebble task when**:
+    - `MUST`: it has independent `deps` or blocks other work.
+    - `MUST`: it needs independent status tracking for planning value.
+    - `MUST`: it likely spans multiple sessions or PRs.
+    - `SHOULD`: it touches multiple subsystems or high-risk surfaces.
+    - `SHOULD`: it requires design/spike/uncertainty reduction.
+    - `SHOULD`: it exceeds one focused implementation session.
+    - Rule: promote on any `MUST`, or at least two `SHOULD` conditions.
+3. **Do not split by default**:
+    - Do not create Pebble tasks merely to mirror every checklist line.
+    - Never auto-expand a full phase checklist into one-task-per-checkmark.
+4. **Recursive decomposition**:
+    - Re-assess remaining checklist items after each child completion.
+    - Further split only where criteria are still met.
+5. **Parent traceability**:
+    - When decomposition occurs, keep a `Child Tasks` mapping in the parent task body.
 
 ### Just Gauntlet
 This workflow prepares the codebase for a push:
@@ -64,6 +102,12 @@ This workflow requires the following steps to be done in order:
 - **Requirement**: `just check` must pass cleanly.
 - **Enforcement**: Agents must run `just check` and ensure it exits with code 0 before pushing any code to the repository.
 
+### Process Gate Enforcement
+Before marking a Pebble task complete for implementation work, agents must verify:
+1. A failing test was written first (TDD) when behavior changed.
+2. `just check` and `just test` pass locally.
+3. `implementation_plan.md` status and task linkage are updated.
+
 ## Documentation Index
 - .agents/README.md
 - .agents/checks/gemini-styleguide.md
@@ -71,9 +115,8 @@ This workflow requires the following steps to be done in order:
 - .agents/checks/rust-api-docs.md
 - .agents/checks/specifications.md
 - .agents/checks/docs-discoverability.md
+- .agents/checks/rust-module-structure.md
 - .agents/checks/warning-suppression-review.md
 - docs/rust-api-docs.md
-- docs/pebble/pebble-add-should-pring-the-relative-pathname.md
-- docs/pebble/taskstatus-enum-representation-actionable-closed-nested-enums.md
-- docs/pebble/toctou-race-in-slug-collision-loop.md
-- docs/pebble/transliterate-non-ascii-characters-in-slugify.md
+- implementation_plan.md
+- docs/pebble/ (Pebble task files; exempt from individual index entries)

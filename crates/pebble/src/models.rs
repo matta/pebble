@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use toml_datetime::Datetime;
@@ -16,20 +17,27 @@ use toml_datetime::Datetime;
 /// // Serializes to "todo"
 /// assert_eq!(toml::to_string(&status).unwrap().trim(), "\"todo\"");
 /// ```
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[clap(rename_all = "snake_case")]
 pub enum TaskStatus {
+    /// Task has not been started yet.
     Todo,
+    /// Task is actively being worked on.
     InProgress,
+    /// Task has been completed successfully.
     Done,
+    /// Task has been abandoned without completion.
     Canceled,
 }
 
 impl TaskStatus {
+    /// Returns `true` if the status represents an open, workable state (`todo` or `in_progress`).
     pub fn is_actionable(&self) -> bool {
         matches!(self, Self::Todo | Self::InProgress)
     }
 
+    /// Returns `true` if the status represents a terminal state (`done` or `canceled`).
     pub fn is_closed(&self) -> bool {
         matches!(self, Self::Done | Self::Canceled)
     }
@@ -55,17 +63,24 @@ impl TaskStatus {
 // TODO: Implement unknown-key handling: reads ignore; doctor/fix warn; check errors; fix preserves.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct TaskFrontmatter {
+    /// Unique, immutable task identifier (e.g. `"issue-abc123"`).
     pub id: String,
+    /// Human-readable title of the task.
     pub title: String,
-    // Status strictly validated against the enum.
+    /// Lifecycle state; strictly validated against the [`TaskStatus`] enum.
     pub status: TaskStatus,
-    // Optional priority for ordering.
+    /// Optional priority for ordering (lower value = higher priority). Range 0–99.
     pub priority: Option<u8>,
+    /// Timestamp when the task was created.
     pub created_at: Datetime,
+    /// Timestamp of the last modification, if the task has been edited.
     pub modified_at: Option<Datetime>,
+    /// Timestamp when the task reached a terminal status, if applicable.
     pub resolved_at: Option<Datetime>,
+    /// IDs of tasks that must reach a terminal status before this task is ready.
     #[serde(default)]
     pub deps: Vec<String>,
+    /// Arbitrary labels attached to the task.
     #[serde(default)]
     pub tags: Vec<String>,
 }
@@ -102,7 +117,9 @@ pub struct TaskFrontmatter {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct TaskNode {
+    /// Absolute path to the Markdown file on disk.
     pub path: PathBuf,
+    /// Parsed TOML frontmatter for this task.
     pub frontmatter: TaskFrontmatter,
     /// Raw Markdown content after the frontmatter delimiter. Free-form; no structural requirements.
     pub body: String,
