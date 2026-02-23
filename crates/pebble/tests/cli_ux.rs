@@ -12,7 +12,7 @@ fn test_next_stdout_is_clean_when_no_tasks() {
     cmd.current_dir(&env.root)
         .arg("next")
         .assert()
-        .success()
+        .failure()
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains("No ready tasks found."));
 }
