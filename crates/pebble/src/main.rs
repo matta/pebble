@@ -14,7 +14,7 @@ pub mod parser;
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use commands::{RunContext, run_list, run_next, run_show};
+use commands::{ListOptions, RunContext, run_list, run_next, run_show};
 use commands_write::{run_add, run_archive, run_init, run_update};
 use models::TaskStatus;
 use std::path::PathBuf;
@@ -49,8 +49,20 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     List {
+        #[arg(long = "status", value_enum)]
+        statuses: Vec<TaskStatus>,
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+        #[arg(long = "need")]
+        needs: Vec<String>,
+        #[arg(long = "priority", value_parser = clap::value_parser!(u8).range(0..=99))]
+        priorities: Vec<u8>,
         #[arg(long)]
         is_ready: bool,
+        #[arg(long)]
+        all: bool,
+        #[arg(long)]
+        limit: Option<usize>,
     },
     Next,
     Add {
@@ -129,7 +141,26 @@ fn main() -> Result<()> {
         Commands::Config { cmd } => match cmd {
             ConfigCommands::Get { key } => todo!("config get {}", key),
         },
-        Commands::List { is_ready } => run_list(&ctx, is_ready),
+        Commands::List {
+            statuses,
+            tags,
+            needs,
+            priorities,
+            is_ready,
+            all,
+            limit,
+        } => {
+            let options = ListOptions {
+                statuses,
+                tags,
+                needs,
+                priorities,
+                is_ready,
+                all,
+                limit,
+            };
+            run_list(&ctx, &options)
+        }
         Commands::Next => run_next(&ctx),
         Commands::Add {
             title,

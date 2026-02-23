@@ -12,7 +12,7 @@ Checklist:
 - [x] P1.0.b Duplicate ID handling (required for correct graph semantics)
 - [x] P1.0.c Read commands warn to `stderr` and skip all files with duplicated IDs
 - [x] P1.0.d Write commands fail with a clear error if target ID is duplicated
-- [ ] P1.1 `list` filters: `--status`, `--tag`, `--dep`, `--priority`, `--is-ready`, `--all`, `--limit`
+- [x] P1.1 `list` filters: `--status`, `--tag`, `--need`, `--priority`, `--is-ready`, `--all`, `--limit`
 - [ ] P1.2 `list` alias `ls`
 - [ ] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`)
 - [ ] P1.4 `search` command over title + body (case-insensitive substring; default list ordering)
