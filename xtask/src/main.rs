@@ -1,7 +1,7 @@
 use anyhow::Result as AnyhowResult;
 use clap::{Parser, Subcommand};
-use color_eyre::eyre::bail;
 use color_eyre::Result;
+use color_eyre::eyre::bail;
 use ra_ap_rustc_lexer::{FrontmatterAllowed, TokenKind};
 use regex::Regex;
 use serde::Deserialize;

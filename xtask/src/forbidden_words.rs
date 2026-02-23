@@ -1,6 +1,6 @@
 use crate::get_files_to_check;
-use color_eyre::eyre::bail;
 use color_eyre::Result;
+use color_eyre::eyre::bail;
 use std::collections::HashSet;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -145,7 +145,9 @@ fn handle_forbidden_results(
         for (file, line, _) in violations {
             println!("{}:{}", file, line);
         }
-        bail!("Found forbidden words. Please remove them or add the line(s) to .forbidden-word-whitelist if intended.");
+        bail!(
+            "Found forbidden words. Please remove them or add the line(s) to .forbidden-word-whitelist if intended."
+        );
     }
 
     if config.scan_all && state.found_whitelisted.len() < state.whitelist.len() {
@@ -160,7 +162,9 @@ fn handle_forbidden_results(
         for line in unused {
             println!("  {}", line);
         }
-        bail!("Whitelist contains unused entries. Run 'cargo xtask check-forbidden-words --minimize-whitelist' to clean it up.");
+        bail!(
+            "Whitelist contains unused entries. Run 'cargo xtask check-forbidden-words --minimize-whitelist' to clean it up."
+        );
     }
 
     println!("No forbidden words found.");

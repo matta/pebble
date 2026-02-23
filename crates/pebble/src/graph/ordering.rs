@@ -1,17 +1,9 @@
-use super::TaskGraph;
+use super::{NodeKey, TaskGraph};
 use crate::models::TaskNode;
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
 type Adjacency = HashMap<String, Vec<String>>;
-
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-struct NodeKey {
-    blocking_count: Reverse<usize>,
-    priority: u32,
-    created_at: toml_datetime::Datetime,
-    id: String,
-}
 
 #[derive(Clone, Debug)]
 struct SccData {
