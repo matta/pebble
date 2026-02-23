@@ -1,35 +1,15 @@
+mod support;
+
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::fs;
-use tempfile::TempDir;
-use tempfile::tempdir;
-
-fn setup_test_env() -> TempDir {
-    let dir = tempdir().unwrap();
-    let root = dir.path();
-
-    // Create config
-    let config_dir = root.join(".pebble");
-    fs::create_dir(&config_dir).unwrap();
-    fs::write(
-        config_dir.join("config.toml"),
-        r#"
-        issue_prefix = "PROJ"
-        tasks_dir = "tasks"
-        "#,
-    )
-    .unwrap();
-    fs::create_dir(root.join("tasks")).unwrap();
-    dir
-}
+use support::setup_test_env;
 
 #[test]
 fn test_next_stdout_is_clean_when_no_tasks() {
-    let dir = setup_test_env();
-    let root = dir.path();
+    let env = setup_test_env();
 
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
-    cmd.current_dir(root)
+    cmd.current_dir(&env.root)
         .arg("next")
         .assert()
         .success()
@@ -39,11 +19,10 @@ fn test_next_stdout_is_clean_when_no_tasks() {
 
 #[test]
 fn test_add_stdout_is_clean_non_json() {
-    let dir = setup_test_env();
-    let root = dir.path();
+    let env = setup_test_env();
 
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
-    cmd.current_dir(root)
+    cmd.current_dir(&env.root)
         .arg("add")
         .arg("Clean Task")
         .assert()

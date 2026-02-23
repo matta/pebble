@@ -108,7 +108,7 @@ pub fn slugify(s: &str) -> String {
 pub fn run_add(
     ctx: &RunContext,
     title: String,
-    status: Option<String>,
+    status: Option<TaskStatus>,
     priority: Option<u8>,
     body: Option<String>,
     deps: Vec<String>,
@@ -117,13 +117,7 @@ pub fn run_add(
     let id_str = nanoid::nanoid!(6, &nanoid::alphabet::SAFE); // Short ID
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
 
-    let parsed_status = if let Some(s) = status {
-        serde_json::from_str::<TaskStatus>(&format!("\"{s}\"")).map_err(|_| {
-            eyre!("Invalid status: {s}. Expected todo, in_progress, done, or canceled.")
-        })?
-    } else {
-        TaskStatus::Todo
-    };
+    let parsed_status = status.unwrap_or(TaskStatus::Todo);
 
     let now = chrono::Utc::now();
     let created_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
@@ -190,7 +184,7 @@ pub fn run_update(
     ctx: &RunContext,
     id: String,
     title: Option<String>,
-    status: Option<String>,
+    status: Option<TaskStatus>,
     priority: Option<u8>,
     clear_priority: bool,
     body: Option<String>,
@@ -209,10 +203,7 @@ pub fn run_update(
     if let Some(t) = title {
         node.frontmatter.title = t;
     }
-    if let Some(s) = status {
-        let new_status: TaskStatus =
-            serde_json::from_str(&format!("\"{s}\"")).map_err(|_| eyre!("Invalid status"))?;
-
+    if let Some(new_status) = status {
         // Handle transitions
         if !matches!(
             node.frontmatter.status,

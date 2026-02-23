@@ -16,6 +16,7 @@ use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
 use commands::{RunContext, run_list, run_next, run_show};
 use commands_write::{run_add, run_archive, run_init, run_update};
+use models::TaskStatus;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -54,8 +55,8 @@ enum Commands {
     Next,
     Add {
         title: String,
-        #[arg(long)]
-        status: Option<String>,
+        #[arg(long, value_enum)]
+        status: Option<TaskStatus>,
         #[arg(long)]
         priority: Option<u8>,
         #[arg(long)]
@@ -69,8 +70,8 @@ enum Commands {
         id: String,
         #[arg(long)]
         title: Option<String>,
-        #[arg(long)]
-        status: Option<String>,
+        #[arg(long, value_enum)]
+        status: Option<TaskStatus>,
         #[arg(long)]
         priority: Option<u8>,
         #[arg(long)]

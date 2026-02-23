@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use toml_datetime::Datetime;
@@ -16,8 +17,9 @@ use toml_datetime::Datetime;
 /// // Serializes to "todo"
 /// assert_eq!(toml::to_string(&status).unwrap().trim(), "\"todo\"");
 /// ```
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[clap(rename_all = "snake_case")]
 pub enum TaskStatus {
     /// Task has not been started yet.
     Todo,

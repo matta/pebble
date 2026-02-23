@@ -19,7 +19,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P0.3 Tests for P0.1–P0.2 (TDD).
 - [x] P0.4 JSON output is trustworthy for planning commands (`list`, `next`, `show`, `add`, `update`).
 - [x] P0.4.a `--json` emits valid JSON to `stdout` and nothing else.
-- [ ] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
+- [x] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
 - [x] P0.4.c Tests validating JSON purity and stdout/stderr separation for these commands.
 
 ## Phase 1: Core CLI Contract Coverage (Non-Blocking for Planning)
