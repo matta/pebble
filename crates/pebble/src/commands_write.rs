@@ -7,10 +7,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 /// Generate the current UTC time as a TOML-compatible datetime.
-fn current_toml_time() -> Result<toml_datetime::Datetime> {
+fn current_toml_time() -> toml_datetime::Datetime {
     let now = chrono::Utc::now();
-    toml_datetime::Datetime::from_str(&now.to_rfc3339())
-        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))
+    let now_str = now.to_rfc3339();
+    // This unwrap is safe because RFC3339 strings are always valid TOML datetimes
+    toml_datetime::Datetime::from_str(&now_str).unwrap()
 }
 
 pub fn run_init(
@@ -121,7 +122,7 @@ pub fn run_add(
         TaskStatus::Todo
     };
 
-    let created_at = current_toml_time()?;
+    let created_at = current_toml_time();
 
     let fm = TaskFrontmatter {
         id: new_id.clone(),
@@ -203,7 +204,7 @@ pub fn run_update(
 
         // Handle transitions
         if !node.frontmatter.status.is_closed() && new_status.is_closed() {
-            node.frontmatter.resolved_at = Some(current_toml_time()?);
+            node.frontmatter.resolved_at = Some(current_toml_time());
         } else if node.frontmatter.status.is_closed() && !new_status.is_closed() {
             node.frontmatter.resolved_at = None;
         }
@@ -217,7 +218,7 @@ pub fn run_update(
         node.frontmatter.priority = None;
     }
 
-    node.frontmatter.modified_at = Some(current_toml_time()?);
+    node.frontmatter.modified_at = Some(current_toml_time());
 
     for t in add_tags {
         if !node.frontmatter.tags.contains(&t) {
