@@ -7,16 +7,16 @@ TDD is mandatory: write a failing test before each behavior change.
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
 
-- [ ] P0.1 Graph semantics for readiness and blocking.
-- [ ] P0.1.a `blocking` includes only **non-terminal** direct dependents.
-- [ ] P0.1.b Transitive blocking count excludes terminal tasks, excludes self, ignores missing IDs, and is cycle-safe.
-- [ ] P0.2 Deterministic default ordering for `list` and `next`.
-- [ ] P0.2.a Topological order respecting `deps` (missing deps ignored; cycles grouped, ordered by `created_at` then `id`).
-- [ ] P0.2.b Then transitive blocking count DESC.
-- [ ] P0.2.c Then priority ASC (None last).
-- [ ] P0.2.d Then `created_at` ASC.
-- [ ] P0.2.e Then `id` ASC.
-- [ ] P0.3 Tests for P0.1–P0.2 (TDD).
+- [x] P0.1 Graph semantics for readiness and blocking.
+- [x] P0.1.a `blocking` includes only **non-terminal** direct dependents.
+- [x] P0.1.b Transitive blocking count excludes terminal tasks, excludes self, ignores missing IDs, and is cycle-safe.
+- [x] P0.2 Deterministic default ordering for `list` and `next`.
+- [x] P0.2.a Topological order respecting `deps` (missing deps ignored; cycles grouped, ordered by `created_at` then `id`).
+- [x] P0.2.b Then transitive blocking count DESC.
+- [x] P0.2.c Then priority ASC (None last).
+- [x] P0.2.d Then `created_at` ASC.
+- [x] P0.2.e Then `id` ASC.
+- [x] P0.3 Tests for P0.1–P0.2 (TDD).
 - [ ] P0.4 JSON output is trustworthy for planning commands (`list`, `next`, `show`, `add`, `update`).
 - [ ] P0.4.a `--json` emits valid JSON to `stdout` and nothing else.
 - [ ] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
@@ -74,6 +74,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P5.10 `add` slug transliteration + relative path output + newline termination.
 
 ## Rules
+0. **Keep checkmarks up to date. Use [-] for in-progress, [ ] for not started, and [x] for done.**
 1. **One failing test at a time.**
 2. **Refactor only after green.**
 3. **No preemptive cycle prevention in the write path.**

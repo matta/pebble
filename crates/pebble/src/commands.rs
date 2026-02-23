@@ -6,7 +6,7 @@ use serde::Serialize;
 use std::env;
 use std::path::PathBuf;
 
-/// Serialized version of a TaskObject as expected by the JSON API contract
+/// Serialized version of a TaskObject as expected by the JSON API contract.
 #[derive(Serialize)]
 pub struct TaskObject<'a> {
     #[serde(flatten)]
@@ -19,6 +19,7 @@ pub struct TaskObject<'a> {
 }
 
 impl<'a> TaskObject<'a> {
+    /// Build a serializable task view from a graph node and tasks directory.
     pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &std::path::Path) -> Self {
         let is_ready = graph.is_ready(&node.frontmatter.id);
 
@@ -68,6 +69,7 @@ impl<'a> TaskObject<'a> {
     }
 }
 
+/// Resolved runtime configuration and paths for command execution.
 pub struct RunContext {
     pub project_root: Option<PathBuf>,
     pub config: Config,
@@ -76,6 +78,7 @@ pub struct RunContext {
 }
 
 impl RunContext {
+    /// Load configuration and resolve paths based on CLI overrides and the current directory.
     pub fn load(
         cli_dir_override: Option<PathBuf>,
         cli_config_override: Option<PathBuf>,
@@ -120,6 +123,7 @@ impl RunContext {
     }
 }
 
+/// List tasks using the default ordering, optionally filtering to ready tasks.
 pub fn run_list(ctx: &RunContext, is_ready: bool) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
 
@@ -138,6 +142,8 @@ pub fn run_list(ctx: &RunContext, is_ready: bool) -> Result<()> {
     if is_ready {
         tasks.retain(|n| graph.is_ready(&n.frontmatter.id));
     }
+
+    let tasks = graph.default_order(tasks);
 
     if ctx.json {
         let objects: Vec<TaskObject> = tasks
@@ -160,6 +166,7 @@ pub fn run_list(ctx: &RunContext, is_ready: bool) -> Result<()> {
     Ok(())
 }
 
+/// Emit the highest-scoring ready task according to the default ranking.
 pub fn run_next(ctx: &RunContext) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let next_tasks = graph.get_next_tasks();
@@ -179,6 +186,7 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
     Ok(())
 }
 
+/// Show a task by ID, or just its path when `path_only` is set.
 pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let node = graph

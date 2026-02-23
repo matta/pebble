@@ -42,6 +42,7 @@ When implementing, strictly rely on the specifications extracted from the RFC:
 - **Style Guide**: Adhere to the [.gemini/styleguide.md](.gemini/styleguide.md).
 - **Docs Discoverability**: Any new documentation added to the repository must be linked from this file.
 - **Clippy Changes Require Approval**: Any modifications to clippy configuration or suppression of clippy warnings must be explicitly discussed and approved by the operator before applying.
+- **Rust Language Baseline**: Before flagging Rust syntax compatibility concerns, check `edition` and `rust-version` in `Cargo.toml`. This repository treats Rust 2024 syntax as canonical.
 
 ## Workflows
 
@@ -66,9 +67,12 @@ This workflow requires the following steps to be done in order:
 ## Documentation Index
 - .agents/README.md
 - .agents/checks/gemini-styleguide.md
+- .agents/checks/rust-language-baseline.md
+- .agents/checks/rust-api-docs.md
 - .agents/checks/specifications.md
 - .agents/checks/docs-discoverability.md
 - .agents/checks/warning-suppression-review.md
+- docs/rust-api-docs.md
 - docs/pebble/pebble-add-should-pring-the-relative-pathname.md
 - docs/pebble/taskstatus-enum-representation-actionable-closed-nested-enums.md
 - docs/pebble/toctou-race-in-slug-collision-loop.md
