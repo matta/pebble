@@ -6,6 +6,16 @@ use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+/// Generate the current UTC time as a TOML-compatible datetime.
+fn current_toml_time() -> Result<toml_datetime::Datetime> {
+    let now = chrono::Utc::now();
+    let now_str = now.to_rfc3339();
+    // TODO: Use `chrono::Utc::now().into()` once `toml_datetime` implements `From<chrono::DateTime<Utc>>`.
+    // Currently, it does not seem to be available in the version/feature set we are using.
+    toml_datetime::Datetime::from_str(&now_str)
+        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))
+}
+
 /// Initializes a new Pebble project in the current directory.
 ///
 /// Creates a `.pebble/` directory containing `config.toml` and `AGENTS.md`,
@@ -121,9 +131,7 @@ pub fn run_add(
 
     let parsed_status = status.unwrap_or(TaskStatus::Todo);
 
-    let now = chrono::Utc::now();
-    let created_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
-        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))?;
+    let created_at = current_toml_time()?;
 
     let fm = TaskFrontmatter {
         id: new_id.clone(),
@@ -207,20 +215,9 @@ pub fn run_update(
     }
     if let Some(new_status) = status {
         // Handle transitions
-        if !matches!(
-            node.frontmatter.status,
-            TaskStatus::Done | TaskStatus::Canceled
-        ) && matches!(new_status, TaskStatus::Done | TaskStatus::Canceled)
-        {
-            let now = chrono::Utc::now();
-            let resolved_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
-                .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))?;
-            node.frontmatter.resolved_at = Some(resolved_at);
-        } else if matches!(
-            node.frontmatter.status,
-            TaskStatus::Done | TaskStatus::Canceled
-        ) && !matches!(new_status, TaskStatus::Done | TaskStatus::Canceled)
-        {
+        if !node.frontmatter.status.is_closed() && new_status.is_closed() {
+            node.frontmatter.resolved_at = Some(current_toml_time()?);
+        } else if node.frontmatter.status.is_closed() && !new_status.is_closed() {
             node.frontmatter.resolved_at = None;
         }
 
@@ -233,10 +230,7 @@ pub fn run_update(
         node.frontmatter.priority = None;
     }
 
-    let now = chrono::Utc::now();
-    let modified_at = toml_datetime::Datetime::from_str(&now.to_rfc3339())
-        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))?;
-    node.frontmatter.modified_at = Some(modified_at);
+    node.frontmatter.modified_at = Some(current_toml_time()?);
 
     for t in add_tags {
         if !node.frontmatter.tags.contains(&t) {
@@ -301,10 +295,8 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     let mut archived = vec![];
 
     for node in graph.nodes.values() {
-        if matches!(
-            node.frontmatter.status,
-            TaskStatus::Done | TaskStatus::Canceled
-        ) && let Some(resolved_at_toml) = node.frontmatter.resolved_at
+        if node.frontmatter.status.is_closed()
+            && let Some(resolved_at_toml) = node.frontmatter.resolved_at
         {
             let resolved_at = chrono::DateTime::parse_from_rfc3339(&resolved_at_toml.to_string())
                 .map(|dt| dt.with_timezone(&chrono::Utc))

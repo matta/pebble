@@ -1,6 +1,6 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{TaskFrontmatter, TaskNode};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::env;
@@ -29,10 +29,7 @@ impl<'a> TaskObject<'a> {
             .iter()
             .filter_map(|dep_id| {
                 if let Some(dep_node) = graph.nodes.get(dep_id) {
-                    if !matches!(
-                        dep_node.frontmatter.status,
-                        TaskStatus::Done | TaskStatus::Canceled
-                    ) {
+                    if !dep_node.frontmatter.status.is_closed() {
                         return Some(dep_id.clone());
                     }
                 } else {
@@ -131,12 +128,7 @@ pub fn run_list(ctx: &RunContext, is_ready: bool) -> Result<()> {
     let mut tasks: Vec<&TaskNode> = graph
         .nodes
         .values()
-        .filter(|n| {
-            !matches!(
-                n.frontmatter.status,
-                TaskStatus::Done | TaskStatus::Canceled
-            )
-        })
+        .filter(|n| !n.frontmatter.status.is_closed())
         .collect();
 
     if is_ready {
@@ -227,6 +219,7 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::TaskStatus;
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::str::FromStr;
