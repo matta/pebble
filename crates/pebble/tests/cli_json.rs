@@ -73,7 +73,10 @@ fn test_add_json_stdout_only() {
     assert!(output.stderr.is_empty());
 
     let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(value.get("title").and_then(|v| v.as_str()), Some("New Task"));
+    assert_eq!(
+        value.get("title").and_then(|v| v.as_str()),
+        Some("New Task")
+    );
 }
 
 #[test]
@@ -85,13 +88,7 @@ fn test_update_json_stdout_only() {
     let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
         .current_dir(&env.root)
         .args([
-            "update",
-            "PROJ-3",
-            "--status",
-            "done",
-            "--json",
-            "--dir",
-            "tasks",
+            "update", "PROJ-3", "--status", "done", "--json", "--dir", "tasks",
         ])
         .output()
         .unwrap();
