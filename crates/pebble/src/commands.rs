@@ -170,10 +170,8 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
         } else {
             println!("{} {}", task.frontmatter.id, task.frontmatter.title);
         }
-    } else if ctx.json {
-        println!("null");
     } else {
-        eprintln!("No ready tasks found.");
+        return Err(eyre!("No ready tasks found."));
     }
     Ok(())
 }
