@@ -1,8 +1,10 @@
 +++
 id = "pebl-GoOi96"
 title = "TOCTOU race in slug collision loop"
-status = "todo"
+status = "done"
 created_at = 2026-02-22T22:32:50.259702+00:00
+modified_at = 2026-02-23T13:43:13.213035205+00:00
+resolved_at = 2026-02-23T13:43:13.212879378+00:00
 deps = []
 tags = ["defect"]
 +++

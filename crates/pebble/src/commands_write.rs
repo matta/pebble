@@ -158,7 +158,6 @@ pub fn run_add(
     let mut filepath = ctx.tasks_dir.join(&filename);
     let mut counter = 2;
 
-    // TODO(pebble: docs/pebble/toctou-race-in-slug-collision-loop.md): Use create_new + retry to make filename selection atomic.
     loop {
         let file_result = std::fs::OpenOptions::new()
             .write(true)
@@ -171,6 +170,9 @@ pub fn run_add(
                 break;
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                if counter > 100 {
+                    return Err(eyre!("Failed to create task file: too many collisions"));
+                }
                 filename = format!("{}-{}.md", base_slug, counter);
                 filepath = ctx.tasks_dir.join(&filename);
                 counter += 1;
