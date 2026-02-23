@@ -6,6 +6,12 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+/// Scans tracked files for occurrences of the forbidden word.
+///
+/// When `generate_whitelist` is `true`, writes every found occurrence to
+/// `.forbidden-word-whitelist` instead of failing. When `minimize_whitelist`
+/// is `true`, rewrites the whitelist retaining only entries still present in
+/// the codebase. Fails if any non-whitelisted occurrences are found.
 pub fn check_forbidden_words(
     all: bool,
     generate_whitelist: bool,
@@ -33,6 +39,7 @@ pub fn check_forbidden_words(
     Ok(())
 }
 
+/// Loads the forbidden-word whitelist from `path`, returning an empty set when regenerating.
 fn load_whitelist(path: &Path, generate_whitelist: bool) -> Result<HashSet<String>> {
     if path.exists() && !generate_whitelist {
         let content = fs::read_to_string(path)?;
@@ -42,16 +49,24 @@ fn load_whitelist(path: &Path, generate_whitelist: bool) -> Result<HashSet<Strin
     }
 }
 
+/// A single forbidden-word hit: `(relative_file_path, 1-based_line_number, line_content)`.
 type Violation = (String, usize, String);
+/// Collected list of forbidden-word violations.
 type Violations = Vec<Violation>;
 
+/// Configuration bundle passed to [`handle_forbidden_results`].
 struct ForbiddenConfig<'a> {
+    /// Path to the `.forbidden-word-whitelist` file.
     whitelist_path: &'a Path,
+    /// Whether the full file set (not just changed files) was scanned.
     scan_all: bool,
+    /// Whether to write a fresh whitelist from found occurrences.
     generate_whitelist: bool,
+    /// Whether to rewrite the whitelist retaining only still-present entries.
     minimize_whitelist: bool,
 }
 
+/// Walks `files`, returning every line that contains `forbidden` and is not whitelisted.
 fn scan_forbidden_words(
     root: &Path,
     files: HashSet<String>,
@@ -87,6 +102,10 @@ fn scan_forbidden_words(
     Ok(violations)
 }
 
+/// Returns `true` if a file should be excluded from forbidden-word scanning.
+///
+/// Skips non-existent paths, directories, explicitly ignored files, the
+/// whitelist file itself, Markdown files, and known binary extensions.
 fn should_skip_forbidden_check(path: &Path, relative_path: &str) -> bool {
     if !path.exists() || path.is_dir() {
         return true;
@@ -117,6 +136,10 @@ fn should_skip_forbidden_check(path: &Path, relative_path: &str) -> bool {
         .is_some_and(|ext| BINARY_EXTENSIONS.iter().any(|&b| ext == b))
 }
 
+/// Handles the outcome of a forbidden-word scan according to `config` mode.
+///
+/// In generate or minimize mode, writes the whitelist file. Otherwise, fails
+/// on any violations and warns about stale whitelist entries when scanning all files.
 fn handle_forbidden_results(
     config: ForbiddenConfig<'_>,
     violations: Violations,
@@ -171,6 +194,7 @@ fn handle_forbidden_results(
     Ok(())
 }
 
+/// Normalizes a line to lowercase with runs of whitespace collapsed to single spaces.
 fn canonicalize(s: &str) -> String {
     s.to_lowercase()
         .split_whitespace()
@@ -178,6 +202,7 @@ fn canonicalize(s: &str) -> String {
         .join(" ")
 }
 
+/// Writes `whitelist` entries to `path`, one per line, sorted lexicographically.
 fn write_whitelist(path: &Path, whitelist: HashSet<String>, label: &str) -> Result<()> {
     let mut sorted_whitelist: Vec<_> = whitelist.into_iter().collect();
     sorted_whitelist.sort();
@@ -190,6 +215,9 @@ fn write_whitelist(path: &Path, whitelist: HashSet<String>, label: &str) -> Resu
     Ok(())
 }
 
+/// Returns `true` if `line` contains `forbidden` and is not covered by the whitelist.
+///
+/// In generate-whitelist mode, records the line instead of flagging it.
 fn process_line(line: &str, forbidden: &str, state: &mut WhitelistState) -> bool {
     let lower_line = line.to_lowercase();
     if !lower_line.contains(forbidden) {
@@ -210,14 +238,20 @@ fn process_line(line: &str, forbidden: &str, state: &mut WhitelistState) -> bool
     true
 }
 
+/// Mutable state accumulated during a forbidden-word scan.
 struct WhitelistState {
+    /// When `true`, all hits are collected into `new_whitelist` instead of reported.
     generate_whitelist: bool,
+    /// The canonical entries loaded from the existing whitelist file.
     whitelist: HashSet<String>,
+    /// Canonical entries collected when regenerating the whitelist.
     new_whitelist: HashSet<String>,
+    /// Whitelist entries that were actually encountered during the scan.
     found_whitelisted: HashSet<String>,
 }
 
 impl WhitelistState {
+    /// Creates a new `WhitelistState` with the given existing whitelist.
     fn new(whitelist: HashSet<String>, generate_whitelist: bool) -> Self {
         Self {
             generate_whitelist,
