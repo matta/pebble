@@ -34,9 +34,9 @@ impl TaskGraph {
     /// Builds a graph from a directory of task files.
     ///
     /// Scans the directory for Markdown (`.md`) files, parsing each as a [`TaskNode`].
-    /// Files named `AGENTS.md` are explicitly ignored. Files that fail to parse
-    /// (e.g., missing frontmatter) result in a warning printed to stderr but do not
-    /// halt the loading process.
+    /// Files named `AGENTS.md` are explicitly ignored. Files that start with `+++` but
+    /// fail to parse result in a warning printed to stderr but do not halt the loading
+    /// process. Files that do not start with `+++` are silently ignored.
     ///
     /// # Errors
     ///
