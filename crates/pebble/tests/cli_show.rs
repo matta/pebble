@@ -29,7 +29,7 @@ fn test_show_path_only_relative() {
 id = "PROJ-1"
 title = "First Task"
 status = "todo"
-deps = []
+needs = []
 created_at = 2024-01-01T00:00:00Z
 +++
 Body text
@@ -39,8 +39,7 @@ Body text
 
     let expected_rel_path = "PROJ-1.md\n";
 
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
     cmd.current_dir(root)
         .arg("show")
         .arg("PROJ-1")
@@ -78,7 +77,7 @@ fn test_show_formatted_output() {
 id = "PROJ-2"
 title = "A Formatted Task"
 status = "todo"
-deps = []
+needs = []
 tags = ["frontend"]
 created_at = 2024-01-01T00:00:00Z
 +++
@@ -87,8 +86,7 @@ Body text explaining the task.
     )
     .unwrap();
 
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_pebble"));
     cmd.current_dir(root)
         .arg("show")
         .arg("PROJ-2")

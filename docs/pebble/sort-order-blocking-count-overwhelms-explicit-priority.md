@@ -3,7 +3,7 @@ id = "pebl-buDx2q"
 title = "Sort order: blocking count overwhelms explicit priority"
 status = "todo"
 created_at = 2026-02-23T05:46:42.77611+00:00
-deps = []
+needs = []
 tags = ["design", "sort"]
 +++
 
@@ -11,7 +11,7 @@ tags = ["design", "sort"]
 
 The current default sort order is:
 
-1. Topological order (deps)
+1. Topological order (needs)
 2. Transitive blocking count DESC
 3. Priority ASC (None last)
 4. `created_at` ASC
@@ -23,7 +23,7 @@ have downstream dependents — even if that downstream structure is entirely unr
 
 ## Observed Scenario
 
-- `pebl-rWaJHG` ("Rename deps to needs") has `priority = 0`, no deps, no dependents.
+- `pebl-rWaJHG` ("Rename deps to needs") has `priority = 0`, no needs, no dependents.
   It should intuitively be the first result from `pebble next`.
 - `pebl-cdIZGN` ("Phase 1") has no priority set, but has blocking count = 2 because
   P2 and the root program task depend on it.

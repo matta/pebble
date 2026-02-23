@@ -3,7 +3,7 @@ id = "issue-s6uah2"
 title = "pebble add should use task title as file name slug, not issue id."
 status = "done"
 created_at = 2026-02-22T20:20:46.580999+00:00
-deps = []
+needs = []
 tags = []
 priority = 1
 +++

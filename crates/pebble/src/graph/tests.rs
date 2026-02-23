@@ -3,7 +3,7 @@ use crate::models::TaskFrontmatter;
 use crate::models::TaskStatus;
 use std::str::FromStr;
 
-fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
+fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
     TaskNode {
         path: Path::new("").to_path_buf(),
         body: "".to_string(),
@@ -15,7 +15,7 @@ fn make_test_node(id: &str, status: TaskStatus, deps: Vec<&str>) -> TaskNode {
             created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap(),
             modified_at: None,
             resolved_at: None,
-            deps: deps.into_iter().map(|s| s.to_string()).collect(),
+            needs: needs.into_iter().map(|s| s.to_string()).collect(),
             tags: vec![],
         },
     }
@@ -117,7 +117,7 @@ fn test_count_blocking_cycle_excludes_self() {
 }
 
 #[test]
-fn test_default_order_respects_deps_and_priority() {
+fn test_default_order_respects_needs_and_priority() {
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::Todo, vec![]);

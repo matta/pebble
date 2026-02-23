@@ -3,7 +3,7 @@ id = "pebl-fFdi_z"
 title = "Phase 4 Spec-Driven UX Issues"
 status = "todo"
 created_at = 2026-02-23T01:36:06.540214+00:00
-deps = ["pebl-hRuKk1"]
+needs = ["pebl-hRuKk1"]
 tags = ["bootstrap", "self_hosted"]
 +++
 Checklist:

@@ -27,7 +27,7 @@ struct NodeKey {
 pub struct TaskGraph {
     pub nodes: HashMap<String, TaskNode>,
     /// Maps a task ID to the list of task IDs that depend on it.
-    pub reverse_deps: HashMap<String, Vec<String>>,
+    pub blocking: HashMap<String, Vec<String>>,
 }
 
 impl TaskGraph {
@@ -76,11 +76,11 @@ impl TaskGraph {
 
     /// Creates a TaskGraph from an existing map of nodes, precomputing reverse indices.
     pub fn new(nodes: HashMap<String, TaskNode>) -> Self {
-        let mut reverse_deps: HashMap<String, Vec<String>> = HashMap::new();
+        let mut blocking: HashMap<String, Vec<String>> = HashMap::new();
 
         for (id, node) in &nodes {
-            for dep_id in &node.frontmatter.deps {
-                reverse_deps
+            for dep_id in &node.frontmatter.needs {
+                blocking
                     .entry(dep_id.clone())
                     .or_default()
                     .push(id.clone());
@@ -89,15 +89,15 @@ impl TaskGraph {
 
         Self {
             nodes,
-            reverse_deps,
+            blocking,
         }
     }
 
     /// Determines if a task is "ready" according to absolute readiness rules.
     /// Readiness rule:
     /// 1. Its local status is actionable (todo or in_progress).
-    /// 2. EVERY task listed in its deps array exists.
-    /// 3. EVERY task listed in its deps array has a terminal status (done or canceled).
+    /// 2. EVERY task listed in its needs array exists.
+    /// 3. EVERY task listed in its needs array has a terminal status (done or canceled).
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
@@ -107,7 +107,7 @@ impl TaskGraph {
             return false;
         }
 
-        for dep_id in &node.frontmatter.deps {
+        for dep_id in &node.frontmatter.needs {
             if let Some(dep_node) = self.nodes.get(dep_id) {
                 if !dep_node.frontmatter.status.is_closed() {
                     return false; // Dep is not in terminal state
@@ -130,7 +130,7 @@ impl TaskGraph {
         visited.insert(task_id.to_string());
 
         while let Some(current) = stack.pop() {
-            if let Some(downstream_ids) = self.reverse_deps.get(&current) {
+            if let Some(downstream_ids) = self.blocking.get(&current) {
                 for downstream_id in downstream_ids {
                     if !visited.insert(downstream_id.clone()) {
                         continue;

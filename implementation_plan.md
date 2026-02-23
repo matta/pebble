@@ -1,6 +1,6 @@
 # Implementation Plan - Pebble (Spec Alignment)
 
-This plan reorganizes work so Pebble can be trusted to manage a hierarchical, phase-based task set **as early as possible**. "Phase Zero" contains only the blockers to using Pebble itself for planning: representing nested tasks via `deps`, and trusting `pebble list` / `pebble next` to surface tasks in correct order.
+This plan reorganizes work so Pebble can be trusted to manage a hierarchical, phase-based task set **as early as possible**. "Phase Zero" contains only the blockers to using Pebble itself for planning: representing nested tasks via `needs`, and trusting `pebble list` / `pebble next` to surface tasks in correct order.
 
 TDD is mandatory: write a failing test before each behavior change.
 
@@ -20,8 +20,8 @@ Use checklist-first decomposition and only promote checklist items into child Pe
     - Keep checklist items in the parent task body.
     - Promote to child Pebble tasks only when split criteria below are met.
 2. **Split criteria**:
-    - `MUST`: the item has independent `deps` or blocks other work.
-    - `MUST`: the item needs independent status tracking (`todo`/`in_progress`/`done`) for planning value.
+    - `MUST`: the item has independent `needs` or blocks other work.
+    - `MUST`: the item requires independent status tracking (`todo`/`in_progress`/`done`) for planning value.
     - `MUST`: the item is expected to span multiple sessions or PRs.
     - `SHOULD`: the item touches multiple subsystems or high-risk surfaces.
     - `SHOULD`: the item requires a design decision, spike, or uncertainty reduction step.
@@ -41,7 +41,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 2. Phase tasks depend on prior phases when strict phase sequencing is desired.
 3. Child tasks (when created) are dependencies of their parent phase task.
 4. Leaf tasks depend on predecessor leaves only when sequencing is required.
-5. Process policies (TDD, gauntlets, gate checks) are enforced by Rules and AGENTS instructions, not by `deps`.
+5. Process policies (TDD, gauntlets, gate checks) are enforced by Rules and AGENTS instructions, not by `needs`.
 
 ### Sync Rules
 1. Keep this plan's checkboxes synchronized with Pebble task status.
@@ -65,7 +65,6 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - Standalone task IDs:
 - `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
 - `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
-- `pebl-rWaJHG`: Rename deps field to needs for clarity
 - `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)
@@ -75,7 +74,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P0.1.a `blocking` includes only **non-terminal** direct dependents.
 - [x] P0.1.b Transitive blocking count excludes terminal tasks, excludes self, ignores missing IDs, and is cycle-safe.
 - [x] P0.2 Deterministic default ordering for `list` and `next`.
-- [x] P0.2.a Topological order respecting `deps` (missing deps ignored; cycles grouped, ordered by `created_at` then `id`).
+- [x] P0.2.a Topological order respecting `needs` (missing needs ignored; cycles grouped, ordered by `created_at` then `id`).
 - [x] P0.2.b Then transitive blocking count DESC.
 - [x] P0.2.c Then priority ASC (None last).
 - [x] P0.2.d Then `created_at` ASC.
@@ -92,7 +91,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P1.0.b Duplicate ID handling (required for correct graph semantics).
 - [ ] P1.0.c Read commands warn to `stderr` and skip **all** files with duplicated IDs.
 - [ ] P1.0.d Write commands fail with a clear error if target ID is duplicated.
-- [ ] P1.1 `list` filters: `--status` (OR), `--tag` (AND), `--dep` (OR), `--priority` (OR), `--is-ready`, `--all`, `--limit`.
+- [ ] P1.1 `list` filters: `--status` (OR), `--tag` (AND), `--need` (OR), `--priority` (OR), `--is-ready`, `--all`, `--limit`.
 - [ ] P1.2 `list` alias `ls`.
 - [ ] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
 - [ ] P1.4 `search` command (case-insensitive substring over title + body; default list ordering).

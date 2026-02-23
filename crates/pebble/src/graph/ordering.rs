@@ -77,7 +77,7 @@ fn build_id_to_node<'a>(nodes: &[&'a TaskNode]) -> HashMap<String, &'a TaskNode>
 
 /// Builds the forward adjacency list restricted to the given task IDs.
 ///
-/// Each entry maps a task ID to the IDs of tasks within `ids` that list it as a dep
+/// Each entry maps a task ID to the IDs of tasks within `ids` that list it as a need
 /// (i.e. "who depends on me among the given set"). Edges to IDs outside `ids` are ignored.
 fn build_adjacency(ids: &[String], id_to_node: &HashMap<String, &TaskNode>) -> Adjacency {
     let mut adjacency: Adjacency = HashMap::new();
@@ -88,7 +88,7 @@ fn build_adjacency(ids: &[String], id_to_node: &HashMap<String, &TaskNode>) -> A
     }
 
     for node in id_to_node.values() {
-        for dep in &node.frontmatter.deps {
+        for dep in &node.frontmatter.needs {
             if included.contains(dep) {
                 adjacency
                     .entry(dep.clone())
@@ -189,7 +189,7 @@ fn topo_order_sccs(
 /// Returns `true` if the given SCC represents a dependency cycle.
 ///
 /// An SCC is a cycle when it contains more than one node, or when a single node
-/// lists itself as a dependency (self-loop).
+/// lists itself as a need (self-loop).
 fn is_cycle(scc: &[String], adjacency: &Adjacency) -> bool {
     scc.len() > 1
         || scc

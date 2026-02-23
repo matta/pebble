@@ -79,7 +79,7 @@ pub struct TaskFrontmatter {
     pub resolved_at: Option<Datetime>,
     /// IDs of tasks that must reach a terminal status before this task is ready.
     #[serde(default)]
-    pub deps: Vec<String>,
+    pub needs: Vec<String>,
     /// Arbitrary labels attached to the task.
     #[serde(default)]
     pub tags: Vec<String>,
@@ -108,7 +108,7 @@ pub struct TaskFrontmatter {
 ///         created_at: Datetime::from_str("2023-01-01T00:00:00Z").unwrap(),
 ///         modified_at: None,
 ///         resolved_at: None,
-///         deps: vec![],
+///         needs: vec![],
 ///         tags: vec![],
 ///     },
 ///     body: "Detailed description".into(),
@@ -173,14 +173,14 @@ title = "Implement Task Node"
 status = "todo"
 priority = 1
 created_at = 2026-02-21T17:00:00Z
-deps = ["issue-122"]
+needs = ["issue-122"]
 "#;
         let fm: TaskFrontmatter = toml::from_str(toml_str).unwrap();
         assert_eq!(fm.id, "issue-123");
         assert_eq!(fm.title, "Implement Task Node");
         assert_eq!(fm.status, TaskStatus::Todo);
         assert_eq!(fm.priority, Some(1));
-        assert_eq!(fm.deps, vec!["issue-122"]);
+        assert_eq!(fm.needs, vec!["issue-122"]);
         assert!(
             fm.tags.is_empty(),
             "Tags should default to empty vec if omitted"

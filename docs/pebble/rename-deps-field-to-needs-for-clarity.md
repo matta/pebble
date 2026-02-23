@@ -1,10 +1,12 @@
 +++
 id = "pebl-rWaJHG"
 title = "Rename deps field to needs for clarity"
-status = "todo"
+status = "done"
 priority = 0
 created_at = 2026-02-23T05:41:07.031257+00:00
-deps = []
+modified_at = 2026-02-23T17:11:11.810272+00:00
+resolved_at = 2026-02-23T17:11:11.810267+00:00
+needs = []
 tags = ["rename", "breaking"]
 +++
 The word "dependency" is a relational noun with no inherent direction. "A depends on

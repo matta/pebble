@@ -3,7 +3,7 @@ id = "pebl-cdIZGN"
 title = "Phase 1 Core CLI Contract Coverage"
 status = "todo"
 created_at = 2026-02-23T01:36:05.771442+00:00
-deps = []
+needs = []
 tags = ["bootstrap", "self_hosted"]
 +++
 Checklist:

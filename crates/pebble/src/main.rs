@@ -61,8 +61,8 @@ enum Commands {
         priority: Option<u8>,
         #[arg(long)]
         body: Option<String>,
-        #[arg(long = "dep")]
-        deps: Vec<String>,
+        #[arg(long = "need")]
+        needs: Vec<String>,
         #[arg(long = "tag")]
         tags: Vec<String>,
     },
@@ -84,10 +84,10 @@ enum Commands {
         add_tags: Vec<String>,
         #[arg(long = "remove-tag")]
         remove_tags: Vec<String>,
-        #[arg(long = "add-dep")]
-        add_deps: Vec<String>,
-        #[arg(long = "remove-dep")]
-        remove_deps: Vec<String>,
+        #[arg(long = "add-need")]
+        add_needs: Vec<String>,
+        #[arg(long = "remove-need")]
+        remove_needs: Vec<String>,
     },
     Archive,
     /// Output a specific task in various formats.
@@ -136,9 +136,9 @@ fn main() -> Result<()> {
             status,
             priority,
             body,
-            deps,
+            needs,
             tags,
-        } => run_add(&ctx, title, status, priority, body, deps, tags),
+        } => run_add(&ctx, title, status, priority, body, needs, tags),
         Commands::Update {
             id,
             title,
@@ -149,8 +149,8 @@ fn main() -> Result<()> {
             append_body,
             add_tags,
             remove_tags,
-            add_deps,
-            remove_deps,
+            add_needs,
+            remove_needs,
         } => run_update(
             &ctx,
             id,
@@ -162,8 +162,8 @@ fn main() -> Result<()> {
             append_body,
             add_tags,
             remove_tags,
-            add_deps,
-            remove_deps,
+            add_needs,
+            remove_needs,
         ),
         Commands::Archive => run_archive(&ctx),
         Commands::Show { id, path_only } => run_show(&ctx, &id, path_only),

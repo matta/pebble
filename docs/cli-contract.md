@@ -18,7 +18,7 @@ This document defines the strict specification for the Pebble Command Line Inter
 - Every command has a **clear, distinct purpose**. Avoid redundant commands that do the same thing.
 - All commands that produce output **must** support `--json`.
 - No interactive prompts. If confirmation is needed, require `--yes` / `--force` or fail with a usage error.
-- Use ubiquitous language: **one concept, one word** for both nouns and verbs. Do not abbreviate. Use the same term consistently (e.g., always `dependency`, never `dependencies` or `dep`; pick one verb such as `remove` or `delete` and use it everywhere).
+- Use ubiquitous language: **one concept, one word** for both nouns and verbs. Do not abbreviate. Use the same term consistently (e.g., always `need`, never `needs` or `dep`; pick one verb such as `remove` or `delete` and use it everywhere).
 - For list/set fields, the `update` command must use **consistent incremental flags** across all such fields:
     - Add items with `--add-<field> <value>` (repeatable).
     - Remove items with `--remove-<field> <value>` (repeatable).
@@ -78,8 +78,8 @@ Pebble locates its configuration and task files using strict path resolution rul
 
 Most commands emitting JSON will return either a single `TaskObject` or a list of them.
 A `TaskObject` includes:
-* **Basic Fields**: `id`, `title`, `status`, `priority` (optional), `created_at`, `modified_at` (optional), `resolved_at` (optional), `deps` (array), `tags` (array).
-* **Computed Fields**: `is_ready` (boolean), `blocked_by` (array of ID strings), `blocking` (array of ID strings — direct non-terminal dependents whose `deps` include this task).
+* **Basic Fields**: `id`, `title`, `status`, `priority` (optional), `created_at`, `modified_at` (optional), `resolved_at` (optional), `needs` (array), `tags` (array).
+* **Computed Fields**: `is_ready` (boolean), `blocked_by` (array of ID strings), `blocking` (array of ID strings — direct non-terminal dependents whose `needs` include this task).
 * **Content & Location**: `body` (raw Markdown content string), `path` (file path relative to `tasks-dir`).
 
 ## Timestamp Rules
@@ -111,15 +111,15 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
 * **Inputs**:
     * `--status <status>`: Filters by status (OR'ed).
     * `--tag <tag>`: Filters by tag (AND'ed).
-    * `--dep <id>`: Filters by dependency (OR'ed).
+    * `--need <id>`: Filters by need (OR'ed).
     * `--priority <N>`: Filters by priority (OR'ed). Valid range: `0..99` (lower number = higher priority).
-    * `--is-ready`: Filters to tasks whose status is actionable (`todo` or `in_progress`), whose `deps` all exist, and whose `deps` are all `done` or `canceled`.
+    * `--is-ready`: Filters to tasks whose status is actionable (`todo` or `in_progress`), whose `needs` all exist, and whose `needs` are all `done` or `canceled`.
     * `--all`: Disables default omission of `done` and `canceled` tasks. (Note: explicitly requesting `--status done` or `--status canceled` also includes those tasks, even without `--all`.)
     * `--sort <field>`: Sort by a specific field. Valid fields: `priority`, `blocking`, `created_at`, `modified_at`, `status`, `title`. Defaults to ascending; prefix with `-` for descending (e.g., `--sort -created_at`). When sorting by `status`, the canonical order is: `todo`, `in_progress`, `done`, `canceled`. When sorting by `priority`, tasks with no `priority` sort after all prioritized tasks. When sorting by `blocking`, the key is the **transitive blocking count** (not `len(blocking)`).
     * `--limit <N>`: Limits returned rows.
 * **Default sort order**: Deterministic and dependency-aware:
-    1. **Topological order** (respecting `deps`): if B depends on A, A appears before B. Missing dependencies are ignored for ordering (only existing tasks participate). Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
-    2. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `deps` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Tasks blocking more downstream work appear first.
+    1. **Topological order** (respecting `needs`): if B depends on A, A appears before B. Missing needs are ignored for ordering (only existing tasks participate). Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
+    2. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `needs` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Tasks blocking more downstream work appear first.
     3. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
     4. **`created_at`** ascending (oldest first).
     5. **`id`** ascending (lexicographic) as the absolute tiebreaker, guaranteeing determinism.
@@ -150,7 +150,7 @@ Case-insensitive substring search against task `title` (frontmatter) and raw Mar
 ### `pebble add <title>`
 Creates a new task file with generated boilerplate.
 * **Inputs**: `<title>` (string).
-    * Flags: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--dep <id>` (repeatable), `--tag <tag>` (repeatable).
+    * Flags: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--need <id>` (repeatable), `--tag <tag>` (repeatable).
 * **ID Generation**: The generated ID follows the pattern `<issue-prefix>-<suffix>`, where `issue-prefix` comes from the `issue-prefix` config key (default: `issue`). The suffix uses the alphabet `a-z0-9` (36 characters). The suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox sizing).
 * **Filename Generation**: The filename is derived from the `<title>` using a deterministic slug. To ensure maximum reach and cross-platform safety, slugs are strictly restricted to lowercase alphanumeric characters, dashes, and underscores:
     * lowercase
@@ -166,7 +166,7 @@ Creates a new task file with generated boilerplate.
 ### `pebble update <id>`
 Safely modifies existing frontmatter properties or appends body content.
 * **Inputs**: `<id>` (string).
-    * Flags: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>` (replaces entire body), `--append-body <text>` (appends to body), `--add-tag <tag>`, `--remove-tag <tag>`, `--add-dep <id>`, `--remove-dep <id>`.
+    * Flags: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>` (replaces entire body), `--append-body <text>` (appends to body), `--add-tag <tag>`, `--remove-tag <tag>`, `--add-need <id>`, `--remove-need <id>`.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>` representing the modified task.
 
 ### `pebble archive`
