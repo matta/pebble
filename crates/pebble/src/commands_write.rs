@@ -205,6 +205,12 @@ pub fn run_update(
     remove_needs: Vec<String>,
 ) -> Result<()> {
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
+    if graph.is_duplicate_id(&id) {
+        return Err(eyre!(
+            "Duplicate task ID '{}' found in multiple files; cannot safely target this ID.",
+            id
+        ));
+    }
     let mut node = graph
         .nodes
         .remove(&id)
