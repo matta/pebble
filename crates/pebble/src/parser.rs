@@ -2,7 +2,38 @@ use crate::models::{TaskFrontmatter, TaskNode};
 use color_eyre::eyre::{Result, eyre};
 use std::path::Path;
 
-/// Parses a Markdown file with TOML frontmatter into a TaskNode.
+/// Parses a Markdown file with TOML frontmatter into a [`TaskNode`].
+///
+/// The file must start with a TOML frontmatter block delimited by `+++` on the first
+/// line and another `+++` on a subsequent line. The content after the second delimiter
+/// is treated as the task body.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// * The file does not start with `+++`.
+/// * The closing `+++` delimiter is missing.
+/// * The TOML content cannot be parsed into [`TaskFrontmatter`].
+///
+/// # Examples
+///
+/// ```
+/// use std::path::Path;
+/// use pebble::parser::parse_task_file;
+///
+/// let content = r#"+++
+/// id = "issue-1"
+/// title = "Fix bug"
+/// status = "todo"
+/// created_at = 2023-01-01T00:00:00Z
+/// +++
+///
+/// Description of the bug."#;
+///
+/// let node = parse_task_file(Path::new("issue-1.md"), content).unwrap();
+/// assert_eq!(node.frontmatter.title, "Fix bug");
+/// assert_eq!(node.body.trim(), "Description of the bug.");
+/// ```
 pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let lines: Vec<&str> = content.lines().collect();
 

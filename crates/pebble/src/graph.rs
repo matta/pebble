@@ -32,6 +32,15 @@ pub struct TaskGraph {
 
 impl TaskGraph {
     /// Builds a graph from a directory of task files.
+    ///
+    /// Scans the directory for Markdown (`.md`) files, parsing each as a [`TaskNode`].
+    /// Files named `AGENTS.md` are explicitly ignored. Files that fail to parse
+    /// (e.g., missing frontmatter) result in a warning printed to stderr but do not
+    /// halt the loading process.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if the directory cannot be read or if any file read operation fails.
     pub fn load_from_dir(tasks_dir: &Path) -> Result<Self> {
         let mut nodes = HashMap::new();
 

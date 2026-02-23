@@ -46,8 +46,33 @@ pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
     None
 }
 
-/// Parses the config from the given string and validates it according to the CLI contract.
-/// Specifically: `tasks-dir` MUST be a relative path.
+/// Parses configuration from a TOML string, validating path constraints.
+///
+/// Ensures that `tasks-dir` is a relative path and does not contain parent directory
+/// components (`..`) to prevent path traversal issues.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// * The TOML string cannot be parsed.
+/// * `tasks-dir` is an absolute path.
+/// * `tasks-dir` contains `..` components.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::config::parse_config;
+/// use std::path::PathBuf;
+///
+/// let toml = r#"
+/// issue-prefix = "ticket"
+/// tasks-dir = "docs/tasks/"
+/// "#;
+///
+/// let config = parse_config(toml).unwrap();
+/// assert_eq!(config.issue_prefix, "ticket");
+/// assert_eq!(config.tasks_dir, PathBuf::from("docs/tasks/"));
+/// ```
 pub fn parse_config(toml_str: &str) -> Result<Config> {
     let config: Config = if toml_str.trim().is_empty() {
         Config::default()
