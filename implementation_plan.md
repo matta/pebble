@@ -106,11 +106,11 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P1.2 `list` alias `ls`.
 - [x] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
 - [x] P1.4 `search` command (case-insensitive substring over title + body; default list ordering).
-- [x] P1.5 `config get <key>` command.
-- [x] P1.6 `help-json` command output schema.
-- [x] P1.7 Help text completeness and examples for every command.
-- [x] P1.8 Extend `--json` purity and stdout/stderr separation across **all** commands.
-- [x] P1.9 Exit code mapping: `0` success, `1` runtime error, `2` usage error (global).
+- [ ] P1.5 `config get <key>` command.
+- [ ] P1.6 `help-json` command output schema.
+- [ ] P1.7 Help text completeness and examples for every command.
+- [ ] P1.8 Extend `--json` purity and stdout/stderr separation across **all** commands.
+- [ ] P1.9 Exit code mapping: `0` success, `1` runtime error, `2` usage error (global).
 
 ## Phase 2: Mutation Semantics & Validation
 - [x] P2.1 ID generation: `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, suffix length based on issue count to keep collision probability < 1e-12.
@@ -141,9 +141,9 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P5.3 Default list ordering and explicit `--sort` tie-breakers.
 - [ ] P5.4 Filters and limits for `list`.
 - [ ] P5.5 `search` query behavior.
-- [x] P5.6 `config get` and `help-json` output shapes.
-- [x] P5.7 `--json` purity and stdout/stderr separation across commands.
-- [x] P5.8 Exit code mapping for runtime vs usage errors.
+- [ ] P5.6 `config get` and `help-json` output shapes.
+- [ ] P5.7 `--json` purity and stdout/stderr separation across commands.
+- [ ] P5.8 Exit code mapping for runtime vs usage errors.
 - [ ] P5.9 `archive` threshold and collision behavior.
 - [ ] P5.10 `add` slug transliteration + relative path output + newline termination.
 
