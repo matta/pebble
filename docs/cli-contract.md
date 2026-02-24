@@ -64,14 +64,15 @@ Pebble locates its configuration and task files using strict path resolution rul
 ## JSON Mode
 
 * `--json` outputs **valid JSON to stdout and nothing else**.
-* JSON output is stable and schema-backed (see `pebble help-json` schemas).
+* JSON output for operational commands is stable and contract-backed by this document.
+* `pebble help-json` is for discovery and may change over time; consumers should parse it defensively.
 * When `--json` is set, suppress color/formatting and any extra decorations.
 
 ## Help and Discoverability
 
 * `--help` **must describe every option** for the command, including defaults, not just list the argument name.
 * `--help` must include concrete usage examples for the common path.
-* `pebble help-json` provides a machine-readable description of commands, flags, and output schemas.
+* `pebble help-json` gives a machine-readable overview of commands and options.
 * Command-level help text is a normative interface contract and must be kept in sync with behavior.
 
 ### Required `--help` Content (Must-Have)
@@ -102,7 +103,7 @@ In addition to the general requirements above, each command's `--help` **MUST** 
     * Supported keys and behavior for unknown keys.
     * Output semantics in human mode vs `--json`.
 * `pebble help-json`
-    * Emits a machine-readable schema of commands, flags, and output shapes.
+    * Gives a machine-readable overview of commands, flags, and output-shape hints.
     * Writes valid JSON to `stdout` only, with no diagnostics mixed into `stdout`.
 * `pebble list` / `pebble ls`
     * Full filter semantics and combined-flag behavior as defined below in `pebble list --help` must-haves.
@@ -145,6 +146,32 @@ A `TaskObject` includes:
 * **Computed Fields**: `is_ready` (boolean), `blocked_by` (array of ID strings), `blocking` (array of ID strings — direct non-terminal dependents whose `needs` include this task).
 * **Content & Location**: `body` (raw Markdown content string), `path` (file path relative to `tasks-dir`).
 
+## `help-json` Output (Guidance, Not Contract)
+
+The `pebble help-json` command returns machine-readable CLI metadata intended for **AI-agent discovery and tool integration**, not for strict schema validation or programmatic logic.
+
+### What it returns
+
+The output is a JSON object that generally includes:
+* `name` — the CLI binary name.
+* `global_options` — a list of flags available on every command (e.g. `--json`, `--dir`) with names and short descriptions.
+* `commands` — a list of all subcommands, each with:
+    * `name` — canonical subcommand name (and any aliases).
+    * `description` — a one-line purpose statement.
+    * `options` — per-command flags with names and descriptions.
+    * `output_shape` — a hint describing the kind of JSON value this command returns when `--json` is specified (e.g. `TaskObject`, `{"tasks": [TaskObject]}`).
+
+### How AI agents should use it
+
+* Use `help-json` to **discover what commands exist** and what flags they accept, especially before composing a `pebble` invocation for the first time.
+* Use `output_shape` hints to understand what JSON structure to expect before parsing `--json` output.
+* **Do not** embed `help-json` structure in hard-coded logic that will break if fields are renamed or reorganized. Always parse defensively.
+* For any field that matters to downstream logic, prefer the contract-backed `--json` output from the actual command over `help-json` metadata.
+
+### Stability disclaimer
+
+Field shape, presence, ordering, and naming in `help-json` output **may change between Pebble versions**. New fields may be added; existing fields may be renamed or removed. Consumers must not assume that all fields will be present.
+
 ## Timestamp Rules
 
 * `created_at` is set to the current UTC time on `pebble add`.
@@ -160,7 +187,9 @@ Bootstraps the project environment.
 * **Inputs**:
     * `--issue-prefix <PREFIX>` (sets initial prefix)
     * `--dir <PATH>` (sets initial tasks-dir; must be a relative path, otherwise fails)
-* **Outputs**: None (stdout text on success). Sets up `.pebble/`, creates the `tasks-dir` if missing, and creates `.pebble/AGENTS.md`.
+* **Outputs**:
+    * **Human**: Success message to `stderr`.
+    * **JSON (`--json`)**: `{"status": "success", "project_root": "...", "tasks_dir": "...", "issue_prefix": "..."}` to `stdout`.
 
 ### `pebble config get <key>`
 Reads an active configuration value.
@@ -168,9 +197,9 @@ Reads an active configuration value.
 * **Output (`--json`)**: `{"key": "<key>", "value": "<value>"}`
 
 ### `pebble help-json`
-Emits a machine-readable schema describing commands, flags, and output shapes.
+Returns machine-readable CLI metadata for AI-agent discovery, including commands, flags, and output-shape hints. This output is **guidance, not a versioned contract** — see the [`help-json` Output section](#help-json-output-guidance-not-contract) for full semantics and stability caveats.
 * **Inputs**: None.
-* **Output**: JSON object on `stdout` only.
+* **Output**: JSON object on `stdout` only. No diagnostics are mixed into `stdout`.
 
 ## Query Commands
 
@@ -281,7 +310,7 @@ Applies safe, deterministic repairs such as whitespace normalization or backfill
 * Commands that return structured data:
     * `list`, `search` => `{"tasks": [<TaskObject>, ...]}`
     * `show`, `add`, `update` => single unwrapped `<TaskObject>`
-    * `config get`, `init` => structured JSON response
+    * `config get`, `init`, `archive` => structured JSON response
 
 ## Idempotency and Safety
 

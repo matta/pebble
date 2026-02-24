@@ -1,7 +1,14 @@
+//! Command-line interface definition for Pebble.
+//!
+//! This module defines the `Cli` parser and its subcommands using `clap`.
+//! It serves as the primary entry point for parsing arguments and dispatching
+//! to command handlers.
+
 use crate::models::TaskStatus;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+/// Top-level command-line argument parser.
 #[derive(Parser)]
 #[command(
     name = "pebble",
@@ -29,8 +36,10 @@ pub struct Cli {
     pub command: Commands,
 }
 
+/// Top-level Pebble subcommands accepted by the CLI.
 #[derive(Subcommand)]
 pub enum Commands {
+    /// List tasks matching specified filters.
     #[command(alias = "ls")]
     #[command(
         about = "List tasks from the graph.",
@@ -68,12 +77,14 @@ pub enum Commands {
         long_about = "Return the single highest-ranked ready task using Pebble's default scoring: (transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC).",
         after_help = "Examples:\n  pebble next\n  pebble next --json"
     )]
+    /// Return the single highest-priority task that is ready to work on.
     Next,
     #[command(
         about = "Search tasks by text.",
         long_about = "Search title and body content using case-insensitive substring matching. Results follow the default list ordering. Default omits closed tasks.",
         after_help = "Examples:\n  pebble search bug\n  pebble search \"database timeout\" --json"
     )]
+    /// Search for tasks using primitive text matching.
     Search {
         /// Search query string (case-insensitive substring over title + body).
         query: String,
@@ -83,6 +94,7 @@ pub enum Commands {
         long_about = "Create a new task file with generated ID and frontmatter. Filename is slugified from the title. ID suffix length scales with task count to avoid collisions.",
         after_help = "Examples:\n  pebble add \"Implement file scanning\"\n  pebble add \"Fix bug\" --priority 5 --need PEBL-123 --tag urgent --json"
     )]
+    /// Create a new task file in the tasks directory.
     Add {
         /// Task title.
         title: String,
@@ -107,6 +119,7 @@ pub enum Commands {
         long_about = "Update mutable fields and body content. Immutable id is preserved. modified_at is updated automatically; resolved_at is set/cleared based on status transitions.",
         after_help = "Examples:\n  pebble update PEBL-1 --status in_progress\n  pebble update PEBL-1 --add-tag docs --remove-need PEBL-0 --append-body \"See RFC 001\" --json"
     )]
+    /// Update an existing task's frontmatter or body.
     Update {
         /// Task ID to update.
         id: String,
@@ -146,12 +159,14 @@ pub enum Commands {
         long_about = "Sweep done/canceled tasks older than the configured threshold into the archive/ subdirectory. Resolves filename collisions with numeric suffixes.",
         after_help = "Examples:\n  pebble archive\n  pebble archive --json"
     )]
+    /// Archive terminal tasks older than the configured threshold.
     Archive,
     #[command(
         about = "Show one task by ID.",
         long_about = "Show full task details or only the relative file path. Exit code 1 if task is not found.",
         after_help = "Examples:\n  pebble show PEBL-1\n  pebble show PEBL-1 --path-only --json"
     )]
+    /// Display full details of a single task.
     Show {
         /// Task ID to show.
         id: String,
@@ -164,6 +179,7 @@ pub enum Commands {
         long_about = "Bootstrap .pebble config and tasks directory in the current directory. All paths in config must be relative to project root.",
         after_help = "Examples:\n  pebble init\n  pebble init --issue-prefix PROJ --dir tasks"
     )]
+    /// Initialize a new Pebble project.
     Init {
         /// Initial issue-prefix for generated IDs.
         #[arg(long)]
@@ -177,6 +193,7 @@ pub enum Commands {
         long_about = "Read resolved configuration values (issue-prefix or tasks-dir) by key.",
         after_help = "Examples:\n  pebble config get issue-prefix\n  pebble config get tasks-dir --json"
     )]
+    /// View or modify Pebble configuration.
     Config {
         #[command(subcommand)]
         cmd: ConfigCommands,
@@ -186,9 +203,11 @@ pub enum Commands {
         long_about = "Print a machine-readable JSON schema of all commands, flags, and output shapes for tool integration.",
         after_help = "Examples:\n  pebble help-json"
     )]
+    /// Output the CLI structure in a machine-readable JSON format.
     HelpJson,
 }
 
+/// Configuration-related subcommands.
 #[derive(Subcommand)]
 pub enum ConfigCommands {
     #[command(
@@ -196,5 +215,9 @@ pub enum ConfigCommands {
         long_about = "Get one resolved configuration value by key (issue-prefix or tasks-dir). Output for unknown keys is a usage error.",
         after_help = "Examples:\n  pebble config get issue-prefix\n  pebble config get tasks-dir --json"
     )]
-    Get { key: String },
+    /// Retrieve the value of a specific configuration key.
+    Get {
+        /// Configuration key to fetch (issue-prefix or tasks-dir).
+        key: String,
+    },
 }

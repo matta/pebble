@@ -1,6 +1,6 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode};
+use crate::models::{TaskFrontmatter, TaskNode, UsageError};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -185,11 +185,10 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
     let config_values = config_values_map(&ctx.config)?;
     let value = config_values.get(key).cloned().ok_or_else(|| {
         let supported_keys = config_values.keys().cloned().collect::<Vec<_>>().join(", ");
-        eyre!(
+        UsageError(format!(
             "Unknown config key '{}'. Supported keys: {}",
-            key,
-            supported_keys
-        )
+            key, supported_keys
+        ))
     })?;
 
     if ctx.json {

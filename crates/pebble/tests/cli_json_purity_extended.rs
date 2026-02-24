@@ -48,7 +48,7 @@ fn test_config_get_json_error_keeps_stdout_empty() {
         .output()
         .expect("Failed to run config get");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     assert!(!output.stderr.is_empty());
 }

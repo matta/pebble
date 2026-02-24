@@ -1,7 +1,7 @@
 +++
 id = "pebl-cdIZGN"
 title = "Phase 1 Core CLI Contract Coverage"
-status = "todo"
+status = "done"
 created_at = 2026-02-23T01:36:05.771442+00:00
 needs = []
 tags = ["bootstrap", "self_hosted"]
@@ -16,11 +16,11 @@ Checklist:
 - [x] P1.2 `list` alias `ls`
 - [x] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`)
 - [x] P1.4 `search` command over title + body (case-insensitive substring; default list ordering)
-- [ ] P1.5 `config get <key>` command
-- [ ] P1.6 `help-json` command output schema
-- [ ] P1.7 Help text completeness and examples for every command
-- [ ] P1.8 Extend `--json` purity and stdout/stderr separation across all commands
-- [ ] P1.9 Exit code mapping: `0` success, `1` runtime error, `2` usage error
+- [x] P1.5 `config get <key>` command
+- [x] P1.6 `help-json` command output schema
+- [x] P1.7 Help text completeness and examples for every command
+- [x] P1.8 Extend `--json` purity and stdout/stderr separation across all commands
+- [x] P1.9 Exit code mapping: `0` success, `1` runtime error, `2` usage error
 
 Child Tasks:
 - None currently. Promote only when Adaptive Decomposition criteria are met.

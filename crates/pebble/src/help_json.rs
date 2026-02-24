@@ -115,6 +115,7 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
         ("update", None) => json!("TaskObject"),
         ("archive", None) => json!({ "archived": [{ "id": "string", "moved_to": "string" }] }),
         ("help-json", None) => json!("HelpSchema"),
+        // Intentional panic: Tests validate exhaustiveness before release.
         _ => panic!(
             "Unhandled help-json output schema mapping for command '{}' and subcommand {:?}",
             command_name, subcommand_name
