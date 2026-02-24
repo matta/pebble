@@ -1,6 +1,8 @@
 mod support;
 
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
+use assert_cmd::prelude::*;
+use std::process::Command;
 use serde_json::Value;
 use support::setup_test_env;
 
@@ -9,7 +11,7 @@ fn test_cli_renamed_flags_roundtrip() {
     let env = setup_test_env();
 
     // 1. Test 'pebble add --need' (renamed from --dep)
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "add",
@@ -36,7 +38,7 @@ fn test_cli_renamed_flags_roundtrip() {
     assert_eq!(needs[0], "parent");
 
     // 2. Test 'pebble update --add-need' (renamed from --add-dep)
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update",
@@ -63,7 +65,7 @@ fn test_cli_renamed_flags_roundtrip() {
     assert_eq!(needs_strs, vec!["another-parent", "parent"]);
 
     // 3. Test 'pebble update --remove-need' (renamed from --remove-dep)
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update",
@@ -94,7 +96,7 @@ fn test_cli_computed_blocking_fields() {
     let env = setup_test_env();
 
     // Create a child task
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["add", "Child Task", "--json", "--dir", "tasks"])
         .output()
@@ -104,7 +106,7 @@ fn test_cli_computed_blocking_fields() {
     let child_id = value.get("id").unwrap().as_str().unwrap().to_string();
 
     // Create a parent task
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["add", "Parent Task", "--json", "--dir", "tasks"])
         .output()
@@ -114,7 +116,7 @@ fn test_cli_computed_blocking_fields() {
     let parent_id = value.get("id").unwrap().as_str().unwrap().to_string();
 
     // Now update 'child' to need this new parent
-    Command::new(env!("CARGO_BIN_EXE_pebble"))
+    Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update",
@@ -129,7 +131,7 @@ fn test_cli_computed_blocking_fields() {
 
     // 'child' needs parent_id. parent_id is todo.
     // So 'child' should be blocked_by parent_id
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", &child_id, "--json", "--dir", "tasks"])
         .output()
@@ -140,7 +142,7 @@ fn test_cli_computed_blocking_fields() {
     assert!(blocked_by.iter().any(|v| v.as_str() == Some(&parent_id)));
 
     // parent_id should be blocking 'child'
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", &parent_id, "--json", "--dir", "tasks"])
         .output()

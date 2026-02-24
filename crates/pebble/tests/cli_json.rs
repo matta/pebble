@@ -1,6 +1,7 @@
 mod support;
 
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
+use std::process::Command;
 use serde_json::Value;
 use support::{setup_test_env, write_task};
 
@@ -10,7 +11,7 @@ fn test_list_json_stdout_only() {
 
     write_task(&env.tasks_dir, "PROJ-1", "First Task", "todo");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
@@ -27,7 +28,7 @@ fn test_list_json_stdout_only() {
 fn test_next_json_stdout_only() {
     let env = setup_test_env();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["next", "--json", "--dir", "tasks"])
         .output()
@@ -44,7 +45,7 @@ fn test_show_json_stdout_only() {
 
     write_task(&env.tasks_dir, "PROJ-2", "Show Task", "todo");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-2", "--json", "--dir", "tasks"])
         .output()
@@ -76,7 +77,7 @@ fn test_show_json_stdout_only() {
 fn test_add_json_stdout_only() {
     let env = setup_test_env();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["add", "New Task", "--json", "--dir", "tasks"])
         .output()
@@ -98,7 +99,7 @@ fn test_update_json_stdout_only() {
 
     write_task(&env.tasks_dir, "PROJ-3", "Update Task", "todo");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update", "PROJ-3", "--status", "done", "--json", "--dir", "tasks",
