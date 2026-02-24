@@ -1,4 +1,5 @@
-use crate::commands::{RunContext, TaskObject};
+use crate::api::TaskObject;
+use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
