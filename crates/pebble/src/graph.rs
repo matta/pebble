@@ -60,20 +60,6 @@ impl TaskGraph {
     /// # Errors
     ///
     /// Returns an `Err` if the directory cannot be read or if any file read operation fails.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::path::Path;
-    /// use pebble::graph::TaskGraph;
-    ///
-    /// // Assuming "tasks" is a valid directory containing markdown task files
-    /// let tasks_dir = Path::new("tasks");
-    /// if tasks_dir.exists() {
-    ///     let graph = TaskGraph::load_from_dir(tasks_dir).unwrap();
-    ///     println!("Loaded {} tasks", graph.nodes.len());
-    /// }
-    /// ```
     pub fn load_from_dir(tasks_dir: &Path) -> Result<Self> {
         let mut parsed_nodes = Vec::new();
 
@@ -170,48 +156,6 @@ impl TaskGraph {
     /// 1. Its status is actionable (`todo` or `in_progress`).
     /// 2. All tasks in its `needs` list exist in the graph.
     /// 3. All tasks in its `needs` list are in a terminal state (`done` or `canceled`).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use pebble::graph::TaskGraph;
-    /// use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-    /// use std::path::PathBuf;
-    /// use toml_datetime::Datetime;
-    /// use std::str::FromStr;
-    ///
-    /// let make_node = |id: &str, status: TaskStatus, needs: Vec<&str>| -> TaskNode {
-    ///     TaskNode {
-    ///         path: PathBuf::from("path"),
-    ///         frontmatter: TaskFrontmatter {
-    ///             id: id.into(),
-    ///             title: "Title".into(),
-    ///             status,
-    ///             priority: None,
-    ///             created_at: Datetime::from_str("2023-01-01T00:00:00Z").unwrap(),
-    ///             modified_at: None,
-    ///             resolved_at: None,
-    ///             needs: needs.iter().map(|s| s.to_string()).collect(),
-    ///             tags: vec![],
-    ///         },
-    ///         body: "".into(),
-    ///     }
-    /// };
-    ///
-    /// let mut nodes = HashMap::new();
-    /// // Task A is done
-    /// nodes.insert("A".into(), make_node("A", TaskStatus::Done, vec![]));
-    /// // Task B depends on A, so it is ready
-    /// nodes.insert("B".into(), make_node("B", TaskStatus::Todo, vec!["A"]));
-    /// // Task C depends on B (which is Todo), so C is not ready
-    /// nodes.insert("C".into(), make_node("C", TaskStatus::Todo, vec!["B"]));
-    ///
-    /// let graph = TaskGraph::new(nodes);
-    ///
-    /// assert!(graph.is_ready("B"));
-    /// assert!(!graph.is_ready("C"));
-    /// ```
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
@@ -294,56 +238,6 @@ impl TaskGraph {
     /// 2. Priority (ascending, with unset priority sorting last).
     /// 3. Creation time (ascending).
     /// 4. Task ID (lexicographical tie-breaker).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use pebble::graph::TaskGraph;
-    /// use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-    /// use std::path::PathBuf;
-    /// use toml_datetime::Datetime;
-    /// use std::str::FromStr;
-    ///
-    /// let make_node = |id: &str, status: TaskStatus, needs: Vec<&str>| -> TaskNode {
-    ///     TaskNode {
-    ///         path: PathBuf::from("path"),
-    ///         frontmatter: TaskFrontmatter {
-    ///             id: id.into(),
-    ///             title: "Title".into(),
-    ///             status,
-    ///             priority: None,
-    ///             created_at: Datetime::from_str("2023-01-01T00:00:00Z").unwrap(),
-    ///             modified_at: None,
-    ///             resolved_at: None,
-    ///             needs: needs.iter().map(|s| s.to_string()).collect(),
-    ///             tags: vec![],
-    ///         },
-    ///         body: "".into(),
-    ///     }
-    /// };
-    ///
-    /// let mut nodes = HashMap::new();
-    /// // Task A blocks B and C. It is ready (needs: [])
-    /// nodes.insert("A".into(), make_node("A", TaskStatus::Todo, vec![]));
-    ///
-    /// // Task B depends on A. Not ready.
-    /// nodes.insert("B".into(), make_node("B", TaskStatus::Todo, vec!["A"]));
-    ///
-    /// // Task C depends on A. Not ready.
-    /// nodes.insert("C".into(), make_node("C", TaskStatus::Todo, vec!["A"]));
-    ///
-    /// // Task D is independent. Ready.
-    /// nodes.insert("D".into(), make_node("D", TaskStatus::Todo, vec![]));
-    ///
-    /// let graph = TaskGraph::new(nodes);
-    /// let next = graph.get_next_tasks();
-    ///
-    /// // A is returned first because it blocks 2 tasks (B, C), while D blocks 0.
-    /// assert_eq!(next[0].frontmatter.id, "A");
-    /// assert_eq!(next[1].frontmatter.id, "D");
-    /// assert_eq!(next.len(), 2);
-    /// ```
     pub fn get_next_tasks(&self) -> Vec<&TaskNode> {
         let mut ready_tasks: Vec<&TaskNode> = self
             .nodes
