@@ -151,10 +151,11 @@ impl TaskGraph {
     }
 
     /// Determines if a task is "ready" according to absolute readiness rules.
-    /// Readiness rule:
-    /// 1. Its local status is actionable (todo or in_progress).
-    /// 2. EVERY task listed in its needs array exists.
-    /// 3. EVERY task listed in its needs array has a terminal status (done or canceled).
+    ///
+    /// A task is considered ready if:
+    /// 1. Its status is actionable (`todo` or `in_progress`).
+    /// 2. All tasks in its `needs` list exist in the graph.
+    /// 3. All tasks in its `needs` list are in a terminal state (`done` or `canceled`).
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
@@ -229,8 +230,14 @@ impl TaskGraph {
         ordering::default_order(self, nodes)
     }
 
-    /// Returns a list of tasks that are ready, sorted by the Dynamic Scoring algorithm:
-    /// (len(blocking) DESC, priority ASC, created_at ASC)
+    /// Returns a list of tasks that are ready to be worked on.
+    ///
+    /// The returned tasks are those that satisfy [`TaskGraph::is_ready`] and are sorted
+    /// using a Dynamic Scoring algorithm. The sort order is determined by:
+    /// 1. Number of downstream blocked tasks (descending).
+    /// 2. Priority (ascending, with unset priority sorting last).
+    /// 3. Creation time (ascending).
+    /// 4. Task ID (lexicographical tie-breaker).
     pub fn get_next_tasks(&self) -> Vec<&TaskNode> {
         let mut ready_tasks: Vec<&TaskNode> = self
             .nodes
