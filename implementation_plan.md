@@ -77,6 +77,9 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [ ] `pebl-p3k8qhfwqu`: Refactor commands_write_tests to avoid #[path] attribute
 - [ ] `pebl-uj0hll5buc`: Fix stale reverse index in run_add JSON output
 - [ ] `pebl-czi45zargx`: Use lossy-safe path serialization in init JSON output
+- [ ] `pebl-6pv06nwvpl`: Align help-json guidance text with actual emitted keys
+- [ ] `pebl-9fvf6xfco3`: Clarify global stream rules vs init human stderr output
+- [ ] `pebl-b4ei14wcbe`: Decide naming style in help-json guidance: exact keys vs conceptual labels
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
