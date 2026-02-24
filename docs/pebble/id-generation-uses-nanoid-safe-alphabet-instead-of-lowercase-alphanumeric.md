@@ -1,7 +1,7 @@
 +++
 id = "pebl-7Rnb6B"
 title = "ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric"
-status = "todo"
+status = "done"
 created_at = 2026-02-23T05:18:34.142651+00:00
 needs = []
 tags = ["bug"]

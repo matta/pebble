@@ -63,7 +63,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - Child task IDs:
 - None currently. Add only when Adaptive Decomposition split criteria are met.
 - Standalone task IDs:
-- `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
+- [x] `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
 - `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
 - `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
 
@@ -102,7 +102,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P1.9 Exit code mapping: `0` success, `1` runtime error, `2` usage error (global).
 
 ## Phase 2: Mutation Semantics & Validation
-- [ ] P2.1 ID generation: `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, suffix length based on issue count to keep collision probability < 1e-12.
+- [x] P2.1 ID generation: `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, suffix length based on issue count to keep collision probability < 1e-12.
 - [ ] P2.2 Priority validation: enforce `0..99` in `add` and `update`.
 - [ ] P2.3 Status transitions:
 - [ ] P2.3.a `resolved_at` auto-set when moving to `done`/`canceled`.

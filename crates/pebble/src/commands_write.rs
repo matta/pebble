@@ -16,6 +16,26 @@ fn current_toml_time() -> Result<toml_datetime::Datetime> {
         .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))
 }
 
+const ID_ALPHABET: &[char] = &[
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
+    'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+];
+
+/// Calculate the required number of random characters in an ID to keep
+/// collision probability below 1e-12. Uses the birthday paradox approximation:
+/// P \approx n^2 / (2 * 36^L).
+fn required_random_id_length(n: usize) -> usize {
+    if n == 0 {
+        return 8;
+    }
+    let n_f: f64 = n as f64;
+    let target_prob: f64 = 1e-12;
+    let alphabet_size: f64 = 36.0;
+
+    let l: f64 = ((n_f * n_f) / (2.0 * target_prob)).ln() / alphabet_size.ln();
+    l.ceil().max(8.0) as usize
+}
+
 /// Initializes a new Pebble project in the current directory.
 ///
 /// Creates a `.pebble/` directory containing `config.toml` and `AGENTS.md`,
@@ -124,9 +144,10 @@ pub fn run_add(
     needs: Vec<String>,
     tags: Vec<String>,
 ) -> Result<()> {
-    // TODO(pebl-7Rnb6B): SAFE alphabet includes uppercase and symbols; should
-    // use a custom [a-z0-9] alphabet per cli-contract.md.
-    let id_str = nanoid::nanoid!(6, &nanoid::alphabet::SAFE); // Short ID
+    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)
+        .unwrap_or_else(|_| TaskGraph::new(Default::default()));
+    let random_length = required_random_id_length(graph.nodes.len());
+    let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
 
     let parsed_status = status.unwrap_or(TaskStatus::Todo);
