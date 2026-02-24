@@ -97,3 +97,30 @@ fn test_help_json_includes_command_descriptions() {
         );
     }
 }
+
+#[test]
+fn test_help_json_includes_options_for_add_command() {
+    let output = Command::new(cargo_bin!())
+        .args(["help-json"])
+        .output()
+        .expect("Failed to execute help-json command");
+
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse help JSON");
+    let commands = value["commands"].as_array().unwrap();
+
+    let add_cmd = commands.iter().find(|cmd| cmd["name"] == "add").unwrap();
+    let options = add_cmd["options"]
+        .as_array()
+        .expect("Expected options to be an array for 'add' command");
+
+    let opt_names: Vec<&str> = options
+        .iter()
+        .filter_map(|opt| opt["name"].as_str())
+        .collect();
+
+    assert!(opt_names.contains(&"--status"));
+    assert!(opt_names.contains(&"--priority"));
+    assert!(opt_names.contains(&"--need"));
+    assert!(opt_names.contains(&"--tag"));
+}

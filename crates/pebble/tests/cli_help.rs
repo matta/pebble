@@ -22,6 +22,6 @@ fn test_show_help_output_contains_path_only_flag() {
         .success()
         .stdout(predicate::str::contains("--path-only"))
         .stdout(predicate::str::contains(
-            "Output just the raw filepath instead of the task entity",
+            "Output only the file path relative to tasks-dir",
         ));
 }
