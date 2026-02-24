@@ -84,7 +84,7 @@ fn test_help_json_stdout_only() {
 }
 
 #[test]
-fn test_init_json_stays_quiet() {
+fn test_init_json_stdout_only() {
     let dir = tempfile::tempdir().expect("Failed to create tempdir");
     let output = Command::new(cargo_bin!())
         .current_dir(dir.path())
@@ -94,5 +94,6 @@ fn test_init_json_stays_quiet() {
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("Invalid init JSON output");
+    assert_eq!(value["status"].as_str(), Some("success"));
 }

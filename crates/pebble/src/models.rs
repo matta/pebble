@@ -3,6 +3,17 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use toml_datetime::Datetime;
 
+/// Error representing an invalid user invocation or configuration value.
+/// Should results in exit code 2.
+#[derive(Debug)]
+pub struct UsageError(pub String);
+impl std::fmt::Display for UsageError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl std::error::Error for UsageError {}
+
 /// Represents the lifecycle state of a task.
 ///
 /// This enum defines the possible states a task can be in.

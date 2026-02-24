@@ -6,15 +6,18 @@ use std::process::Command;
 #[test]
 fn test_all_subcommands_include_examples_section() {
     let cases: &[(&[&str], &[&str])] = &[
-        (&["list", "--help"], &["Examples:", "list tasks"]),
-        (&["next", "--help"], &["Examples:", "next task"]),
-        (&["search", "--help"], &["Examples:", "search"]),
-        (&["show", "--help"], &["Examples:", "show"]),
-        (&["add", "--help"], &["Examples:", "add"]),
-        (&["update", "--help"], &["Examples:", "update"]),
-        (&["archive", "--help"], &["Examples:", "archive"]),
-        (&["init", "--help"], &["Examples:", "init"]),
-        (&["config", "get", "--help"], &["Examples:", "config get"]),
+        (&["list", "--help"], &["Examples:", "pebble list"]),
+        (&["next", "--help"], &["Examples:", "pebble next"]),
+        (&["search", "--help"], &["Examples:", "pebble search"]),
+        (&["show", "--help"], &["Examples:", "pebble show"]),
+        (&["add", "--help"], &["Examples:", "pebble add"]),
+        (&["update", "--help"], &["Examples:", "pebble update"]),
+        (&["archive", "--help"], &["Examples:", "pebble archive"]),
+        (&["init", "--help"], &["Examples:", "pebble init"]),
+        (
+            &["config", "get", "--help"],
+            &["Examples:", "pebble config get"],
+        ),
     ];
 
     for (args, contains_all) in cases {

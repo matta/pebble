@@ -63,9 +63,20 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - Child task IDs:
 - None currently. Add only when Adaptive Decomposition split criteria are met.
 - Standalone task IDs:
-- `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
+- [x] `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
 - `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
 - `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
+- `pebl-itm1n1sj4n`: Config get unknown key should be usage error (exit 2)
+- `pebl-efz69mryyt`: Sync phase and plan checkboxes for completed help-json work
+- `pebl-5wuwlwxldk`: Add Tier-1 docs for public CLI types
+- `pebl-wy9nkoudjt`: Complete config get help text for KEY argument semantics
+- `pebl-ouajn82jhl`: Resolve init output contract inconsistency in cli-contract
+- `pebl-8kd42jnhv7`: Specify normative help-json schema shape in docs
+- `pebl-exvts01y2i`: Harden help-json mapping to avoid panic on new commands
+- `pebl-4ssy3fsyds`: Feature request: add reverse dependency link at add time
+- `pebl-p3k8qhfwqu`: Refactor commands_write_tests to avoid #[path] attribute
+- `pebl-uj0hll5buc`: Fix stale reverse index in run_add JSON output
+- `pebl-czi45zargx`: Use lossy-safe path serialization in init JSON output
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
@@ -102,7 +113,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P1.9 Exit code mapping: `0` success, `1` runtime error, `2` usage error (global).
 
 ## Phase 2: Mutation Semantics & Validation
-- [ ] P2.1 ID generation: `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, suffix length based on issue count to keep collision probability < 1e-12.
+- [x] P2.1 ID generation: `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, suffix length based on issue count to keep collision probability < 1e-12.
 - [ ] P2.2 Priority validation: enforce `0..99` in `add` and `update`.
 - [ ] P2.3 Status transitions:
 - [ ] P2.3.a `resolved_at` auto-set when moving to `done`/`canceled`.

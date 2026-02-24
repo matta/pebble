@@ -16,6 +16,27 @@ fn current_toml_time() -> Result<toml_datetime::Datetime> {
         .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))
 }
 
+/// Alphabet for generating random ID suffixes: digits 0–9 and lowercase letters a–z.
+const ID_ALPHABET: &[char] = &[
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
+    'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+];
+
+/// Calculate the required number of random characters in an ID to keep
+/// collision probability below 1e-12. Uses the birthday paradox approximation:
+/// P \approx n^2 / (2 * 36^L).
+fn required_random_id_length(n: usize) -> usize {
+    if n == 0 {
+        return 8;
+    }
+    let n_f: f64 = n as f64;
+    let target_prob: f64 = 1e-12;
+    let alphabet_size: f64 = 36.0;
+
+    let l: f64 = ((n_f * n_f) / (2.0 * target_prob)).ln() / alphabet_size.ln();
+    l.ceil().max(8.0) as usize
+}
+
 /// Initializes a new Pebble project in the current directory.
 ///
 /// Creates a `.pebble/` directory containing `config.toml` and `AGENTS.md`,
@@ -41,7 +62,9 @@ pub fn run_init(
     let prefix = issue_prefix.unwrap_or_else(|| crate::config::Config::default().issue_prefix);
     let tasks_dir_path = if let Some(dir) = cli_dir_override {
         if dir.is_absolute() {
-            return Err(eyre!("tasks-dir must be a relative path"));
+            return Err(
+                crate::models::UsageError("tasks-dir must be a relative path".to_string()).into(),
+            );
         }
         dir
     } else {
@@ -62,9 +85,19 @@ See documentation for implementation details.
     std::fs::write(pebble_dir.join("AGENTS.md"), agents_md)?;
 
     // Create tasks directory
-    std::fs::create_dir_all(current_dir.join(tasks_dir_path))?;
+    std::fs::create_dir_all(current_dir.join(&tasks_dir_path))?;
 
-    if !json {
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "success",
+                "project_root": current_dir.display().to_string(),
+                "tasks_dir": tasks_dir_path.display().to_string(),
+                "issue_prefix": prefix,
+            })
+        );
+    } else {
         eprintln!("Initialized Pebble repository in {}", current_dir.display());
     }
 
@@ -124,9 +157,10 @@ pub fn run_add(
     needs: Vec<String>,
     tags: Vec<String>,
 ) -> Result<()> {
-    // TODO(pebl-7Rnb6B): SAFE alphabet includes uppercase and symbols; should
-    // use a custom [a-z0-9] alphabet per cli-contract.md.
-    let id_str = nanoid::nanoid!(6, &nanoid::alphabet::SAFE); // Short ID
+    let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)
+        .unwrap_or_else(|_| TaskGraph::new(Default::default()));
+    let random_length = required_random_id_length(graph.nodes.len());
+    let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
 
     let parsed_status = status.unwrap_or(TaskStatus::Todo);
@@ -173,7 +207,9 @@ pub fn run_add(
     };
 
     if ctx.json {
-        let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
+        graph
+            .nodes
+            .insert(node.frontmatter.id.clone(), node.clone());
         let obj = TaskObject::from_node(&node, &graph, &ctx.tasks_dir);
         println!("{}", serde_json::to_string(&obj)?);
     } else {
@@ -339,41 +375,5 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_slugify_basic() {
-        assert_eq!(slugify("Implement Task Node"), "implement-task-node");
-        assert_eq!(slugify("  Lots   of  Spaces  "), "lots-of-spaces");
-        assert_eq!(
-            slugify("Punctuation! (is) removed?"),
-            "punctuation-is-removed"
-        );
-        assert_eq!(slugify("Already-Slugified"), "already-slugified");
-    }
-
-    #[test]
-    fn test_slugify_mixed_separators() {
-        assert_eq!(
-            slugify("mix_of_dashes-and_underscores"),
-            "mix_of_dashes-and_underscores"
-        );
-        assert_eq!(slugify("---Trim-Repeating---"), "trim-repeating");
-        assert_eq!(slugify("123-Numbers-456"), "123-numbers-456");
-    }
-
-    #[test]
-    fn test_slugify_empty_fallback() {
-        assert_eq!(slugify(""), "task");
-        assert_eq!(slugify("!!!"), "task");
-    }
-
-    #[test]
-    fn test_slugify_reserved_chars() {
-        // Strict character set tests (reserved characters become delimiters)
-        assert_eq!(slugify("Windows: < > : \" / \\ | ? *"), "windows");
-        assert_eq!(slugify("macOS: / and :"), "macos-and");
-        assert_eq!(slugify("Linux/Unix: \0 and /"), "linux-unix-and");
-    }
-}
+#[path = "commands_write_tests.rs"]
+mod commands_write_tests;
