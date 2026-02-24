@@ -177,6 +177,32 @@ impl TaskGraph {
         true
     }
 
+    /// Returns a list of task IDs that are directly blocking the given task (upstream dependencies).
+    ///
+    /// A task is blocked by a dependency if:
+    /// 1. The dependency exists and is not in a terminal state (closed).
+    /// 2. The dependency does not exist (dangling pointer).
+    pub fn get_blockers(&self, task_id: &str) -> Vec<String> {
+        let Some(node) = self.nodes.get(task_id) else {
+            return Vec::new();
+        };
+
+        node.frontmatter
+            .needs
+            .iter()
+            .filter_map(|dep_id| {
+                if let Some(dep_node) = self.nodes.get(dep_id) {
+                    if !dep_node.frontmatter.status.is_closed() {
+                        return Some(dep_id.clone());
+                    }
+                } else {
+                    return Some(dep_id.clone()); // Dangling pointers block
+                }
+                None
+            })
+            .collect()
+    }
+
     /// Returns the number of downstream non-terminal tasks (transitively) blocked by the given task.
     /// Uses a DFS to count unique reachable tasks while excluding the task itself.
     pub fn count_blocking(&self, task_id: &str) -> usize {

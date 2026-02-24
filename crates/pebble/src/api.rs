@@ -19,21 +19,7 @@ impl<'a> TaskObject<'a> {
     pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &std::path::Path) -> Self {
         let is_ready = graph.is_ready(&node.frontmatter.id);
 
-        let blocked_by: Vec<String> = node
-            .frontmatter
-            .needs
-            .iter()
-            .filter_map(|dep_id| {
-                if let Some(dep_node) = graph.nodes.get(dep_id) {
-                    if !dep_node.frontmatter.status.is_closed() {
-                        return Some(dep_id.clone());
-                    }
-                } else {
-                    return Some(dep_id.clone()); // Dangling pointers block
-                }
-                None
-            })
-            .collect();
+        let blocked_by = graph.get_blockers(&node.frontmatter.id);
 
         let blocking: Vec<String> = graph
             .blocking
