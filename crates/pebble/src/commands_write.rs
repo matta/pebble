@@ -3,6 +3,7 @@ use crate::graph::TaskGraph;
 use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
 use std::env;
+use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -191,14 +192,20 @@ pub fn run_add(
     let mut filepath = ctx.tasks_dir.join(&filename);
     let mut counter = 2;
 
-    // TODO(pebble: docs/pebble/toctou-race-in-slug-collision-loop.md): Use create_new + retry to make filename selection atomic.
-    while filepath.exists() {
-        filename = format!("{}-{}.md", base_slug, counter);
-        filepath = ctx.tasks_dir.join(&filename);
-        counter += 1;
+    loop {
+        match std::fs::File::create_new(&filepath) {
+            Ok(mut file) => {
+                file.write_all(content.as_bytes())?;
+                break;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                filename = format!("{}-{}.md", base_slug, counter);
+                filepath = ctx.tasks_dir.join(&filename);
+                counter += 1;
+            }
+            Err(e) => return Err(e.into()),
+        }
     }
-
-    std::fs::write(&filepath, content)?;
 
     let node = TaskNode {
         path: filepath,
