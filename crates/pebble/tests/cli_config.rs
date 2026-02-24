@@ -39,7 +39,7 @@ fn test_config_get_tasks_dir_json_shape() {
 }
 
 #[test]
-fn test_config_get_unknown_key_is_runtime_error() {
+fn test_config_get_unknown_key_is_usage_error() {
     let env = setup_test_env();
 
     let output = Command::new(cargo_bin!())
@@ -48,7 +48,7 @@ fn test_config_get_unknown_key_is_runtime_error() {
         .output()
         .expect("Failed to run config get with unknown key");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("Unknown config key"));

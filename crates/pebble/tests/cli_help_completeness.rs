@@ -50,3 +50,13 @@ fn test_list_help_describes_combined_filter_semantics() {
         .stdout(predicate::str::contains("default omits"))
         .stdout(predicate::str::contains("--sort"));
 }
+#[test]
+fn test_config_get_help_documents_keys() {
+    let mut cmd = Command::new(cargo_bin!());
+    cmd.args(["config", "get", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Configuration key to fetch"))
+        .stdout(predicate::str::contains("issue-prefix"))
+        .stdout(predicate::str::contains("tasks-dir"));
+}

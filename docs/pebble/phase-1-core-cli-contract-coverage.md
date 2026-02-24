@@ -16,7 +16,7 @@ Checklist:
 - [x] P1.2 `list` alias `ls`
 - [x] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`)
 - [x] P1.4 `search` command over title + body (case-insensitive substring; default list ordering)
-- [ ] P1.5 `config get <key>` command
+- [x] P1.5 `config get <key>` command
 - [ ] P1.6 `help-json` command output schema
 - [ ] P1.7 Help text completeness and examples for every command
 - [ ] P1.8 Extend `--json` purity and stdout/stderr separation across all commands

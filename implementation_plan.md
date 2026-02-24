@@ -66,10 +66,10 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [x] `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
 - `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
 - `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
-- `pebl-itm1n1sj4n`: Config get unknown key should be usage error (exit 2)
+- [x] `pebl-itm1n1sj4n`: Config get unknown key should be usage error (exit 2)
 - `pebl-efz69mryyt`: Sync phase and plan checkboxes for completed help-json work
 - `pebl-5wuwlwxldk`: Add Tier-1 docs for public CLI types
-- `pebl-wy9nkoudjt`: Complete config get help text for KEY argument semantics
+- [x] `pebl-wy9nkoudjt`: Complete config get help text for KEY argument semantics
 - `pebl-ouajn82jhl`: Resolve init output contract inconsistency in cli-contract
 - `pebl-8kd42jnhv7`: Specify normative help-json schema shape in docs
 - `pebl-exvts01y2i`: Harden help-json mapping to avoid panic on new commands
@@ -106,7 +106,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P1.2 `list` alias `ls`.
 - [x] P1.3 `--sort` for `list` with tie-breakers (`created_at`, then `id`).
 - [x] P1.4 `search` command (case-insensitive substring over title + body; default list ordering).
-- [ ] P1.5 `config get <key>` command.
+- [x] P1.5 `config get <key>` command.
 - [ ] P1.6 `help-json` command output schema.
 - [ ] P1.7 Help text completeness and examples for every command.
 - [ ] P1.8 Extend `--json` purity and stdout/stderr separation across **all** commands.

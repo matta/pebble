@@ -196,5 +196,8 @@ pub enum ConfigCommands {
         long_about = "Get one resolved configuration value by key (issue-prefix or tasks-dir). Output for unknown keys is a usage error.",
         after_help = "Examples:\n  pebble config get issue-prefix\n  pebble config get tasks-dir --json"
     )]
-    Get { key: String },
+    Get {
+        /// Configuration key to fetch (issue-prefix or tasks-dir).
+        key: String,
+    },
 }
