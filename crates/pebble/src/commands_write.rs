@@ -141,17 +141,6 @@ pub fn slugify(s: &str) -> String {
     }
 }
 
-fn resolve_input_stream(input: Option<String>) -> Result<Option<String>> {
-    match input {
-        Some(s) if s == "-" => {
-            let mut buffer = String::new();
-            std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)?;
-            Ok(Some(buffer))
-        }
-        other => Ok(other),
-    }
-}
-
 /// Creates a new task file in the tasks directory and prints the result.
 ///
 /// Generates a unique ID using the configured `issue-prefix` and a 6-character
@@ -191,7 +180,7 @@ pub fn run_add(
     };
 
     let fm_toml = toml::to_string(&fm)?;
-    let body_text = resolve_input_stream(body)?.unwrap_or_default();
+    let body_text = body.unwrap_or_default();
 
     let content = format!("+++\n{}+++\n{}", fm_toml, body_text);
 
@@ -251,9 +240,6 @@ pub fn run_update(
     add_needs: Vec<String>,
     remove_needs: Vec<String>,
 ) -> Result<()> {
-    let body = resolve_input_stream(body)?;
-    let append_body = resolve_input_stream(append_body)?;
-
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     if graph.is_duplicate_id(&id) {
         return Err(eyre!(
