@@ -147,16 +147,30 @@ A `TaskObject` includes:
 * **Content & Location**: `body` (raw Markdown content string), `path` (file path relative to `tasks-dir`).
 
 ## `help-json` Output (Guidance, Not Contract)
- 
-The `pebble help-json` command returns machine-readable CLI metadata intended for discovery (especially by AI agents), not strict schema validation.
-It generally includes:
-* Top-level CLI identity information (for example, binary name).
-* Global options with names and short descriptions.
-* Command and subcommand listings with names and descriptions.
-* Option/argument listings with names and descriptions.
-* Output-shape hints describing the kinds of JSON values commands return.
 
-Field shape, ordering, and optional fields may evolve over time. Consumers should parse defensively.
+The `pebble help-json` command returns machine-readable CLI metadata intended for **AI-agent discovery and tool integration**, not for strict schema validation or programmatic logic.
+
+### What it returns
+
+The output is a JSON object that generally includes:
+* `name` — the CLI binary name.
+* `global_options` — a list of flags available on every command (e.g. `--json`, `--dir`) with names and short descriptions.
+* `commands` — a list of all subcommands, each with:
+    * `name` — canonical subcommand name (and any aliases).
+    * `description` — a one-line purpose statement.
+    * `options` — per-command flags with names and descriptions.
+    * `output_shape` — a hint describing the kind of JSON value this command returns when `--json` is specified (e.g. `TaskObject`, `{"tasks": [TaskObject]}`).
+
+### How AI agents should use it
+
+* Use `help-json` to **discover what commands exist** and what flags they accept, especially before composing a `pebble` invocation for the first time.
+* Use `output_shape` hints to understand what JSON structure to expect before parsing `--json` output.
+* **Do not** embed `help-json` structure in hard-coded logic that will break if fields are renamed or reorganized. Always parse defensively.
+* For any field that matters to downstream logic, prefer the contract-backed `--json` output from the actual command over `help-json` metadata.
+
+### Stability disclaimer
+
+Field shape, presence, ordering, and naming in `help-json` output **may change between Pebble versions**. New fields may be added; existing fields may be renamed or removed. Consumers must not assume that all fields will be present.
 
 ## Timestamp Rules
 
@@ -173,7 +187,9 @@ Bootstraps the project environment.
 * **Inputs**:
     * `--issue-prefix <PREFIX>` (sets initial prefix)
     * `--dir <PATH>` (sets initial tasks-dir; must be a relative path, otherwise fails)
-* **Outputs**: None (stdout text on success). Sets up `.pebble/`, creates the `tasks-dir` if missing, and creates `.pebble/AGENTS.md`.
+* **Outputs**:
+    * **Human**: Success message to `stderr`.
+    * **JSON (`--json`)**: `{"status": "success", "project_root": "...", "tasks_dir": "...", "issue_prefix": "..."}` to `stdout`.
 
 ### `pebble config get <key>`
 Reads an active configuration value.
@@ -181,9 +197,9 @@ Reads an active configuration value.
 * **Output (`--json`)**: `{"key": "<key>", "value": "<value>"}`
 
 ### `pebble help-json`
-Returns machine-readable CLI metadata for discovery, including commands, flags, and output-shape hints.
+Returns machine-readable CLI metadata for AI-agent discovery, including commands, flags, and output-shape hints. This output is **guidance, not a versioned contract** — see the [`help-json` Output section](#help-json-output-guidance-not-contract) for full semantics and stability caveats.
 * **Inputs**: None.
-* **Output**: JSON object on `stdout` only.
+* **Output**: JSON object on `stdout` only. No diagnostics are mixed into `stdout`.
 
 ## Query Commands
 
@@ -294,7 +310,7 @@ Applies safe, deterministic repairs such as whitespace normalization or backfill
 * Commands that return structured data:
     * `list`, `search` => `{"tasks": [<TaskObject>, ...]}`
     * `show`, `add`, `update` => single unwrapped `<TaskObject>`
-    * `config get`, `init` => structured JSON response
+    * `config get`, `init`, `archive` => structured JSON response
 
 ## Idempotency and Safety
 
