@@ -72,7 +72,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [x] `pebl-wy9nkoudjt`: Complete config get help text for KEY argument semantics
 - [x] `pebl-ouajn82jhl`: Resolve init output contract inconsistency in cli-contract
 - [x] `pebl-8kd42jnhv7`: Specify help-json discoverability guidance in docs (non-normative)
-- [ ] `pebl-exvts01y2i`: Harden help-json mapping to avoid panic on new commands
+- [x] `pebl-exvts01y2i`: Harden help-json mapping to avoid panic on new commands
 - [ ] `pebl-4ssy3fsyds`: Feature request: add reverse dependency link at add time
 - [ ] `pebl-p3k8qhfwqu`: Refactor commands_write_tests to avoid #[path] attribute
 - [ ] `pebl-uj0hll5buc`: Fix stale reverse index in run_add JSON output
