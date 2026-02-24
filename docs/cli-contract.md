@@ -60,19 +60,18 @@ Pebble locates its configuration and task files using strict path resolution rul
 
 * `--json`: Outputs a single JSON value to `stdout` per invocation. On failure, no JSON is emitted; `stdout` is empty, an error message is written to `stderr`, and the exit code is non-zero.
 * `--dir <PATH>`: Override the configured `tasks-dir`.
-* `--help-json`: Emits a machine-readable JSON schema of commands, flags, and output shapes to `stdout`, then exits.
 
 ## JSON Mode
 
 * `--json` outputs **valid JSON to stdout and nothing else**.
-* JSON output is stable and schema-backed (see `--help-json` schemas).
+* JSON output is stable and schema-backed (see `pebble help-json` schemas).
 * When `--json` is set, suppress color/formatting and any extra decorations.
 
 ## Help and Discoverability
 
 * `--help` **must describe every option** for the command, including defaults, not just list the argument name.
 * `--help` must include concrete usage examples for the common path.
-* `--help-json` provides a machine-readable description of commands, flags, and output schemas.
+* `pebble help-json` provides a machine-readable description of commands, flags, and output schemas.
 * Command-level help text is a normative interface contract and must be kept in sync with behavior.
 
 ### Required `--help` Content (Must-Have)
@@ -102,6 +101,9 @@ In addition to the general requirements above, each command's `--help` **MUST** 
 * `pebble config get <key>`
     * Supported keys and behavior for unknown keys.
     * Output semantics in human mode vs `--json`.
+* `pebble help-json`
+    * Emits a machine-readable schema of commands, flags, and output shapes.
+    * Writes valid JSON to `stdout` only, with no diagnostics mixed into `stdout`.
 * `pebble list` / `pebble ls`
     * Full filter semantics and combined-flag behavior as defined below in `pebble list --help` must-haves.
 * `pebble next`
@@ -164,6 +166,11 @@ Bootstraps the project environment.
 Reads an active configuration value.
 * **Inputs**: `<key>` (e.g., `issue-prefix`, `tasks-dir`).
 * **Output (`--json`)**: `{"key": "<key>", "value": "<value>"}`
+
+### `pebble help-json`
+Emits a machine-readable schema describing commands, flags, and output shapes.
+* **Inputs**: None.
+* **Output**: JSON object on `stdout` only.
 
 ## Query Commands
 

@@ -179,6 +179,31 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     Ok(())
 }
 
+/// Read a resolved configuration value by key.
+pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
+    let value = match key {
+        "issue-prefix" => ctx.config.issue_prefix.clone(),
+        "tasks-dir" => ctx.config.tasks_dir.display().to_string(),
+        _ => {
+            return Err(eyre!(
+                "Unknown config key '{}'. Supported keys: issue-prefix, tasks-dir",
+                key
+            ));
+        }
+    };
+
+    if ctx.json {
+        println!(
+            "{}",
+            serde_json::to_string(&serde_json::json!({ "key": key, "value": value }))?
+        );
+    } else {
+        println!("{value}");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
