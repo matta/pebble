@@ -8,7 +8,7 @@ needs = ["pebl-cdIZGN", "pebl-itm1n1sj4n", "pebl-efz69mryyt", "pebl-5wuwlwxldk",
 tags = ["bootstrap", "self_hosted"]
 +++
 Checklist:
-- [ ] P2.1 ID generation `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, sizing for collision probability < `1e-12`
+- [x] P2.1 ID generation `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, sizing for collision probability < `1e-12`
 - [ ] P2.2 Priority validation enforces `0..99` in `add` and `update`
 - [ ] P2.3 Status transitions
 - [ ] P2.3.a `resolved_at` auto-set when moving to `done`/`canceled`

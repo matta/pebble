@@ -67,8 +67,8 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [ ] `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
 - [ ] `pebl-buDx2q`: Sort order: blocking count overwhelms explicit priority
 - [x] `pebl-itm1n1sj4n`: Config get unknown key should be usage error (exit 2)
-- [ ] `pebl-efz69mryyt`: Sync phase and plan checkboxes for completed help-json work
-- [ ] `pebl-5wuwlwxldk`: Add Tier-1 docs for public CLI types
+- [x] `pebl-efz69mryyt`: Sync phase and plan checkboxes for completed help-json work
+- [x] `pebl-5wuwlwxldk`: Add Tier-1 docs for public CLI types
 - [x] `pebl-wy9nkoudjt`: Complete config get help text for KEY argument semantics
 - [ ] `pebl-ouajn82jhl`: Resolve init output contract inconsistency in cli-contract
 - [ ] `pebl-8kd42jnhv7`: Specify help-json discoverability guidance in docs (non-normative)
