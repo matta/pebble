@@ -2,8 +2,8 @@ mod support;
 
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;
-use std::process::Command;
 use predicates::prelude::*;
+use std::process::Command;
 use support::setup_test_env;
 
 #[test]

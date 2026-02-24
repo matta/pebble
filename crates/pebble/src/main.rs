@@ -392,11 +392,36 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
 
 #[cfg(test)]
 mod help_json_schema_tests {
-    use super::help_json_output_schema;
+    use super::{Cli, help_json_output_schema};
+    use clap::CommandFactory;
 
     #[test]
     #[should_panic(expected = "Unhandled help-json output schema mapping")]
     fn test_help_json_output_schema_panics_on_unhandled_command() {
         let _ = help_json_output_schema("unknown-command", None);
+    }
+
+    #[test]
+    fn test_all_commands_have_help_json_output_schema() {
+        let cli_command = Cli::command();
+
+        for subcommand in cli_command.get_subcommands() {
+            let command_name = subcommand.get_name();
+            if command_name == "help" {
+                continue;
+            }
+
+            if subcommand.has_subcommands() {
+                for nested in subcommand.get_subcommands() {
+                    let nested_name = nested.get_name();
+                    if nested_name == "help" {
+                        continue;
+                    }
+                    let _ = help_json_output_schema(command_name, Some(nested_name));
+                }
+            } else {
+                let _ = help_json_output_schema(command_name, None);
+            }
+        }
     }
 }

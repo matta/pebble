@@ -2,8 +2,8 @@ mod support;
 
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;
-use std::process::Command;
 use serde_json::Value;
+use std::process::Command;
 use support::setup_test_env;
 
 #[test]
