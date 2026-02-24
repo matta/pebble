@@ -4,15 +4,15 @@ use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
 /// Adjacency list mapping each task ID to the IDs of tasks that depend on it.
-type Adjacency = HashMap<String, Vec<String>>;
+pub(super) type Adjacency = HashMap<String, Vec<String>>;
 
 /// Output of Tarjan's SCC algorithm: groups of tasks and a reverse-lookup index.
 #[derive(Clone, Debug)]
-struct SccData {
+pub(super) struct SccData {
     /// Strongly connected components; each inner `Vec` is one SCC (may be a cycle).
-    sccs: Vec<Vec<String>>,
+    pub(super) sccs: Vec<Vec<String>>,
     /// Maps each task ID to the index of its SCC in `sccs`.
-    index: HashMap<String, usize>,
+    pub(super) index: HashMap<String, usize>,
 }
 
 /// Order tasks using the dependency-aware default ordering rules.
@@ -108,11 +108,7 @@ fn build_adjacency(ids: &[String], id_to_node: &HashMap<String, &TaskNode>) -> A
 
 /// Computes the graph-wide transitive blocking count for each ID in `ids`.
 fn compute_blocking_counts(graph: &TaskGraph, ids: &[String]) -> HashMap<String, usize> {
-    let mut counts = HashMap::new();
-    for id in ids {
-        counts.insert(id.clone(), graph.count_blocking(id));
-    }
-    counts
+    graph.batch_count_blocking(ids)
 }
 
 /// Returns the representative [`NodeKey`] for each SCC (the minimum key among its members).
@@ -234,7 +230,7 @@ fn compute_sccs(ids: &[String], adjacency: &Adjacency) -> SccData {
 ///
 /// This is the classic Tarjan algorithm for SCC detection, used here to group
 /// dependency cycles so the default ordering can treat cycles as a single unit.
-struct Tarjan<'a> {
+pub(super) struct Tarjan<'a> {
     index: usize,
     indices: HashMap<String, usize>,
     lowlink: HashMap<String, usize>,
@@ -246,7 +242,7 @@ struct Tarjan<'a> {
 
 impl<'a> Tarjan<'a> {
     /// Creates a new Tarjan walker over the given adjacency list.
-    fn new(adjacency: &'a Adjacency) -> Self {
+    pub(super) fn new(adjacency: &'a Adjacency) -> Self {
         Self {
             index: 0,
             indices: HashMap::new(),
@@ -259,7 +255,7 @@ impl<'a> Tarjan<'a> {
     }
 
     /// Executes the algorithm over all provided IDs and returns the grouped [`SccData`].
-    fn run(mut self, ids: &[String]) -> SccData {
+    pub(super) fn run(mut self, ids: &[String]) -> SccData {
         for id in ids {
             if !self.indices.contains_key(id) {
                 self.strongconnect(id);
