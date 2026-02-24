@@ -12,7 +12,7 @@ Checklist:
 - [ ] P5.3 Default list ordering and `--sort` tie-breaker tests
 - [ ] P5.4 `list` filter and limit tests
 - [ ] P5.5 `search` behavior tests
-- [ ] P5.6 `config get` and `--help-json` output shape tests
+- [ ] P5.6 `config get` and `help-json` output shape tests
 - [ ] P5.7 `--json` purity and stdout/stderr separation tests
 - [ ] P5.8 Exit code mapping tests (runtime vs usage errors)
 - [ ] P5.9 `archive` threshold and collision behavior tests

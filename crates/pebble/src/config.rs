@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
 use color_eyre::eyre::{Result, eyre};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 /// Resolved project configuration loaded from `.pebble/config.toml`.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Config {
     /// Prefix prepended to generated task IDs (e.g. `"issue"` produces `"issue-abc123"`).
     #[serde(default = "default_issue_prefix")]

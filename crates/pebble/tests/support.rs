@@ -26,8 +26,8 @@ pub fn setup_test_env() -> TestEnv {
     fs::write(
         config_dir.join("config.toml"),
         r#"
-        issue_prefix = "PROJ"
-        tasks_dir = "tasks"
+        issue-prefix = "PROJ"
+        tasks-dir = "tasks"
         "#,
     )
     .unwrap();

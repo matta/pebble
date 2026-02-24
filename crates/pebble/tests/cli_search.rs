@@ -1,8 +1,9 @@
 mod support;
 
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::process::Command;
 use support::{setup_test_env, write_task};
 
 fn write_task_with_body(
@@ -38,7 +39,7 @@ fn test_search_matches_title_and_body_case_insensitive() {
     );
     write_task_with_body(&env.tasks_dir, "PROJ-NOPE", "Unrelated", "todo", "random");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["search", "search", "--json", "--dir", "tasks"])
         .output()
@@ -75,7 +76,7 @@ fn test_search_uses_default_list_ordering() {
         );
     fs::write(&b_path, b_content).expect("Failed to write task B file");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["search", "task", "--json", "--dir", "tasks"])
         .output()

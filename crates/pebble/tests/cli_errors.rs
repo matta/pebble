@@ -1,6 +1,7 @@
 mod support;
 
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
+use std::process::Command;
 use support::{setup_test_env, write_task_with_id};
 
 #[test]
@@ -9,7 +10,7 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
 
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-404", "--json", "--dir", "tasks"])
         .output()
@@ -24,7 +25,7 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
 fn test_add_invalid_status_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "add",

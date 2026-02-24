@@ -1,23 +1,21 @@
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
+use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use std::process::Command;
 
 #[test]
 fn test_help_output_contains_show() {
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(cargo_bin!());
     cmd.arg("--help")
         .assert()
         .success()
         .stdout(predicate::str::contains("show"))
-        .stdout(predicate::str::contains(
-            "Output a specific task in various formats",
-        ));
+        .stdout(predicate::str::contains("Show one task by ID"));
 }
 
 #[test]
 fn test_show_help_output_contains_path_only_flag() {
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let mut cmd = Command::new(cargo_bin!());
     cmd.arg("show")
         .arg("--help")
         .assert()

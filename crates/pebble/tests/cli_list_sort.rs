@@ -1,8 +1,9 @@
 mod support;
 
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::process::Command;
 use support::setup_test_env;
 
 struct SortTask<'a> {
@@ -51,7 +52,7 @@ fn test_list_sort_title_descending() {
         },
     );
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--sort", "-title"])
         .output()
@@ -103,7 +104,7 @@ fn test_list_sort_priority_uses_created_at_then_id_tiebreakers() {
         },
     );
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--sort", "priority"])
         .output()

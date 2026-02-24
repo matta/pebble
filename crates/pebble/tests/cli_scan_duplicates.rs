@@ -1,8 +1,9 @@
 mod support;
 
-use assert_cmd::Command;
+use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::process::Command;
 use support::setup_test_env;
 
 #[test]
@@ -21,7 +22,7 @@ Body
 "#;
     fs::write(nested.join("nested-task.md"), content).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
@@ -55,7 +56,7 @@ Body
 "#;
     fs::write(nested.join("show-task.md"), content).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-SHOW-NESTED", "--json", "--dir", "tasks"])
         .output()
@@ -102,7 +103,7 @@ Body
     fs::write(nested.join("dup-b.md"), dup_b).unwrap();
     fs::write(env.tasks_dir.join("unique.md"), unique).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
@@ -142,7 +143,7 @@ Body
     fs::write(env.tasks_dir.join("dup-a.md"), dup).unwrap();
     fs::write(nested.join("dup-b.md"), dup).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-DUP-SHOW", "--json", "--dir", "tasks"])
         .output()
@@ -173,7 +174,7 @@ Body
     fs::write(env.tasks_dir.join("dup-a.md"), dup).unwrap();
     fs::write(nested.join("dup-b.md"), dup).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update",
@@ -221,7 +222,7 @@ Body
     fs::write(nested.join("dup-b.md"), dup).unwrap();
     fs::write(env.tasks_dir.join("unique.md"), unique).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-UNIQUE-SHOW", "--json", "--dir", "tasks"])
         .output()
@@ -267,7 +268,7 @@ Body
     fs::write(&dup_two_a_path, dup_two).unwrap();
     fs::write(&dup_two_b_path, dup_two).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_pebble"))
+    let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()

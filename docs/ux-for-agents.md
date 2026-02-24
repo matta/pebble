@@ -174,12 +174,12 @@ Agents read `--help`. Make it count:
 
 - Put the **most common usage** first, not the flag reference.
 - Include **concrete examples** in the help text.
-- Consider a `--help-json` flag that emits a machine-readable schema of
+- Consider a `help-json` command that emits a machine-readable schema of
   all commands, their arguments, and their output shapes. This lets an
   agent self-discover your tool's capabilities without scraping prose.
 
 ```
-$ pebble --help-json
+$ pebble help-json
 {
   "commands": [
     {
@@ -324,7 +324,7 @@ When building a tool intended for dual human/agent use:
 - [ ] Idempotent operations where possible
 - [ ] `NO_COLOR` / `isatty()` support
 - [ ] `--help` with concrete examples
-- [ ] Consider `--help-json` for machine-readable discoverability
+- [ ] Consider `help-json` for machine-readable discoverability
 
 ### Protocol Layer
 - [ ] CLI is the primary, always-supported interface
