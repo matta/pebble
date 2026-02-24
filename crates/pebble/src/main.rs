@@ -4,6 +4,7 @@
 //! themselves form a directed dependency graph; no external database is required.
 pub mod cli;
 pub mod commands;
+pub mod commands_add;
 pub mod commands_write;
 
 #[cfg(test)]
@@ -20,7 +21,161 @@ use crate::models::UsageError;
 use clap::Parser;
 use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
-use commands_write::{run_add, run_archive, run_init, run_update};
+use commands_add::{RunAddInput, run_add};
+use commands_write::{run_archive, run_init, run_update};
+
+fn run_help_json() -> Result<()> {
+    println!("{}", serde_json::to_string(&help_json_schema())?);
+    Ok(())
+}
+
+fn run_list_command(ctx: &RunContext, options: ListOptions) -> Result<()> {
+    run_list(ctx, &options)
+}
+
+struct UpdateCommandInput {
+    id: String,
+    title: Option<String>,
+    status: Option<crate::models::TaskStatus>,
+    priority: Option<u8>,
+    clear_priority: bool,
+    body: Option<String>,
+    append_body: Option<String>,
+    add_tags: Vec<String>,
+    remove_tags: Vec<String>,
+    add_needs: Vec<String>,
+    remove_needs: Vec<String>,
+    blocks: Vec<String>,
+    remove_blocks: Vec<String>,
+}
+
+fn run_update_command(ctx: &RunContext, input: UpdateCommandInput) -> Result<()> {
+    run_update(
+        ctx,
+        input.id,
+        input.title,
+        input.status,
+        input.priority,
+        input.clear_priority,
+        input.body,
+        input.append_body,
+        input.add_tags,
+        input.remove_tags,
+        input.add_needs,
+        input.remove_needs,
+        input.blocks,
+        input.remove_blocks,
+    )
+}
+
+enum DispatchCommand {
+    ConfigGet { key: String },
+    List(ListOptions),
+    Next,
+    Search { query: String },
+    Add(RunAddInput),
+    Update(UpdateCommandInput),
+    Archive,
+    Show { id: String, path_only: bool },
+}
+
+fn prepare_dispatch_command(
+    command: Commands,
+    global_dir: Option<std::path::PathBuf>,
+    json: bool,
+) -> Result<Option<DispatchCommand>> {
+    match command {
+        Commands::HelpJson => {
+            run_help_json()?;
+            Ok(None)
+        }
+        Commands::Init { issue_prefix, dir } => {
+            run_init(global_dir.or(dir), issue_prefix, json)?;
+            Ok(None)
+        }
+        cmd => Ok(Some(to_dispatch_command(cmd))),
+    }
+}
+
+fn to_dispatch_command(command: Commands) -> DispatchCommand {
+    match command {
+        Commands::Config { cmd } => match cmd {
+            ConfigCommands::Get { key } => DispatchCommand::ConfigGet { key },
+        },
+        Commands::List {
+            statuses,
+            tags,
+            needs,
+            priorities,
+            is_ready,
+            all,
+            limit,
+            sort,
+        } => DispatchCommand::List(ListOptions {
+            statuses,
+            tags,
+            needs,
+            priorities,
+            is_ready,
+            all,
+            limit,
+            sort,
+        }),
+        Commands::Next => DispatchCommand::Next,
+        Commands::Search { query } => DispatchCommand::Search { query },
+        Commands::Add {
+            title,
+            status,
+            priority,
+            body,
+            needs,
+            tags,
+            blocks,
+        } => DispatchCommand::Add(RunAddInput {
+            title,
+            status,
+            priority,
+            body,
+            needs,
+            tags,
+            blocks,
+        }),
+        Commands::Update {
+            id,
+            title,
+            status,
+            priority,
+            clear_priority,
+            body,
+            append_body,
+            add_tags,
+            remove_tags,
+            add_needs,
+            remove_needs,
+            blocks,
+            remove_blocks,
+        } => DispatchCommand::Update(UpdateCommandInput {
+            id,
+            title,
+            status,
+            priority,
+            clear_priority,
+            body,
+            append_body,
+            add_tags,
+            remove_tags,
+            add_needs,
+            remove_needs,
+            blocks,
+            remove_blocks,
+        }),
+        Commands::Archive => DispatchCommand::Archive,
+        Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
+        Commands::HelpJson | Commands::Init { .. } => {
+            unreachable!("handled before dispatch conversion")
+        }
+    }
+}
 
 fn main() -> std::process::ExitCode {
     if let Err(err) = run() {
@@ -55,76 +210,23 @@ fn run() -> Result<()> {
         std::env::set_current_dir(dir)?;
     }
 
-    let ctx = RunContext::load(cli.dir.clone(), cli.config, cli.json)?;
+    let Some(command) = prepare_dispatch_command(cli.command, cli.dir.clone(), cli.json)? else {
+        return Ok(());
+    };
 
-    match cli.command {
-        Commands::Init { issue_prefix, dir } => run_init(cli.dir.or(dir), issue_prefix, cli.json),
-        Commands::Config { cmd } => match cmd {
-            ConfigCommands::Get { key } => run_config_get(&ctx, &key),
-        },
-        Commands::List {
-            statuses,
-            tags,
-            needs,
-            priorities,
-            is_ready,
-            all,
-            limit,
-            sort,
-        } => {
-            let options = ListOptions {
-                statuses,
-                tags,
-                needs,
-                priorities,
-                is_ready,
-                all,
-                limit,
-                sort,
-            };
-            run_list(&ctx, &options)
-        }
-        Commands::Next => run_next(&ctx),
-        Commands::Search { query } => run_search(&ctx, &query),
-        Commands::Add {
-            title,
-            status,
-            priority,
-            body,
-            needs,
-            tags,
-        } => run_add(&ctx, title, status, priority, body, needs, tags),
-        Commands::Update {
-            id,
-            title,
-            status,
-            priority,
-            clear_priority,
-            body,
-            append_body,
-            add_tags,
-            remove_tags,
-            add_needs,
-            remove_needs,
-        } => run_update(
-            &ctx,
-            id,
-            title,
-            status,
-            priority,
-            clear_priority,
-            body,
-            append_body,
-            add_tags,
-            remove_tags,
-            add_needs,
-            remove_needs,
-        ),
-        Commands::Archive => run_archive(&ctx),
-        Commands::Show { id, path_only } => run_show(&ctx, &id, path_only),
-        Commands::HelpJson => {
-            println!("{}", serde_json::to_string(&help_json_schema())?);
-            Ok(())
-        }
+    let ctx = RunContext::load(cli.dir.clone(), cli.config, cli.json)?;
+    dispatch_command(&ctx, command)
+}
+
+fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
+    match command {
+        DispatchCommand::ConfigGet { key } => run_config_get(ctx, &key),
+        DispatchCommand::List(options) => run_list_command(ctx, options),
+        DispatchCommand::Next => run_next(ctx),
+        DispatchCommand::Search { query } => run_search(ctx, &query),
+        DispatchCommand::Add(input) => run_add(ctx, input),
+        DispatchCommand::Update(input) => run_update_command(ctx, input),
+        DispatchCommand::Archive => run_archive(ctx),
+        DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }

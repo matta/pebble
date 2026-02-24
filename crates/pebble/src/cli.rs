@@ -17,11 +17,11 @@ use std::path::PathBuf;
 )]
 pub struct Cli {
     /// Change to the given directory before doing anything
-    #[arg(short = 'C', long)]
+    #[arg(short = 'C', long, value_name = "PATH")]
     pub directory: Option<PathBuf>,
 
     /// Path to configuration file
-    #[arg(short, long, env = "PEBBLE_CONFIG")]
+    #[arg(short, long, env = "PEBBLE_CONFIG", value_name = "PATH")]
     pub config: Option<PathBuf>,
 
     /// Output in JSON format
@@ -29,7 +29,7 @@ pub struct Cli {
     pub json: bool,
 
     /// Path to the tasks directory (overrides config)
-    #[arg(long, global = true)]
+    #[arg(long, global = true, value_name = "PATH")]
     pub dir: Option<PathBuf>,
 
     #[command(subcommand)]
@@ -48,16 +48,16 @@ pub enum Commands {
     )]
     List {
         /// Filter by status (OR). Repeat for multiple.
-        #[arg(long = "status", value_enum)]
+        #[arg(long = "status", value_enum, value_name = "STATUS")]
         statuses: Vec<TaskStatus>,
         /// Filter by tag (AND). Repeat to require multiple tags.
-        #[arg(long = "tag")]
+        #[arg(long = "tag", value_name = "TAG")]
         tags: Vec<String>,
-        /// Filter by dependency ID (OR). Repeat to match any.
-        #[arg(long = "need")]
+        /// Show tasks that have this ID as a prerequisite (OR; repeatable).
+        #[arg(long = "need", value_name = "ID")]
         needs: Vec<String>,
         /// Filter by priority (OR). Repeat for multiple. Valid range: 0..99.
-        #[arg(long = "priority", value_parser = clap::value_parser!(u8).range(0..=99))]
+        #[arg(long = "priority", value_parser = clap::value_parser!(u8).range(0..=99), value_name = "PRIORITY")]
         priorities: Vec<u8>,
         /// Return only tasks whose dependencies are all terminal (done/canceled).
         #[arg(long)]
@@ -66,10 +66,10 @@ pub enum Commands {
         #[arg(long)]
         all: bool,
         /// Limit number of results returned after filtering and ordering.
-        #[arg(long)]
+        #[arg(long, value_name = "COUNT")]
         limit: Option<usize>,
         /// Sort by field. Prefix with '-' for descending. Ties broken by created_at, then id.
-        #[arg(long, allow_hyphen_values = true)]
+        #[arg(long, allow_hyphen_values = true, value_name = "SORT_KEY")]
         sort: Option<String>,
     },
     #[command(
@@ -87,72 +87,84 @@ pub enum Commands {
     /// Search for tasks using primitive text matching.
     Search {
         /// Search query string (case-insensitive substring over title + body).
+        #[arg(value_name = "TEXT")]
         query: String,
     },
     #[command(
         about = "Create a new task.",
         long_about = "Create a new task file with generated ID and frontmatter. Filename is slugified from the title. ID suffix length scales with task count to avoid collisions.",
-        after_help = "Examples:\n  pebble add \"Implement file scanning\"\n  pebble add \"Fix bug\" --priority 5 --need PEBL-123 --tag urgent --json"
+        after_help = "Examples:\n  pebble add \"Implement file scanning\"\n  pebble add \"Fix bug\" --priority 5 --need PEBL-123 --tag urgent --json\n  pebble add \"Build foundation\" --blocks PEBL-456 --json"
     )]
     /// Create a new task file in the tasks directory.
     Add {
         /// Task title.
+        #[arg(value_name = "TITLE")]
         title: String,
         /// Initial status (defaults to todo).
-        #[arg(long, value_enum)]
+        #[arg(long, value_enum, value_name = "STATUS")]
         status: Option<TaskStatus>,
         /// Priority (0..99, lower is higher).
-        #[arg(long)]
+        #[arg(long, value_name = "PRIORITY")]
         priority: Option<u8>,
         /// Initial markdown body content.
-        #[arg(long)]
+        #[arg(long, value_name = "TEXT")]
         body: Option<String>,
-        /// Add a dependency ID (repeatable).
-        #[arg(long = "need")]
+        /// Add the task with this ID as a prerequisite of the new task (repeatable).
+        #[arg(long = "need", value_name = "ID")]
         needs: Vec<String>,
         /// Add a tag (repeatable).
-        #[arg(long = "tag")]
+        #[arg(long = "tag", value_name = "TAG")]
         tags: Vec<String>,
+        /// Make the new task a prerequisite of the task with this ID (repeatable).
+        #[arg(long = "blocks", value_name = "ID")]
+        blocks: Vec<String>,
     },
     #[command(
         about = "Update an existing task.",
         long_about = "Update mutable fields and body content. Immutable id is preserved. modified_at is updated automatically; resolved_at is set/cleared based on status transitions.",
-        after_help = "Examples:\n  pebble update PEBL-1 --status in_progress\n  pebble update PEBL-1 --add-tag docs --remove-need PEBL-0 --append-body \"See RFC 001\" --json"
+        after_help = "Examples:\n  pebble update PEBL-1 --status in_progress\n  pebble update PEBL-1 --add-tag docs --remove-need PEBL-0 --append-body \"See RFC 001\" --json\n  pebble update PEBL-1 --blocks PEBL-2 --json"
     )]
     /// Update an existing task's frontmatter or body.
     Update {
         /// Task ID to update.
+        #[arg(value_name = "ID")]
         id: String,
         /// Replace task title.
-        #[arg(long)]
+        #[arg(long, value_name = "TITLE")]
         title: Option<String>,
         /// Set task status. Terminal transitions manage resolved_at.
-        #[arg(long, value_enum)]
+        #[arg(long, value_enum, value_name = "STATUS")]
         status: Option<TaskStatus>,
         /// Set task priority (0..99).
-        #[arg(long)]
+        #[arg(long, value_name = "PRIORITY")]
         priority: Option<u8>,
         /// Clear existing priority (sets to None).
         #[arg(long)]
         clear_priority: bool,
         /// Replace the entire markdown body.
-        #[arg(long)]
+        #[arg(long, value_name = "TEXT")]
         body: Option<String>,
         /// Append content to the end of the markdown body.
-        #[arg(long)]
+        #[arg(long, value_name = "TEXT")]
         append_body: Option<String>,
         /// Add a tag (repeatable).
-        #[arg(long = "add-tag")]
+        #[arg(long = "add-tag", value_name = "TAG")]
         add_tags: Vec<String>,
         /// Remove a tag (repeatable).
-        #[arg(long = "remove-tag")]
+        #[arg(long = "remove-tag", value_name = "TAG")]
         remove_tags: Vec<String>,
-        /// Add a dependency ID (repeatable).
-        #[arg(long = "add-need")]
+        /// Add the task with this ID as a prerequisite of this task (repeatable).
+        #[arg(long = "add-need", value_name = "ID")]
         add_needs: Vec<String>,
-        /// Remove a dependency ID (repeatable).
-        #[arg(long = "remove-need")]
+        /// Remove the task with this ID as a prerequisite of this task (repeatable).
+        #[arg(long = "remove-need", value_name = "ID")]
         remove_needs: Vec<String>,
+        /// Make this task a prerequisite of the task with this ID (repeatable).
+        #[arg(long = "blocks", value_name = "ID")]
+        blocks: Vec<String>,
+        /// Remove this task as a prerequisite of the task with this ID (repeatable).
+        #[arg(long = "remove-blocks", value_name = "ID")]
+        remove_blocks: Vec<String>,
     },
     #[command(
         about = "Archive old closed tasks.",
@@ -169,6 +181,7 @@ pub enum Commands {
     /// Display full details of a single task.
     Show {
         /// Task ID to show.
+        #[arg(value_name = "ID")]
         id: String,
         /// Output only the file path relative to tasks-dir.
         #[arg(long)]
@@ -182,10 +195,10 @@ pub enum Commands {
     /// Initialize a new Pebble project.
     Init {
         /// Initial issue-prefix for generated IDs.
-        #[arg(long)]
+        #[arg(long, value_name = "PREFIX")]
         issue_prefix: Option<String>,
         /// Initial tasks-dir relative to project root.
-        #[arg(long)]
+        #[arg(long, value_name = "RELATIVE_PATH")]
         dir: Option<PathBuf>,
     },
     #[command(
@@ -218,6 +231,7 @@ pub enum ConfigCommands {
     /// Retrieve the value of a specific configuration key.
     Get {
         /// Configuration key to fetch (issue-prefix or tasks-dir).
+        #[arg(value_name = "KEY")]
         key: String,
     },
 }
