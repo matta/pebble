@@ -36,7 +36,11 @@ impl TaskGraph {
     /// Recursively collect all Markdown files under `dir` in deterministic order.
     fn collect_markdown_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
         let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<std::result::Result<_, _>>()?;
-        entries.sort_by_key(|entry| entry.path());
+        // Optimization: use `sort_by_cached_key` with `file_name` instead of `sort_by_key` with `path`.
+        // `entry.path()` constructs a new PathBuf (allocation) on every comparison (O(N log N)).
+        // `entry.file_name()` constructs a new OsString (allocation), but `sort_by_cached_key` calls it only once per element (O(N)).
+        // Sorting by filename within a directory is equivalent to sorting by full path for deterministic traversal.
+        entries.sort_by_cached_key(|entry| entry.file_name());
 
         for entry in entries {
             let path = entry.path();
