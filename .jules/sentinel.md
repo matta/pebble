@@ -11,8 +11,3 @@
 **Prevention:**
 1. Explicitly check for and reject `std::path::Component::ParentDir` in configuration paths intended to be sandbox-relative.
 2. Consider canonicalizing paths (resolving symlinks and `..`) and verifying they start with the intended root prefix, though this can be complex with symlinks.
-
-## 2025-05-23 - TOCTOU Race Condition in File Creation
-**Vulnerability:** The `run_add` command used a check-then-act pattern (`if !exists { write }`) to find an available filename. This race condition (Time-of-Check to Time-of-Use) allowed concurrent processes to select the same filename and overwrite each other's data.
-**Learning:** Checking for file existence before creation is never atomic. Filesystem state can change between the check and the write operation.
-**Prevention:** Always use atomic file creation primitives like `std::fs::File::create_new(true)` (which maps to `O_EXCL` on POSIX) when the goal is to create a file only if it does not exist.
