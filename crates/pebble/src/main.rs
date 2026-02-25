@@ -5,6 +5,7 @@
 pub mod cli;
 pub mod commands;
 pub mod commands_add;
+pub mod commands_archive;
 pub mod commands_write;
 
 #[cfg(test)]
@@ -23,7 +24,8 @@ use clap::Parser;
 use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_add::{RunAddInput, run_add};
-use commands_write::{RunUpdateInput, run_archive, run_init, run_update};
+use commands_archive::run_archive;
+use commands_write::{RunUpdateInput, run_init, run_update};
 
 fn run_help_json() -> Result<()> {
     println!("{}", serde_json::to_string(&help_json_schema())?);

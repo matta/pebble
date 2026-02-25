@@ -182,9 +182,10 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
     if let Some(b) = mutations.body {
         node.body = b;
     } else if let Some(a) = mutations.append_body {
-        if node.body.is_empty() {
+        if node.body.trim().is_empty() {
             node.body = a;
         } else {
+            node.body = node.body.trim_end().to_string();
             node.body.push_str("\n\n");
             node.body.push_str(&a);
         }
@@ -317,55 +318,6 @@ pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
         println!("{}", serde_json::to_string(&obj)?);
     } else {
         eprintln!("Updated task {}", node.frontmatter.id);
-    }
-
-    Ok(())
-}
-
-/// Moves completed or canceled tasks older than 30 days into an `archive/` subdirectory.
-///
-/// Reads the graph from the configured tasks directory, then moves any task whose
-/// `resolved_at` timestamp is more than 30 days in the past. Outputs a JSON array
-/// of moved tasks when `ctx.json` is set; otherwise prints each archived ID to stderr.
-pub fn run_archive(ctx: &RunContext) -> Result<()> {
-    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
-    let archive_dir = ctx.tasks_dir.join("archive");
-    std::fs::create_dir_all(&archive_dir)?;
-
-    let now = chrono::Utc::now();
-    let threshold_days = chrono::Duration::days(30);
-
-    let mut archived = vec![];
-
-    for node in graph.nodes.values() {
-        if node.frontmatter.status.is_closed()
-            && let Some(resolved_at_toml) = node.frontmatter.resolved_at
-        {
-            let resolved_at = chrono::DateTime::parse_from_rfc3339(&resolved_at_toml.to_string())
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| eyre!("Failed to parse resolved_at from TOML: {}", e))?;
-
-            if now.signed_duration_since(resolved_at) > threshold_days {
-                let new_path = archive_dir.join(node.path.file_name().unwrap());
-                std::fs::rename(&node.path, &new_path)?;
-
-                if ctx.json {
-                    archived.push(serde_json::json!({
-                                "id": node.frontmatter.id,
-                                "moved_to": new_path.strip_prefix(&ctx.tasks_dir).unwrap_or(&new_path).display().to_string()
-                            }));
-                } else {
-                    eprintln!("Archived {}", node.frontmatter.id);
-                }
-            }
-        }
-    }
-
-    if ctx.json {
-        println!(
-            "{}",
-            serde_json::to_string(&serde_json::json!({ "archived": archived }))?
-        );
     }
 
     Ok(())

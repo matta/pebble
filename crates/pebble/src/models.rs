@@ -29,7 +29,7 @@ impl std::error::Error for UsageError {}
 /// // Serializes to "todo"
 /// assert_eq!(toml::to_string(&status).unwrap().trim(), "\"todo\"");
 /// ```
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, ValueEnum)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
 #[clap(rename_all = "snake_case")]
 pub enum TaskStatus {
@@ -147,7 +147,10 @@ pub struct TaskNode {
 impl TaskNode {
     pub fn write_to_disk(&self) -> Result<()> {
         let fm_toml = toml::to_string(&self.frontmatter)?;
-        let content = format!("+++\n{}+++\n{}", fm_toml, self.body);
+        let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
+        if !content.ends_with('\n') {
+            content.push('\n');
+        }
         std::fs::write(&self.path, content)?;
         Ok(())
     }

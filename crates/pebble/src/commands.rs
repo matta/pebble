@@ -1,6 +1,6 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, UsageError};
+use crate::models::{TaskNode, UsageError};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -13,8 +13,15 @@ pub use listing::{ListOptions, run_list, run_search};
 /// Serialized version of a TaskObject as expected by the JSON API contract.
 #[derive(Serialize)]
 pub struct TaskObject<'a> {
-    #[serde(flatten)]
-    pub frontmatter: &'a TaskFrontmatter,
+    pub id: &'a str,
+    pub title: &'a str,
+    pub status: crate::models::TaskStatus,
+    pub priority: Option<crate::models::Priority>,
+    pub created_at: String,
+    pub modified_at: Option<String>,
+    pub resolved_at: Option<String>,
+    pub needs: &'a Vec<String>,
+    pub tags: &'a Vec<String>,
     pub is_ready: bool,
     pub blocked_by: Vec<String>,
     pub blocking: Vec<String>,
@@ -60,7 +67,23 @@ impl<'a> TaskObject<'a> {
         let rel_path = node.path.strip_prefix(tasks_dir).unwrap_or(&node.path);
 
         TaskObject {
-            frontmatter: &node.frontmatter,
+            id: &node.frontmatter.id,
+            title: &node.frontmatter.title,
+            status: node.frontmatter.status,
+            priority: node.frontmatter.priority,
+            created_at: node.frontmatter.created_at.to_string(),
+            modified_at: node
+                .frontmatter
+                .modified_at
+                .as_ref()
+                .map(|dt| dt.to_string()),
+            resolved_at: node
+                .frontmatter
+                .resolved_at
+                .as_ref()
+                .map(|dt| dt.to_string()),
+            needs: &node.frontmatter.needs,
+            tags: &node.frontmatter.tags,
             is_ready,
             blocked_by,
             blocking,
@@ -167,11 +190,11 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
         println!("{}", serde_json::to_string(&obj)?);
     } else {
         let obj = TaskObject::from_node(node, &graph, &ctx.tasks_dir);
-        println!("Task: {} ({})", obj.frontmatter.title, obj.frontmatter.id);
-        println!("Status: {:?}", obj.frontmatter.status);
+        println!("Task: {} ({})", obj.title, obj.id);
+        println!("Status: {:?}", obj.status);
         println!("Path: {}", obj.path);
-        if !obj.frontmatter.tags.is_empty() {
-            println!("Tags: {:?}", obj.frontmatter.tags);
+        if !obj.tags.is_empty() {
+            println!("Tags: {:?}", obj.tags);
         }
         println!("Blocked by: {:?}", obj.blocked_by);
         println!("Blocking: {:?}", obj.blocking);
@@ -224,7 +247,7 @@ fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::TaskStatus;
+    use crate::models::{TaskFrontmatter, TaskStatus};
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::str::FromStr;
