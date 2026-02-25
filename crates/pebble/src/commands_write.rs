@@ -1,7 +1,7 @@
-use crate::api::TaskObject;
 use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::task_view::TaskObject;
 use color_eyre::eyre::{Result, eyre};
 use std::env;
 use std::path::PathBuf;

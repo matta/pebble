@@ -2,7 +2,6 @@
 //!
 //! Tasks are stored as individual Markdown files with TOML frontmatter. The files
 //! themselves form a directed dependency graph; no external database is required.
-pub mod api;
 pub mod cli;
 pub mod commands;
 pub mod commands_write;
@@ -14,6 +13,7 @@ pub mod graph;
 pub mod help_json;
 pub mod models;
 pub mod parser;
+pub mod task_view;
 
 use crate::cli::{Cli, Commands, ConfigCommands};
 use crate::help_json::help_json_schema;

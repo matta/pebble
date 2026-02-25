@@ -1,7 +1,7 @@
-use crate::api::TaskObject;
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
 use crate::models::UsageError;
+use crate::task_view::TaskObject;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::BTreeMap;
 use std::env;
