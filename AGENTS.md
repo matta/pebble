@@ -117,6 +117,7 @@ Before marking a Pebble task complete for implementation work, agents must verif
 - .agents/checks/docs-discoverability.md
 - .agents/checks/rust-module-structure.md
 - .agents/checks/warning-suppression-review.md
+- .agents/checks/test-module-placement.md
 - docs/rust-api-docs.md
 - implementation_plan.md
 - docs/pebble/ (Pebble task files; exempt from individual index entries)
