@@ -3,6 +3,10 @@
   "extends": ["config:best-practices"],
   "packageRules": [
     {
+      "matchManagers": ["github-actions"],
+      "extends": ["schedule:weekly"]
+    },
+    {
       "matchManagers": ["cargo"],
       "matchUpdateTypes": ["patch"],
       "minimumReleaseAge": "7 days"
