@@ -7,12 +7,12 @@ use tempfile::tempdir;
 
 #[test]
 fn test_show_path_only_relative() {
-    let dir = tempdir().unwrap();
+    let dir = tempdir().expect("temp directory should be created");
     let root = dir.path();
 
     // Create config
     let config_dir = root.join(".pebble");
-    fs::create_dir(&config_dir).unwrap();
+    fs::create_dir(&config_dir).expect("config directory should be created");
     fs::write(
         config_dir.join("config.toml"),
         r#"
@@ -20,10 +20,10 @@ fn test_show_path_only_relative() {
         tasks_dir = "tasks"
         "#,
     )
-    .unwrap();
+    .expect("config file should be written");
 
     let tasks_dir = root.join("tasks");
-    fs::create_dir(&tasks_dir).unwrap();
+    fs::create_dir(&tasks_dir).expect("tasks directory should be created");
     let task_path = tasks_dir.join("PROJ-1.md");
     fs::write(
         &task_path,
@@ -37,7 +37,7 @@ created_at = 2024-01-01T00:00:00Z
 Body text
 "#,
     )
-    .unwrap();
+    .expect("config file should be written");
 
     let expected_rel_path = "PROJ-1.md\n";
 
@@ -55,12 +55,12 @@ Body text
 
 #[test]
 fn test_show_formatted_output() {
-    let dir = tempdir().unwrap();
+    let dir = tempdir().expect("temp directory should be created");
     let root = dir.path();
 
     // Create config
     let config_dir = root.join(".pebble");
-    fs::create_dir(&config_dir).unwrap();
+    fs::create_dir(&config_dir).expect("config directory should be created");
     fs::write(
         config_dir.join("config.toml"),
         r#"
@@ -68,10 +68,10 @@ fn test_show_formatted_output() {
         tasks_dir = "tasks"
         "#,
     )
-    .unwrap();
+    .expect("config file should be written");
 
     let tasks_dir = root.join("tasks");
-    fs::create_dir(&tasks_dir).unwrap();
+    fs::create_dir(&tasks_dir).expect("tasks directory should be created");
     let task_path = tasks_dir.join("PROJ-2.md");
     fs::write(
         &task_path,
@@ -86,7 +86,7 @@ created_at = 2024-01-01T00:00:00Z
 Body text explaining the task.
 "#,
     )
-    .unwrap();
+    .expect("config file should be written");
 
     let mut cmd = Command::new(cargo_bin!());
     cmd.current_dir(root)

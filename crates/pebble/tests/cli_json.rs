@@ -15,12 +15,12 @@ fn test_list_json_stdout_only() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert!(value.get("tasks").is_some());
 }
 
@@ -32,7 +32,7 @@ fn test_next_json_stdout_only() {
         .current_dir(&env.root)
         .args(["next", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(!output.status.success());
     assert!(!output.stderr.is_empty());
@@ -49,12 +49,12 @@ fn test_show_json_stdout_only() {
         .current_dir(&env.root)
         .args(["show", "PROJ-2", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value.get("id").and_then(|v| v.as_str()), Some("PROJ-2"));
 
     // Verify renamed fields exist in JSON
@@ -81,12 +81,12 @@ fn test_add_json_stdout_only() {
         .current_dir(&env.root)
         .args(["add", "New Task", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(
         value.get("title").and_then(|v| v.as_str()),
         Some("New Task")
@@ -105,11 +105,11 @@ fn test_update_json_stdout_only() {
             "update", "PROJ-3", "--status", "done", "--json", "--dir", "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value.get("status").and_then(|v| v.as_str()), Some("done"));
 }

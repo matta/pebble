@@ -132,7 +132,7 @@ pub struct TaskFrontmatter {
 ///         title: "My Task".into(),
 ///         status: TaskStatus::Todo,
 ///         priority: None,
-///         created_at: Datetime::from_str("2023-01-01T00:00:00Z").unwrap(),
+///         created_at: Datetime::from_str("2023-01-01T00:00:00Z").expect("Valid ISO8601 string"),
 ///         modified_at: None,
 ///         resolved_at: None,
 ///         needs: vec![],
@@ -173,23 +173,26 @@ mod tests {
     #[test]
     fn test_task_status_deserialization() {
         assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"todo\"").unwrap(),
+            serde_json::from_str::<TaskStatus>("\"todo\"").expect("Should deserialize todo"),
             TaskStatus::Todo
         );
         assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"in_progress\"").unwrap(),
+            serde_json::from_str::<TaskStatus>("\"in_progress\"")
+                .expect("Should deserialize in_progress"),
             TaskStatus::InProgress
         );
         assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"done\"").unwrap(),
+            serde_json::from_str::<TaskStatus>("\"done\"").expect("Should deserialize done"),
             TaskStatus::Done
         );
         assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"canceled\"").unwrap(),
+            serde_json::from_str::<TaskStatus>("\"canceled\"")
+                .expect("Should deserialize canceled"),
             TaskStatus::Canceled
         );
 
-        let err = serde_json::from_str::<TaskStatus>("\"invalid_status\"").unwrap_err();
+        let err = serde_json::from_str::<TaskStatus>("\"invalid_status\"")
+            .expect_err("Should fail to deserialize invalid status");
         assert!(err.to_string().contains("unknown variant"));
     }
 
@@ -216,11 +219,14 @@ priority = 1
 created_at = 2026-02-21T17:00:00Z
 needs = ["issue-122"]
 "#;
-        let fm: TaskFrontmatter = toml::from_str(toml_str).unwrap();
+        let fm: TaskFrontmatter = toml::from_str(toml_str).expect("Valid task frontmatter");
         assert_eq!(fm.id, "issue-123");
         assert_eq!(fm.title, "Implement Task Node");
         assert_eq!(fm.status, TaskStatus::Todo);
-        assert_eq!(fm.priority, Some(Priority::try_from(1).unwrap()));
+        assert_eq!(
+            fm.priority,
+            Some(Priority::try_from(1).expect("Priority 1 is valid"))
+        );
         assert_eq!(fm.needs, vec!["issue-122"]);
         assert!(
             fm.tags.is_empty(),
@@ -230,8 +236,16 @@ needs = ["issue-122"]
 
     #[test]
     fn test_priority_try_from_u8_enforces_range() {
-        assert_eq!(Priority::try_from(0u8).unwrap().get(), 0);
-        assert_eq!(Priority::try_from(99u8).unwrap().get(), 99);
+        assert_eq!(
+            Priority::try_from(0u8).expect("Priority 0 is valid").get(),
+            0
+        );
+        assert_eq!(
+            Priority::try_from(99u8)
+                .expect("Priority 99 is valid")
+                .get(),
+            99
+        );
         assert!(Priority::try_from(100u8).is_err());
     }
 
@@ -245,7 +259,8 @@ priority = 100
 created_at = 2026-02-21T17:00:00Z
 "#;
 
-        let err = toml::from_str::<TaskFrontmatter>(toml_str).unwrap_err();
+        let err = toml::from_str::<TaskFrontmatter>(toml_str)
+            .expect_err("Should reject out-of-range priority");
         assert!(
             err.to_string().contains("priority"),
             "Expected priority validation error, got: {err}"
@@ -260,9 +275,9 @@ created_at = 2026-02-21T17:00:00Z
         }
 
         let wrapper = Wrapper {
-            priority: Priority::try_from(5).unwrap(),
+            priority: Priority::try_from(5).expect("Priority 5 is valid"),
         };
-        let toml = toml::to_string(&wrapper).unwrap();
+        let toml = toml::to_string(&wrapper).expect("Should serialize Wrapper");
         assert_eq!(toml.trim(), "priority = 5");
     }
 
@@ -277,7 +292,7 @@ created_at = 2026-02-21T17:00:00Z
 
     #[test]
     fn test_priority_into_u32() {
-        let p = Priority::new(42).unwrap();
+        let p = Priority::new(42).expect("Priority 42 is valid");
         let v: u32 = p.into();
         assert_eq!(v, 42);
     }

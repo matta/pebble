@@ -21,12 +21,12 @@ fn add_task(ctx: &RunContext, title: &str) {
             blocks: vec![],
         },
     )
-    .unwrap();
+    .expect("command should execute successfully");
 }
 
 #[test]
 fn test_init_and_add() {
-    let dir = tempdir().unwrap();
+    let dir = tempdir().expect("temp directory should be created");
     let current_dir = dir.path();
 
     let ctx = RunContext {
@@ -45,24 +45,28 @@ fn test_init_and_add() {
         RunAddInput {
             title: "My First Task".to_string(),
             status: None,
-            priority: Some(Priority::try_from(5).unwrap()),
+            priority: Some(Priority::try_from(5).expect("priority should be valid")),
             body: Some("Body text".to_string()),
             needs: vec![],
             tags: vec!["urgent".to_string()],
             blocks: vec![],
         },
     )
-    .unwrap();
+    .expect("command should execute successfully");
 
-    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir).unwrap();
+    let graph = TaskGraph::load_from_dir(&ctx.tasks_dir).expect("graph should load successfully");
     assert_eq!(graph.nodes.len(), 1);
-    let node = graph.nodes.values().next().unwrap();
+    let node = graph
+        .nodes
+        .values()
+        .next()
+        .expect("at least one node should exist");
 
     assert_eq!(node.frontmatter.title, "My First Task");
     assert_eq!(node.frontmatter.status, TaskStatus::Todo);
     assert_eq!(
         node.frontmatter.priority,
-        Some(Priority::try_from(5).unwrap())
+        Some(Priority::try_from(5).expect("priority should be valid"))
     );
     assert_eq!(node.frontmatter.tags, vec!["urgent".to_string()]);
     assert_eq!(node.body, "Body text\n");
@@ -87,10 +91,10 @@ fn test_init_and_add() {
             remove_blocks: vec![],
         },
     )
-    .unwrap();
+    .expect("command should execute successfully");
 
-    let graph2 = TaskGraph::load_from_dir(&ctx.tasks_dir).unwrap();
-    let updated_node = graph2.nodes.get(&id).unwrap();
+    let graph2 = TaskGraph::load_from_dir(&ctx.tasks_dir).expect("graph should load successfully");
+    let updated_node = graph2.nodes.get(&id).expect("updated node should exist");
 
     assert_eq!(updated_node.frontmatter.title, "Updated Title");
     assert_eq!(updated_node.frontmatter.status, TaskStatus::InProgress);
@@ -101,7 +105,7 @@ fn test_init_and_add() {
 
 #[test]
 fn test_add_slug_filename() {
-    let dir = tempdir().unwrap();
+    let dir = tempdir().expect("temp directory should be created");
     let current_dir = dir.path();
     let tasks_dir = current_dir.join("docs/pebble");
 
@@ -146,9 +150,9 @@ fn test_add_slug_filename() {
             blocks: vec![],
         },
     )
-    .unwrap();
+    .expect("command should execute successfully");
     let entries: Vec<_> = fs::read_dir(&tasks_dir)
-        .unwrap()
+        .expect("tasks directory should be readable")
         .filter_map(|e| e.ok())
         .filter(|e| {
             let name = e.file_name().to_string_lossy().to_string();
@@ -159,7 +163,7 @@ fn test_add_slug_filename() {
     let stem = entries[0]
         .path()
         .file_stem()
-        .unwrap()
+        .expect("file stem should be present")
         .to_string_lossy()
         .to_string();
     assert!(stem.len() <= 80, "slug was {} chars", stem.len());

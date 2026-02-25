@@ -25,8 +25,8 @@ created_at = 2026-03-01T00:00:00Z
 needs = ["A"]
 +++
 "#;
-    fs::write(env.tasks_dir.join("A.md"), a).unwrap();
-    fs::write(env.tasks_dir.join("B.md"), b).unwrap();
+    fs::write(env.tasks_dir.join("A.md"), a).expect("task file A.md should be written");
+    fs::write(env.tasks_dir.join("B.md"), b).expect("task file B.md should be written");
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
@@ -56,8 +56,8 @@ created_at = 2026-03-01T00:00:00Z
 needs = ["A"]
 +++
 "#;
-    fs::write(env.tasks_dir.join("A.md"), a).unwrap();
-    fs::write(env.tasks_dir.join("B.md"), b).unwrap();
+    fs::write(env.tasks_dir.join("A.md"), a).expect("task file A.md should be written");
+    fs::write(env.tasks_dir.join("B.md"), b).expect("task file B.md should be written");
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     let assert = cmd
@@ -69,10 +69,17 @@ needs = ["A"]
         .stderr("");
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let output: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let output: serde_json::Value =
+        serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     assert_eq!(output["ok"].as_bool(), Some(true));
-    assert_eq!(output["errors"].as_array().unwrap().len(), 0);
+    assert_eq!(
+        output["errors"]
+            .as_array()
+            .expect("errors should be an array")
+            .len(),
+        0
+    );
 }
 
 #[test]
@@ -94,8 +101,8 @@ created_at = 2026-03-01T00:00:00Z
 needs = ["A", "MISSING_TASK"]
 +++
 "#;
-    fs::write(env.tasks_dir.join("A.md"), a).unwrap();
-    fs::write(env.tasks_dir.join("B.md"), b).unwrap();
+    fs::write(env.tasks_dir.join("A.md"), a).expect("task file A.md should be written");
+    fs::write(env.tasks_dir.join("B.md"), b).expect("task file B.md should be written");
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
@@ -120,7 +127,7 @@ weird_key = "abc"
 other_key = 123
 +++
 Body"#;
-    fs::write(env.tasks_dir.join("X.md"), frontmatter).unwrap();
+    fs::write(env.tasks_dir.join("X.md"), frontmatter).expect("task file X.md should be written");
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     let assert = cmd
@@ -131,11 +138,14 @@ Body"#;
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
-    let output: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let output: serde_json::Value =
+        serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     assert_eq!(output["ok"].as_bool(), Some(false));
 
-    let errors = output["errors"].as_array().unwrap();
+    let errors = output["errors"]
+        .as_array()
+        .expect("errors should be an array");
     assert_eq!(errors.len(), 2);
 
     // Sort to make checks stable or just iterate

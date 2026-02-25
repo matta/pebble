@@ -13,11 +13,11 @@ fn test_add_generates_id_with_lowercase_alphanumeric_suffix() {
         .current_dir(&env.root)
         .args(["add", "New Task", "--json"])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     let id = json["id"].as_str().expect("id should be a string");
 
@@ -45,11 +45,11 @@ fn test_add_id_suffix_length_is_at_least_8() {
         .current_dir(&env.root)
         .args(["add", "New Task", "--json"])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     let id = json["id"].as_str().expect("id should be a string");
     let random_part = id
@@ -75,18 +75,18 @@ fn test_add_id_suffix_length_scales_with_task_count() {
             .current_dir(&env.root)
             .args(["add", &format!("Task {}", i), "--dir", "tasks"])
             .output()
-            .unwrap();
+            .expect("pebble command should execute successfully");
     }
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["add", "New Task", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
-    let id = json["id"].as_str().unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
+    let id = json["id"].as_str().expect("id should be a string");
     let random_part = id
         .strip_prefix("PROJ-")
         .expect("ID should start with PROJ-");
@@ -113,7 +113,7 @@ fn test_add_blocks_updates_target_needs_with_new_task_id() {
             "--json",
         ])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(
         output.status.success(),
@@ -121,19 +121,20 @@ fn test_add_blocks_updates_target_needs_with_new_task_id() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let created_stdout = String::from_utf8(output.stdout).unwrap();
-    let created_json: Value = serde_json::from_str(&created_stdout).unwrap();
+    let created_stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let created_json: Value =
+        serde_json::from_str(&created_stdout).expect("stdout should be valid JSON");
     let created_id = created_json["id"].as_str().expect("id should be present");
 
     let show_output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-target", "--json"])
         .output()
-        .expect("Failed to execute pebble show");
+        .expect("pebble command should execute successfully");
 
     assert!(show_output.status.success());
-    let show_stdout = String::from_utf8(show_output.stdout).unwrap();
-    let show_json: Value = serde_json::from_str(&show_stdout).unwrap();
+    let show_stdout = String::from_utf8(show_output.stdout).expect("stdout should be valid UTF-8");
+    let show_json: Value = serde_json::from_str(&show_stdout).expect("stdout should be valid JSON");
     let needs = show_json["needs"]
         .as_array()
         .expect("needs should be an array")
@@ -170,7 +171,7 @@ fn test_add_json_includes_blocking_when_blocks_is_used() {
             "--json",
         ])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(
         output.status.success(),
@@ -203,7 +204,7 @@ fn test_add_blocks_fails_for_unknown_target_id() {
         .current_dir(&env.root)
         .args(["add", "Precondition Task", "--blocks", "PROJ-missing"])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(
         !output.status.success(),
@@ -224,11 +225,11 @@ fn test_add_json_path_is_relative_to_current_working_directory() {
         .current_dir(&env.root)
         .args(["add", "Path Visibility Task", "--json"])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).expect("add --json stdout should be UTF-8");
-    let json: Value = serde_json::from_str(&stdout).expect("add --json output should parse");
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     let path = json["path"].as_str().expect("path should be present");
     assert_eq!(
@@ -245,7 +246,7 @@ fn test_add_human_output_uses_path_relative_to_current_working_directory() {
         .current_dir(&env.root)
         .args(["add", "Human Path Task"])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be UTF-8");

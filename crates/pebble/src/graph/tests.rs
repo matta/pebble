@@ -12,7 +12,8 @@ fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
             title: id.to_string(),
             status,
             priority: None,
-            created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap(),
+            created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
+                .expect("Failed to parse datetime"),
             modified_at: None,
             resolved_at: None,
             needs: needs.into_iter().map(|s| s.to_string()).collect(),
@@ -52,10 +53,10 @@ fn test_dynamic_scoring() {
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
-    a.frontmatter.priority = Some(Priority::try_from(1).unwrap());
+    a.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
 
     let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
-    b.frontmatter.priority = Some(Priority::try_from(5).unwrap());
+    b.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
 
     let c = make_test_node("C", TaskStatus::Todo, vec!["B"]);
     let d = make_test_node("D", TaskStatus::Todo, vec!["B"]);
@@ -122,10 +123,10 @@ fn test_default_order_respects_needs_and_priority() {
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
-    a.frontmatter.priority = Some(Priority::try_from(5).unwrap());
+    a.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
 
     let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
-    b.frontmatter.priority = Some(Priority::try_from(1).unwrap());
+    b.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
 
     let c = make_test_node("C", TaskStatus::Todo, vec!["A", "B"]);
 
@@ -152,8 +153,10 @@ fn test_default_order_cycle_grouping_created_at() {
     let mut b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
     let c = make_test_node("C", TaskStatus::Todo, vec!["A"]);
 
-    a.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-02T00:00:00Z").unwrap();
-    b.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap();
+    a.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-02T00:00:00Z")
+        .expect("Failed to parse datetime");
+    b.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
+        .expect("Failed to parse datetime");
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);

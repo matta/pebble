@@ -100,7 +100,7 @@ pub fn validate_tasks_dir(path: &Path) -> Result<()> {
 /// tasks-dir = "docs/tasks/"
 /// "#;
 ///
-/// let config = parse_config(toml).unwrap();
+/// let config = parse_config(toml).expect("Valid TDML config");
 /// assert_eq!(config.issue_prefix, "ticket");
 /// assert_eq!(config.tasks_dir, PathBuf::from("docs/tasks/"));
 /// ```
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn test_parse_default_config() {
         let toml = "";
-        let config = parse_config(toml).unwrap();
+        let config = parse_config(toml).expect("Valid config");
         assert_eq!(config.issue_prefix, "issue");
         assert_eq!(config.tasks_dir, PathBuf::from("docs/pebble/"));
     }
@@ -135,7 +135,7 @@ mod tests {
         issue-prefix = "TKT"
         tasks-dir = "my-tasks/"
         "#;
-        let config = parse_config(toml).unwrap();
+        let config = parse_config(toml).expect("Valid config");
         assert_eq!(config.issue_prefix, "TKT");
         assert_eq!(config.tasks_dir, PathBuf::from("my-tasks/"));
     }
@@ -145,7 +145,7 @@ mod tests {
         let toml = r#"
         tasks-dir = "/absolute/path/to/tasks"
         "#;
-        let err = parse_config(toml).unwrap_err();
+        let err = parse_config(toml).expect_err("Should reject absolute tasks path");
         assert!(
             err.to_string().contains("must be a relative path"),
             "Error was: {}",
@@ -161,7 +161,7 @@ mod tests {
         ];
 
         for toml in cases {
-            let err = parse_config(toml).unwrap_err();
+            let err = parse_config(toml).expect_err("Should reject parent directory components");
             assert!(
                 err.to_string()
                     .contains("must not contain parent directory components"),
@@ -174,14 +174,14 @@ mod tests {
 
     #[test]
     fn test_find_project_root() {
-        let temp = tempfile::tempdir().unwrap();
+        let temp = tempfile::tempdir().expect("Failed to create temp dir");
         let root = temp.path();
 
         let pebble_dir = root.join(".pebble");
-        fs::create_dir(&pebble_dir).unwrap();
+        fs::create_dir(&pebble_dir).expect("Failed to create .pebble dir");
 
         let deeply_nested = root.join("some").join("deep").join("path");
-        fs::create_dir_all(&deeply_nested).unwrap();
+        fs::create_dir_all(&deeply_nested).expect("Failed to create deeply nested path");
 
         // Should find the root when starting from the nested directory
         let found = find_project_root(&deeply_nested).expect("Should find root");
@@ -192,7 +192,7 @@ mod tests {
         assert_eq!(found2, root);
 
         // Should return None when there is no .pebble dir
-        let empty_temp = tempfile::tempdir().unwrap();
+        let empty_temp = tempfile::tempdir().expect("Failed to create second temp dir");
         assert_eq!(find_project_root(empty_temp.path()), None);
     }
 }

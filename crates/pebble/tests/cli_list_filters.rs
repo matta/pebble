@@ -48,7 +48,7 @@ fn write_task_custom(tasks_dir: &Path, task: CustomTask<'_>) {
 
     let content = format!("+++\n{frontmatter}+++\nBody\n");
     fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
-        .expect("Failed to write custom task file");
+        .expect("custom task file should be written");
 }
 
 #[test]
@@ -62,16 +62,13 @@ fn test_list_status_filter_includes_done_without_all() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--status", "done"])
         .output()
-        .expect("Failed to execute list command with status filter");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
-    let tasks = value["tasks"]
-        .as_array()
-        .expect("Expected 'tasks' to be an array");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let tasks = value["tasks"].as_array().expect("tasks should be an array");
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0]["id"].as_str(), Some("PROJ-DONE"));
 }
@@ -120,14 +117,11 @@ fn test_list_tag_filter_requires_all_tags() {
             "list", "--json", "--dir", "tasks", "--tag", "backend", "--tag", "urgent",
         ])
         .output()
-        .expect("Failed to execute list command with tag filters");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
-    let tasks = value["tasks"]
-        .as_array()
-        .expect("Expected 'tasks' to be an array");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let tasks = value["tasks"].as_array().expect("tasks should be an array");
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0]["id"].as_str(), Some("PROJ-BOTH"));
 }
@@ -176,14 +170,13 @@ fn test_list_need_filter_matches_any_selected_need() {
             "list", "--json", "--dir", "tasks", "--need", "DEP-A", "--need", "DEP-B",
         ])
         .output()
-        .expect("Failed to execute list command with need filters");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let mut ids: Vec<&str> = value["tasks"]
         .as_array()
-        .expect("Expected 'tasks' to be an array")
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -242,14 +235,13 @@ fn test_list_priority_filter_matches_any_selected_priority() {
             "2",
         ])
         .output()
-        .expect("Failed to execute list command with priority filters");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let mut ids: Vec<&str> = value["tasks"]
         .as_array()
-        .expect("Expected 'tasks' to be an array")
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -269,14 +261,13 @@ fn test_list_all_includes_closed_tasks() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--all"])
         .output()
-        .expect("Failed to execute list command with --all");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let ids: Vec<&str> = value["tasks"]
         .as_array()
-        .expect("Expected 'tasks' to be an array")
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -328,14 +319,11 @@ fn test_list_is_ready_filters_only_ready_tasks() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--is-ready"])
         .output()
-        .expect("Failed to execute list command with --is-ready");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
-    let tasks = value["tasks"]
-        .as_array()
-        .expect("Expected 'tasks' to be an array");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let tasks = value["tasks"].as_array().expect("tasks should be an array");
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0]["id"].as_str(), Some("PROJ-READY"));
 }
@@ -352,14 +340,11 @@ fn test_list_limit_restricts_number_of_rows() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--limit", "2"])
         .output()
-        .expect("Failed to execute list command with --limit");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
-    let tasks = value["tasks"]
-        .as_array()
-        .expect("Expected 'tasks' to be an array");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let tasks = value["tasks"].as_array().expect("tasks should be an array");
     assert_eq!(tasks.len(), 2);
 }
 
@@ -377,14 +362,13 @@ fn test_list_status_filter_uses_or_semantics() {
             "list", "--json", "--dir", "tasks", "--status", "todo", "--status", "done",
         ])
         .output()
-        .expect("Failed to execute list command with multiple --status filters");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Failed to parse list JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let mut ids: Vec<&str> = value["tasks"]
         .as_array()
-        .expect("Expected 'tasks' to be an array")
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -404,19 +388,19 @@ fn test_ls_alias_matches_list_output() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
-        .expect("Failed to execute list command");
+        .expect("pebble command should execute successfully");
     assert!(list_output.status.success());
 
     let ls_output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["ls", "--json", "--dir", "tasks"])
         .output()
-        .expect("Failed to execute ls command");
+        .expect("pebble command should execute successfully");
     assert!(ls_output.status.success());
 
     let list_value: Value =
-        serde_json::from_slice(&list_output.stdout).expect("Failed to parse list output");
+        serde_json::from_slice(&list_output.stdout).expect("stdout should be valid JSON");
     let ls_value: Value =
-        serde_json::from_slice(&ls_output.stdout).expect("Failed to parse ls output");
+        serde_json::from_slice(&ls_output.stdout).expect("stdout should be valid JSON");
     assert_eq!(ls_value, list_value);
 }

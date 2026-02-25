@@ -10,7 +10,7 @@ use support::setup_test_env;
 fn test_list_json_includes_nested_markdown_tasks() {
     let env = setup_test_env();
     let nested = env.tasks_dir.join("a").join("b");
-    fs::create_dir_all(&nested).unwrap();
+    fs::create_dir_all(&nested).expect("nested directory should be created");
 
     let content = r#"+++
 id = "PROJ-NESTED"
@@ -20,19 +20,19 @@ created_at = 2024-01-01T00:00:00Z
 +++
 Body
 "#;
-    fs::write(nested.join("nested-task.md"), content).unwrap();
+    fs::write(nested.join("nested-task.md"), content).expect("nested-task.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let ids: Vec<&str> = value["tasks"]
         .as_array()
-        .unwrap()
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -44,7 +44,7 @@ Body
 fn test_show_json_finds_nested_markdown_task() {
     let env = setup_test_env();
     let nested = env.tasks_dir.join("a").join("b");
-    fs::create_dir_all(&nested).unwrap();
+    fs::create_dir_all(&nested).expect("nested directory should be created");
 
     let content = r#"+++
 id = "PROJ-SHOW-NESTED"
@@ -54,17 +54,17 @@ created_at = 2024-01-01T00:00:00Z
 +++
 Body
 "#;
-    fs::write(nested.join("show-task.md"), content).unwrap();
+    fs::write(nested.join("show-task.md"), content).expect("show-task.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-SHOW-NESTED", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["id"].as_str(), Some("PROJ-SHOW-NESTED"));
 }
 
@@ -72,7 +72,7 @@ Body
 fn test_list_json_skips_all_duplicate_ids_and_warns() {
     let env = setup_test_env();
     let nested = env.tasks_dir.join("nested");
-    fs::create_dir_all(&nested).unwrap();
+    fs::create_dir_all(&nested).expect("nested directory should be created");
 
     let dup_a = r#"+++
 id = "PROJ-DUP"
@@ -99,21 +99,21 @@ created_at = 2024-01-01T00:00:00Z
 Body
 "#;
 
-    fs::write(env.tasks_dir.join("dup-a.md"), dup_a).unwrap();
-    fs::write(nested.join("dup-b.md"), dup_b).unwrap();
-    fs::write(env.tasks_dir.join("unique.md"), unique).unwrap();
+    fs::write(env.tasks_dir.join("dup-a.md"), dup_a).expect("dup-a.md should be written");
+    fs::write(nested.join("dup-b.md"), dup_b).expect("dup-b.md should be written");
+    fs::write(env.tasks_dir.join("unique.md"), unique).expect("unique.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let ids: Vec<&str> = value["tasks"]
         .as_array()
-        .unwrap()
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -130,7 +130,7 @@ Body
 fn test_show_duplicate_id_is_treated_as_not_found() {
     let env = setup_test_env();
     let nested = env.tasks_dir.join("nested");
-    fs::create_dir_all(&nested).unwrap();
+    fs::create_dir_all(&nested).expect("nested directory should be created");
 
     let dup = r#"+++
 id = "PROJ-DUP-SHOW"
@@ -140,14 +140,14 @@ created_at = 2024-01-01T00:00:00Z
 +++
 Body
 "#;
-    fs::write(env.tasks_dir.join("dup-a.md"), dup).unwrap();
-    fs::write(nested.join("dup-b.md"), dup).unwrap();
+    fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
+    fs::write(nested.join("dup-b.md"), dup).expect("dup-b.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-DUP-SHOW", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
@@ -161,7 +161,7 @@ Body
 fn test_update_duplicate_id_fails_with_runtime_error_and_empty_stdout() {
     let env = setup_test_env();
     let nested = env.tasks_dir.join("nested");
-    fs::create_dir_all(&nested).unwrap();
+    fs::create_dir_all(&nested).expect("nested directory should be created");
 
     let dup = r#"+++
 id = "PROJ-DUP-UPDATE"
@@ -171,8 +171,8 @@ created_at = 2024-01-01T00:00:00Z
 +++
 Body
 "#;
-    fs::write(env.tasks_dir.join("dup-a.md"), dup).unwrap();
-    fs::write(nested.join("dup-b.md"), dup).unwrap();
+    fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
+    fs::write(nested.join("dup-b.md"), dup).expect("dup-b.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
@@ -186,7 +186,7 @@ Body
             "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
@@ -199,7 +199,7 @@ Body
 fn test_show_unique_id_still_succeeds_when_other_duplicate_exists() {
     let env = setup_test_env();
     let nested = env.tasks_dir.join("nested");
-    fs::create_dir_all(&nested).unwrap();
+    fs::create_dir_all(&nested).expect("nested directory should be created");
 
     let dup = r#"+++
 id = "PROJ-DUP-OTHER"
@@ -218,18 +218,18 @@ created_at = 2024-01-01T00:00:00Z
 Body
 "#;
 
-    fs::write(env.tasks_dir.join("dup-a.md"), dup).unwrap();
-    fs::write(nested.join("dup-b.md"), dup).unwrap();
-    fs::write(env.tasks_dir.join("unique.md"), unique).unwrap();
+    fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
+    fs::write(nested.join("dup-b.md"), dup).expect("dup-b.md should be written");
+    fs::write(env.tasks_dir.join("unique.md"), unique).expect("unique.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", "PROJ-UNIQUE-SHOW", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["id"].as_str(), Some("PROJ-UNIQUE-SHOW"));
 }
 
@@ -238,8 +238,8 @@ fn test_duplicate_warning_mentions_every_file_for_each_duplicate_id() {
     let env = setup_test_env();
     let nested_a = env.tasks_dir.join("nested-a");
     let nested_b = env.tasks_dir.join("nested-b");
-    fs::create_dir_all(&nested_a).unwrap();
-    fs::create_dir_all(&nested_b).unwrap();
+    fs::create_dir_all(&nested_a).expect("nested-a directory should be created");
+    fs::create_dir_all(&nested_b).expect("nested-b directory should be created");
 
     let dup_one = r#"+++
 id = "PROJ-DUP-ONE"
@@ -263,16 +263,16 @@ Body
     let dup_two_a_path = env.tasks_dir.join("dup-two-a.md");
     let dup_two_b_path = nested_b.join("dup-two-b.md");
 
-    fs::write(&dup_one_a_path, dup_one).unwrap();
-    fs::write(&dup_one_b_path, dup_one).unwrap();
-    fs::write(&dup_two_a_path, dup_two).unwrap();
-    fs::write(&dup_two_b_path, dup_two).unwrap();
+    fs::write(&dup_one_a_path, dup_one).expect("dup_one_a.md should be written");
+    fs::write(&dup_one_b_path, dup_one).expect("dup_one_b.md should be written");
+    fs::write(&dup_two_a_path, dup_two).expect("dup_two_a.md should be written");
+    fs::write(&dup_two_b_path, dup_two).expect("dup_two_b.md should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);

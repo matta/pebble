@@ -14,11 +14,11 @@ fn test_add_terminal_status_sets_resolved_at() {
         .current_dir(&env.root)
         .args(["add", "Done Task", "--status", "done", "--json"])
         .output()
-        .expect("Failed to execute pebble add");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     assert!(
         json["resolved_at"].is_string(),
@@ -35,11 +35,11 @@ fn test_update_status_to_closed_sets_resolved_at() {
         .current_dir(&env.root)
         .args(["update", "PROJ-1", "--status", "done", "--json"])
         .output()
-        .expect("Failed to execute pebble update");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     assert!(
         json["resolved_at"].is_string(),
@@ -60,17 +60,17 @@ created_at = 2024-01-01T00:00:00Z
 resolved_at = 2024-01-01T12:00:00Z
 +++
 "#;
-    fs::write(env.tasks_dir.join("PROJ-1.md"), content).unwrap();
+    fs::write(env.tasks_dir.join("PROJ-1.md"), content).expect("task file should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["update", "PROJ-1", "--status", "in_progress", "--json"])
         .output()
-        .expect("Failed to execute pebble update");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     assert!(
         json["resolved_at"].is_null(),
@@ -93,11 +93,11 @@ fn test_update_always_sets_modified_at() {
             "--json",
         ])
         .output()
-        .expect("Failed to execute pebble update");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     assert!(
         json["modified_at"].is_string(),
@@ -118,7 +118,8 @@ created_at = 2024-01-01T00:00:00Z
 resolved_at = 2024-01-01T12:00:00Z
 +++
 "#;
-    fs::write(env.tasks_dir.join("PROJ-old.md"), old_content).unwrap();
+    fs::write(env.tasks_dir.join("PROJ-old.md"), old_content)
+        .expect("old task file should be written");
 
     // Create a task that is NOT old enough
     let now_toml = chrono::Utc::now().to_rfc3339();
@@ -133,24 +134,28 @@ resolved_at = {now}
 "#,
         now = now_toml
     );
-    fs::write(env.tasks_dir.join("PROJ-new.md"), new_content).unwrap();
+    fs::write(env.tasks_dir.join("PROJ-new.md"), new_content)
+        .expect("new task file should be written");
 
     // Also pre-create a file in archive to trigger collision
     let archive_dir = env.tasks_dir.join("archive");
-    fs::create_dir_all(&archive_dir).unwrap();
-    fs::write(archive_dir.join("PROJ-old.md"), "already here").unwrap();
+    fs::create_dir_all(&archive_dir).expect("archive directory should be created");
+    fs::write(archive_dir.join("PROJ-old.md"), "already here")
+        .expect("archive file should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["archive", "--json"])
         .output()
-        .expect("Failed to execute pebble archive");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
-    let archived = json["archived"].as_array().unwrap();
+    let archived = json["archived"]
+        .as_array()
+        .expect("archived should be an array");
     assert_eq!(archived.len(), 1, "Expected 1 task to be archived");
     assert_eq!(archived[0]["id"], "PROJ-old");
     assert_eq!(archived[0]["moved_to"], "archive/PROJ-old-2.md");
@@ -169,7 +174,7 @@ fn test_priority_validation_enforces_range() {
         .current_dir(&env.root)
         .args(["add", "Valid Priority", "--priority", "42"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(output.status.success());
 
     // Invalid priority (too high)
@@ -177,7 +182,7 @@ fn test_priority_validation_enforces_range() {
         .current_dir(&env.root)
         .args(["add", "Invalid Priority", "--priority", "100"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("invalid value"));
 
@@ -186,7 +191,7 @@ fn test_priority_validation_enforces_range() {
         .current_dir(&env.root)
         .args(["add", "Invalid Priority", "--priority", "-1"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(!output.status.success());
 }
 
@@ -204,17 +209,17 @@ fn test_add_new_task_ends_with_trailing_newline() {
             "--json",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let json: Value = serde_json::from_str(&stdout).unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     // Get the path from JSON
-    let rel_path = json["path"].as_str().unwrap();
+    let rel_path = json["path"].as_str().expect("path should be a string");
     let abs_path = env.root.join(rel_path);
 
-    let content = fs::read_to_string(abs_path).unwrap();
+    let content = fs::read_to_string(abs_path).expect("task file should be readable");
     assert!(
         content.ends_with('\n'),
         "Expected task file to end with a trailing newline even if body doesn't have one"

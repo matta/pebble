@@ -306,7 +306,8 @@ mod tests {
                 title: id.to_string(),
                 status,
                 priority: None,
-                created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z").unwrap(),
+                created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
+                    .expect("datetime should be valid ISO 8601"),
                 modified_at: None,
                 resolved_at: None,
                 needs: needs.into_iter().map(|s| s.to_string()).collect(),
@@ -333,7 +334,7 @@ mod tests {
         );
 
         let graph = TaskGraph::new(nodes);
-        let node = graph.nodes.get("A").unwrap();
+        let node = graph.nodes.get("A").expect("test node 'A' should exist");
         let tasks_dir = PathBuf::from(".");
         let obj = TaskObject::from_node(node, &graph, tasks_dir.as_path());
 

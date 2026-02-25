@@ -18,11 +18,11 @@ pub struct TestEnv {
 
 /// Create a temp Pebble project with a config and empty tasks dir.
 pub fn setup_test_env() -> TestEnv {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempfile::tempdir().expect("temp directory should be created");
     let root = dir.path().to_path_buf();
 
     let config_dir = root.join(".pebble");
-    fs::create_dir(&config_dir).unwrap();
+    fs::create_dir(&config_dir).expect("config directory should be created");
     fs::write(
         config_dir.join("config.toml"),
         r#"
@@ -30,10 +30,10 @@ pub fn setup_test_env() -> TestEnv {
         tasks-dir = "tasks"
         "#,
     )
-    .unwrap();
+    .expect("config file should be written");
 
     let tasks_dir = root.join("tasks");
-    fs::create_dir(&tasks_dir).unwrap();
+    fs::create_dir(&tasks_dir).expect("tasks directory should be created");
 
     TestEnv {
         dir,
@@ -57,7 +57,7 @@ Body
         title = title,
         status = status
     );
-    fs::write(tasks_dir.join(format!("{id}.md")), content).unwrap();
+    fs::write(tasks_dir.join(format!("{id}.md")), content).expect("task file should be written");
 }
 
 /// Write a simple task file with title equal to the id.
