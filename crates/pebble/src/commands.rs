@@ -226,6 +226,50 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
     Ok(())
 }
 
+/// Validate and deduplicate a list of task IDs against the graph.
+///
+/// Ensures that:
+/// 1. Referenced tasks exist in the graph (except optionally `self_id`).
+/// 2. Referenced tasks are not marked as duplicates (ambiguous).
+/// 3. The returned list contains unique IDs.
+pub fn validate_task_references(
+    graph: &TaskGraph,
+    targets: Vec<String>,
+    self_id: Option<&str>,
+    flag_name: &str,
+) -> Result<Vec<String>> {
+    let mut deduped = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    for target_id in targets {
+        if !seen.insert(target_id.clone()) {
+            continue;
+        }
+
+        if let Some(sid) = self_id
+            && target_id == sid
+        {
+            deduped.push(target_id);
+            continue;
+        }
+
+        if graph.is_duplicate_id(&target_id) {
+            return Err(eyre!(
+                "Duplicate task ID '{}' found in multiple files; cannot safely target this ID.",
+                target_id
+            ));
+        }
+
+        if !graph.nodes.contains_key(&target_id) {
+            return Err(eyre!("Task '{}' not found for {}", target_id, flag_name));
+        }
+
+        deduped.push(target_id);
+    }
+
+    Ok(deduped)
+}
+
 fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
     let serialized = serde_json::to_value(config)?;
     let object = serialized

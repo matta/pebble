@@ -1,4 +1,4 @@
-use crate::commands::{RunContext, TaskObject};
+use crate::commands::{RunContext, TaskObject, validate_task_references};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
@@ -36,27 +36,6 @@ fn unique_task_path(tasks_dir: &Path, title: &str) -> PathBuf {
         counter += 1;
     }
     filepath
-}
-
-fn dedupe_and_validate_blocks(graph: &TaskGraph, blocks: Vec<String>) -> Result<Vec<String>> {
-    let mut deduped_blocks = Vec::new();
-    let mut seen_blocks = std::collections::HashSet::new();
-    for target_id in blocks {
-        if !seen_blocks.insert(target_id.clone()) {
-            continue;
-        }
-        if graph.is_duplicate_id(&target_id) {
-            return Err(eyre!(
-                "Duplicate task ID '{}' found in multiple files; cannot safely target this ID.",
-                target_id
-            ));
-        }
-        if !graph.nodes.contains_key(&target_id) {
-            return Err(eyre!("Task '{}' not found for --blocks", target_id));
-        }
-        deduped_blocks.push(target_id);
-    }
-    Ok(deduped_blocks)
 }
 
 fn apply_reverse_blocks(
@@ -138,7 +117,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         blocks,
     } = input;
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
-    let deduped_blocks = dedupe_and_validate_blocks(&graph, blocks)?;
+    let deduped_blocks = validate_task_references(&graph, blocks, None, "--blocks")?;
 
     let random_length = required_random_id_length(graph.nodes.len());
     let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
