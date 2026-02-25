@@ -214,3 +214,47 @@ fn test_add_blocks_fails_for_unknown_target_id() {
         "Expected error about missing blocked target, got: {stderr}"
     );
 }
+
+#[test]
+fn test_add_json_path_is_relative_to_current_working_directory() {
+    let env = setup_test_env();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Path Visibility Task", "--json"])
+        .output()
+        .expect("Failed to execute pebble add");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("add --json stdout should be UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("add --json output should parse");
+
+    let path = json["path"].as_str().expect("path should be present");
+    assert_eq!(
+        path, "tasks/path-visibility-task.md",
+        "Expected add --json path to be relative to current working directory"
+    );
+}
+
+#[test]
+fn test_add_human_output_uses_path_relative_to_current_working_directory() {
+    let env = setup_test_env();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Human Path Task"])
+        .output()
+        .expect("Failed to execute pebble add");
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be UTF-8");
+    assert!(
+        stderr.contains(" at tasks/human-path-task.md"),
+        "Expected human add output to include cwd-relative path, got: {stderr}"
+    );
+    let root = env.root.display().to_string();
+    assert!(
+        !stderr.contains(&root),
+        "Expected human add output to avoid absolute root path, got: {stderr}"
+    );
+}

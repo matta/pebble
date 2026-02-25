@@ -123,7 +123,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P2.3.a `resolved_at` auto-set when moving to `done`/`canceled`.
 - [ ] P2.3.b `resolved_at` cleared when leaving terminal states.
 - [ ] P2.3.c `modified_at` always set on `update`.
-- [ ] P2.4 `add` output prints relative path from **current working directory**.
+- [x] P2.4 `add` output prints relative path from **current working directory**.
 - [ ] P2.5 Ensure new task files end with a trailing newline.
 - [ ] P2.6 `archive` behavior per contract: configurable threshold; collision suffixes; JSON output relative to `tasks-dir`.
 
