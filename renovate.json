@@ -4,12 +4,18 @@
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
-      "extends": ["schedule:weekly"]
+      "extends": ["schedule:weekly"],
+      "automerge": true,
+      "platformAutomerge": true,
+      "automergeStrategy": "squash"
     },
     {
       "matchManagers": ["cargo"],
       "matchUpdateTypes": ["patch"],
-      "minimumReleaseAge": "7 days"
+      "minimumReleaseAge": "7 days",
+      "automerge": true,
+      "platformAutomerge": true,
+      "automergeStrategy": "squash"
     },
     {
       "matchManagers": ["cargo"],
