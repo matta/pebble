@@ -24,7 +24,6 @@ fn add_task(ctx: &RunContext, title: &str) {
 }
 
 #[test]
-#[allow(clippy::cognitive_complexity)]
 fn test_init_and_add() {
     let dir = tempdir().unwrap();
     let current_dir = dir.path();

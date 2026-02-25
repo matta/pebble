@@ -250,7 +250,6 @@ See documentation for implementation details.
     Ok(())
 }
 
-#[allow(clippy::cognitive_complexity)]
 pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
     let RunUpdateInput {
         id,

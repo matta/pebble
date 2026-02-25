@@ -11,7 +11,7 @@ Checklist:
 - [ ] P4.2 Fix TOCTOU slug collision with atomic create (`create_new(true)` + retry)
 - [ ] P4.3 Transliterate non-ASCII in `slugify`
 - [ ] P4.4 Add help completeness test covering every subcommand
-- [ ] P4.5 Forbid clippy warning suppressions in `justfile` (requires operator approval before changes)
+- [x] P4.5 Forbid clippy warning suppressions in `just` checks (operator approval received)
 
 Child Tasks:
 - None currently. Promote only when Adaptive Decomposition criteria are met.
