@@ -385,7 +385,10 @@ mod tests {
         use std::os::unix::ffi::OsStringExt;
 
         let path = PathBuf::from(OsString::from_vec(vec![b'd', b'i', b'r', b'-', 0xFF]));
-        assert_eq!(super::path_to_lossy_json_string(path.as_path()), "dir-\u{FFFD}");
+        assert_eq!(
+            super::path_to_lossy_json_string(path.as_path()),
+            "dir-\u{FFFD}"
+        );
     }
 
     #[test]
