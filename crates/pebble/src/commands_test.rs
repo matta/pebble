@@ -1,6 +1,6 @@
 use crate::commands::RunContext;
 use crate::commands_add::{RunAddInput, run_add};
-use crate::commands_write::run_update;
+use crate::commands_write::{RunUpdateInput, run_update};
 use crate::config::Config;
 use crate::graph::TaskGraph;
 use crate::models::TaskStatus;
@@ -67,19 +67,21 @@ fn test_init_and_add() {
 
     run_update(
         &ctx,
-        id.clone(),
-        Some("Updated Title".to_string()),
-        Some(TaskStatus::InProgress),
-        None,
-        true, // clear_priority
-        None,
-        Some("Appended body".to_string()),
-        vec!["new_tag".to_string()],
-        vec!["urgent".to_string()],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
+        RunUpdateInput {
+            id: id.clone(),
+            title: Some("Updated Title".to_string()),
+            status: Some(TaskStatus::InProgress),
+            priority: None,
+            clear_priority: true,
+            body: None,
+            append_body: Some("Appended body".to_string()),
+            add_tags: vec!["new_tag".to_string()],
+            remove_tags: vec!["urgent".to_string()],
+            add_needs: vec![],
+            remove_needs: vec![],
+            blocks: vec![],
+            remove_blocks: vec![],
+        },
     )
     .unwrap();
 

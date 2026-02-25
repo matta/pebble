@@ -23,7 +23,7 @@ use clap::Parser;
 use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_add::{RunAddInput, run_add};
-use commands_write::{run_archive, run_init, run_update};
+use commands_write::{RunUpdateInput, run_archive, run_init, run_update};
 
 fn run_help_json() -> Result<()> {
     println!("{}", serde_json::to_string(&help_json_schema())?);
@@ -34,48 +34,13 @@ fn run_list_command(ctx: &RunContext, options: ListOptions) -> Result<()> {
     run_list(ctx, &options)
 }
 
-struct UpdateCommandInput {
-    id: String,
-    title: Option<String>,
-    status: Option<crate::models::TaskStatus>,
-    priority: Option<u8>,
-    clear_priority: bool,
-    body: Option<String>,
-    append_body: Option<String>,
-    add_tags: Vec<String>,
-    remove_tags: Vec<String>,
-    add_needs: Vec<String>,
-    remove_needs: Vec<String>,
-    blocks: Vec<String>,
-    remove_blocks: Vec<String>,
-}
-
-fn run_update_command(ctx: &RunContext, input: UpdateCommandInput) -> Result<()> {
-    run_update(
-        ctx,
-        input.id,
-        input.title,
-        input.status,
-        input.priority,
-        input.clear_priority,
-        input.body,
-        input.append_body,
-        input.add_tags,
-        input.remove_tags,
-        input.add_needs,
-        input.remove_needs,
-        input.blocks,
-        input.remove_blocks,
-    )
-}
-
 enum DispatchCommand {
     ConfigGet { key: String },
     List(ListOptions),
     Next,
     Search { query: String },
     Add(RunAddInput),
-    Update(UpdateCommandInput),
+    Update(RunUpdateInput),
     Archive,
     Show { id: String, path_only: bool },
 }
@@ -155,7 +120,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
             remove_needs,
             blocks,
             remove_blocks,
-        } => DispatchCommand::Update(UpdateCommandInput {
+        } => DispatchCommand::Update(RunUpdateInput {
             id,
             title,
             status,
@@ -226,7 +191,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Next => run_next(ctx),
         DispatchCommand::Search { query } => run_search(ctx, &query),
         DispatchCommand::Add(input) => run_add(ctx, input),
-        DispatchCommand::Update(input) => run_update_command(ctx, input),
+        DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }

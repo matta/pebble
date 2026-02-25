@@ -117,6 +117,22 @@ struct UpdateMutations {
     remove_needs: Vec<String>,
 }
 
+pub struct RunUpdateInput {
+    pub id: String,
+    pub title: Option<String>,
+    pub status: Option<TaskStatus>,
+    pub priority: Option<u8>,
+    pub clear_priority: bool,
+    pub body: Option<String>,
+    pub append_body: Option<String>,
+    pub add_tags: Vec<String>,
+    pub remove_tags: Vec<String>,
+    pub add_needs: Vec<String>,
+    pub remove_needs: Vec<String>,
+    pub blocks: Vec<String>,
+    pub remove_blocks: Vec<String>,
+}
+
 fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Result<()> {
     if let Some(t) = mutations.title {
         node.frontmatter.title = t;
@@ -234,23 +250,23 @@ See documentation for implementation details.
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments, clippy::cognitive_complexity)]
-pub fn run_update(
-    ctx: &RunContext,
-    id: String,
-    title: Option<String>,
-    status: Option<TaskStatus>,
-    priority: Option<u8>,
-    clear_priority: bool,
-    body: Option<String>,
-    append_body: Option<String>,
-    add_tags: Vec<String>,
-    remove_tags: Vec<String>,
-    add_needs: Vec<String>,
-    remove_needs: Vec<String>,
-    blocks: Vec<String>,
-    remove_blocks: Vec<String>,
-) -> Result<()> {
+#[allow(clippy::cognitive_complexity)]
+pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
+    let RunUpdateInput {
+        id,
+        title,
+        status,
+        priority,
+        clear_priority,
+        body,
+        append_body,
+        add_tags,
+        remove_tags,
+        add_needs,
+        remove_needs,
+        blocks,
+        remove_blocks,
+    } = input;
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     if graph.is_duplicate_id(&id) {
         return Err(eyre!(
