@@ -9,3 +9,4 @@
 - @.agents/checks/docs-discoverability.md
 - @.agents/checks/warning-suppression-review.md
 - @.agents/checks/test-module-placement.md
+- @.agents/checks/rust-expect-message.md

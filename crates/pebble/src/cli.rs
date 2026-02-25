@@ -225,13 +225,6 @@ pub enum Commands {
     )]
     /// Output the CLI structure in a machine-readable JSON format.
     HelpJson,
-    #[command(
-        about = "Check for common issues.",
-        long_about = "Scan the project for potential configuration issues or data corruption.",
-        after_help = "Examples:\n  pebble doctor"
-    )]
-    /// Verify the health of the project configuration and data.
-    Doctor,
 }
 
 /// Configuration-related subcommands.
