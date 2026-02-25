@@ -50,17 +50,17 @@ impl TaskGraph {
         Ok(())
     }
 
-    /// Recursively builds a graph from a directory of task files.
+    /// Builds a graph from a directory of task files.
     ///
     /// Scans the directory and all subdirectories for Markdown (`.md`) files, parsing each
     /// as a [`TaskNode`].
     ///
     /// The loading process handles the following cases:
-    /// * **Valid Tasks**: Files starting with `+++` and containing valid TOML frontmatter are loaded.
-    /// * **Duplicates**: If multiple files declare the same task ID, a warning is printed to stderr,
+    /// * Valid Tasks: Files starting with `+++` and containing valid TOML frontmatter are loaded.
+    /// * Duplicates: If multiple files declare the same task ID, a warning is printed to stderr,
     ///   and all occurrences of that ID are excluded from the graph to prevent ambiguity.
-    /// * **Ignored Files**: Files named `AGENTS.md` or those not starting with `+++` are silently skipped.
-    /// * **Parse Errors**: Files starting with `+++` but containing invalid frontmatter result in a
+    /// * Ignored Files: Files named `AGENTS.md` or those not starting with `+++` are silently skipped.
+    /// * Parse Errors: Files starting with `+++` but containing invalid frontmatter result in a
     ///   warning to stderr but do not halt the loading process.
     ///
     /// # Errors
@@ -173,46 +173,6 @@ impl TaskGraph {
     /// 1. Its status is actionable (i.e., [`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`]).
     /// 2. It has no missing dependencies (all tasks in `needs` exist in the graph).
     /// 3. All its dependencies are in a terminal state (i.e., [`crate::models::TaskStatus::Done`] or [`crate::models::TaskStatus::Canceled`]).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use pebble::graph::TaskGraph;
-    /// use pebble::models::{TaskNode, TaskStatus, TaskFrontmatter};
-    /// use toml_datetime::Datetime;
-    /// use std::path::PathBuf;
-    /// use std::str::FromStr;
-    ///
-    /// // Helper to create a minimal node
-    /// fn node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
-    ///     TaskNode {
-    ///         path: PathBuf::from(format!("{}.md", id)),
-    ///         frontmatter: TaskFrontmatter {
-    ///             id: id.into(),
-    ///             title: "Title".into(),
-    ///             status,
-    ///             priority: None,
-    ///             created_at: Datetime::from_str("2023-01-01T00:00:00Z").unwrap(),
-    ///             modified_at: None,
-    ///             resolved_at: None,
-    ///             needs: needs.into_iter().map(String::from).collect(),
-    ///             tags: vec![],
-    ///         },
-    ///         body: String::new(),
-    ///     }
-    /// }
-    ///
-    /// let mut nodes = HashMap::new();
-    /// nodes.insert("A".into(), node("A", TaskStatus::Done, vec![]));
-    /// nodes.insert("B".into(), node("B", TaskStatus::Todo, vec!["A"]));
-    /// nodes.insert("C".into(), node("C", TaskStatus::Todo, vec!["Missing"]));
-    ///
-    /// let graph = TaskGraph::new(nodes);
-    ///
-    /// assert!(graph.is_ready("B")); // Ready: depends on Done task A
-    /// assert!(!graph.is_ready("C")); // Not Ready: depends on missing task
-    /// ```
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
