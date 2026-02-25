@@ -51,6 +51,7 @@ enum DispatchCommand {
     Archive,
     Doctor,
     Show { id: String, path_only: bool },
+    Doctor,
 }
 
 fn prepare_dispatch_command(
@@ -146,6 +147,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
         Commands::Archive => DispatchCommand::Archive,
         Commands::Doctor => DispatchCommand::Doctor,
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
+        Commands::Doctor => DispatchCommand::Doctor,
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
         }
@@ -201,7 +203,8 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         | DispatchCommand::Search { .. }
         | DispatchCommand::Update(_)
         | DispatchCommand::Archive
-        | DispatchCommand::Show { .. } => {
+        | DispatchCommand::Show { .. }
+        | DispatchCommand::Doctor => {
             ctx.ensure_project()?;
         }
         DispatchCommand::ConfigGet { .. } => {
@@ -219,5 +222,6 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Archive => run_archive(ctx),
         DispatchCommand::Doctor => commands_diagnostics::run_doctor(ctx),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
+        DispatchCommand::Doctor => commands::run_doctor(ctx),
     }
 }

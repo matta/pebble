@@ -118,6 +118,7 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
             json!({ "ok": "bool", "errors": [{ "file": "string", "line": "number|null", "message": "string", "code": "string|null" }] })
         }
         ("help-json", None) => json!("HelpSchema"),
+        ("doctor", None) => json!({ "status": "string" }),
         // Intentional panic: Tests validate exhaustiveness before release.
         _ => panic!(
             "Unhandled help-json output schema mapping for command '{}' and subcommand {:?}",

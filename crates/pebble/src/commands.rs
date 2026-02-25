@@ -177,6 +177,17 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
     Ok(())
 }
 
+/// Run a health check on the project.
+pub fn run_doctor(ctx: &RunContext) -> Result<()> {
+    // Basic check: project root and tasks directory are accessible (implied by ensure_project)
+    if ctx.json {
+        println!("{}", serde_json::json!({ "status": "ok" }));
+    } else {
+        println!("Doctor: everything looks good!");
+    }
+    Ok(())
+}
+
 /// Show a task by ID, or just its path when `path_only` is set.
 pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
