@@ -146,6 +146,17 @@ impl RunContext {
             json,
         })
     }
+
+    /// Ensure that we are in a valid project context (root exists or tasks dir exists).
+    pub fn ensure_project(&self) -> Result<()> {
+        if self.project_root.is_some() || self.tasks_dir.exists() {
+            Ok(())
+        } else {
+            Err(eyre!(
+                "No pebble project found. Run 'pebble init' to create one, or use '--dir' to specify a tasks directory."
+            ))
+        }
+    }
 }
 
 /// Emit the highest-scoring ready task according to the default ranking.
@@ -162,6 +173,17 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
         }
     } else {
         return Err(eyre!("No ready tasks found."));
+    }
+    Ok(())
+}
+
+/// Run a health check on the project.
+pub fn run_doctor(ctx: &RunContext) -> Result<()> {
+    // Basic check: project root and tasks directory are accessible (implied by ensure_project)
+    if ctx.json {
+        println!("{}", serde_json::json!({ "status": "ok" }));
+    } else {
+        println!("Doctor: everything looks good!");
     }
     Ok(())
 }

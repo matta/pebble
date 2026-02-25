@@ -194,6 +194,22 @@ fn run() -> Result<()> {
 }
 
 fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
+    match &command {
+        DispatchCommand::Add(_)
+        | DispatchCommand::List(_)
+        | DispatchCommand::Next
+        | DispatchCommand::Search { .. }
+        | DispatchCommand::Update(_)
+        | DispatchCommand::Archive
+        | DispatchCommand::Show { .. }
+        | DispatchCommand::Doctor => {
+            ctx.ensure_project()?;
+        }
+        DispatchCommand::ConfigGet { .. } => {
+            // No project required for config inspection.
+        }
+    }
+
     match command {
         DispatchCommand::ConfigGet { key } => run_config_get(ctx, &key),
         DispatchCommand::List(options) => run_list_command(ctx, options),

@@ -75,3 +75,35 @@ fn test_update_priority_above_99_is_usage_error() {
     assert!(output.stdout.is_empty());
     assert!(!output.stderr.is_empty());
 }
+
+#[test]
+fn test_list_fails_when_no_project_found() {
+    let temp = tempfile::tempdir().expect("Failed to create temp dir");
+    let root = temp.path();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(root)
+        .args(["list"])
+        .output()
+        .expect("Failed to execute pebble list");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("No pebble project found"));
+}
+
+#[test]
+fn test_add_fails_when_no_project_found() {
+    let temp = tempfile::tempdir().expect("Failed to create temp dir");
+    let root = temp.path();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(root)
+        .args(["add", "New Task"])
+        .output()
+        .expect("Failed to execute pebble add");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("No pebble project found"));
+}
