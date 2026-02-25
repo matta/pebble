@@ -10,10 +10,11 @@ fn test_init_path_traversal_prevention() {
 
     // Try to init inside 'project' but point tasks dir to '../outside'
     // 'outside' would be a sibling of 'project', i.e. directly under 'root'.
-    let output = Command::cargo_bin("pebble")
-        .unwrap()
+    #[allow(deprecated)] // TODO: Migrate to cargo_bin_cmd! when feasible
+    let mut cmd = Command::cargo_bin("pebble").unwrap();
+    let output = cmd
         .current_dir(&subdir)
-        .args(&["init", "--dir", "../outside"])
+        .args(["init", "--dir", "../outside"])
         .output()
         .expect("Failed to run init command");
 
