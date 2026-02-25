@@ -1,8 +1,10 @@
 +++
 id = "pebl-b4ei14wcbe"
 title = "Decide naming style in help-json guidance: exact keys vs conceptual labels"
-status = "todo"
+status = "done"
 created_at = 2026-02-24T05:22:51.306514+00:00
+modified_at = 2026-02-25T03:47:12.971935+00:00
+resolved_at = 2026-02-25T03:47:12.971925+00:00
 needs = []
 tags = ["self_hosted", "review_followup"]
 +++

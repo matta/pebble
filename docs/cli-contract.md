@@ -4,7 +4,7 @@ This document defines the strict specification for the Pebble Command Line Inter
 
 ## Streams
 
-- `stdout`: Primary command output only. Human-readable by default, machine-readable with `--json`.
+- `stdout`: Primary command output only. Human-readable by default, machine-readable with `--json`, except `pebble init` in human mode (see [`pebble init`](#pebble-init)).
 - `stderr`: Diagnostics, warnings, progress logs, and error messages. Never emit JSON data to `stderr`.
 
 ## Exit Codes
@@ -103,7 +103,7 @@ In addition to the general requirements above, each command's `--help` **MUST** 
     * Supported keys and behavior for unknown keys.
     * Output semantics in human mode vs `--json`.
 * `pebble help-json`
-    * Gives a machine-readable overview of commands, flags, and output-shape hints.
+    * Gives a machine-readable overview of commands, flags, and output metadata.
     * Writes valid JSON to `stdout` only, with no diagnostics mixed into `stdout`.
 * `pebble list` / `pebble ls`
     * Full filter semantics and combined-flag behavior as defined below in `pebble list --help` must-haves.
@@ -153,19 +153,27 @@ The `pebble help-json` command returns machine-readable CLI metadata intended fo
 
 ### What it returns
 
+When this document discusses `help-json` fields, it uses exact emitted key names (for example, `global_options`, not paraphrases like "global flags list"). These names improve discoverability, but the output remains guidance rather than a versioned contract.
+
 The output is a JSON object that generally includes:
-* `name` — the CLI binary name.
-* `global_options` — a list of flags available on every command (e.g. `--json`, `--dir`) with names and short descriptions.
-* `commands` — a list of all subcommands, each with:
-    * `name` — canonical subcommand name (and any aliases).
-    * `description` — a one-line purpose statement.
-    * `options` — per-command flags with names and descriptions.
-    * `output_shape` — a hint describing the kind of JSON value this command returns when `--json` is specified (e.g. `TaskObject`, `{"tasks": [TaskObject]}`).
+* Root keys:
+    * `name` — the CLI binary name.
+    * `global_options` — a list of global option objects.
+    * `commands` — a list of command objects.
+* Option object keys:
+    * `name` — option identifier (for example, `--json`).
+    * `description` — one-line option help text.
+* Command object keys:
+    * `name` — canonical command name.
+    * `description` — one-line purpose statement.
+    * `options` — list of option objects (`name`, `description`).
+    * `output` — hint for `--json` output shape on leaf commands (for example, `TaskObject`, `{"tasks": ["TaskObject"]}`).
+    * `subcommands` — list of nested command objects for command groups (for example, `config get`).
 
 ### How AI agents should use it
 
 * Use `help-json` to **discover what commands exist** and what flags they accept, especially before composing a `pebble` invocation for the first time.
-* Use `output_shape` hints to understand what JSON structure to expect before parsing `--json` output.
+* Use `output` hints to understand what JSON structure to expect before parsing `--json` output.
 * **Do not** embed `help-json` structure in hard-coded logic that will break if fields are renamed or reorganized. Always parse defensively.
 * For any field that matters to downstream logic, prefer the contract-backed `--json` output from the actual command over `help-json` metadata.
 
@@ -198,7 +206,7 @@ Reads an active configuration value.
 * **Output (`--json`)**: `{"key": "<key>", "value": "<value>"}`
 
 ### `pebble help-json`
-Returns machine-readable CLI metadata for AI-agent discovery, including commands, flags, and output-shape hints. This output is **guidance, not a versioned contract** — see the [`help-json` Output section](#help-json-output-guidance-not-contract) for full semantics and stability caveats.
+Returns machine-readable CLI metadata for AI-agent discovery, including commands, flags, and output metadata. This output is **guidance, not a versioned contract** — see the [`help-json` Output section](#help-json-output-guidance-not-contract) for full semantics and stability caveats.
 * **Inputs**: None.
 * **Output**: JSON object on `stdout` only. No diagnostics are mixed into `stdout`.
 

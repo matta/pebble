@@ -56,7 +56,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - Root program task file: `docs/pebble/pebble-self-hosted-implementation-program.md`
 - Phase task IDs:
 - [x] `P1`: `pebl-cdIZGN`
-- [ ] `P2`: `pebl--yb8d4`
+- [-] `P2`: `pebl--yb8d4`
 - [ ] `P3`: `pebl-hRuKk1`
 - [ ] `P4`: `pebl-fFdi_z`
 - [ ] `P5`: `pebl-pCyebx`
@@ -76,10 +76,10 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [x] `pebl-4ssy3fsyds`: Feature request: add reverse dependency link at add time
 - [ ] `pebl-p3k8qhfwqu`: Refactor commands_write_tests to avoid #[path] attribute
 - [ ] `pebl-uj0hll5buc`: Fix stale reverse index in run_add JSON output
-- [ ] `pebl-czi45zargx`: Use lossy-safe path serialization in init JSON output
+- [x] `pebl-czi45zargx`: Use lossy-safe path serialization in init JSON output
 - [ ] `pebl-6pv06nwvpl`: Align help-json guidance text with actual emitted keys
-- [ ] `pebl-9fvf6xfco3`: Clarify global stream rules vs init human stderr output
-- [ ] `pebl-b4ei14wcbe`: Decide naming style in help-json guidance: exact keys vs conceptual labels
+- [x] `pebl-9fvf6xfco3`: Clarify global stream rules vs init human stderr output
+- [x] `pebl-b4ei14wcbe`: Decide naming style in help-json guidance: exact keys vs conceptual labels
 - [x] `pebl-FU-FSN`: Forbid clippy warning suppressions
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)
@@ -118,12 +118,12 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 
 ## Phase 2: Mutation Semantics & Validation
 - [x] P2.1 ID generation: `<issue-prefix>-<suffix>` with alphabet `a-z0-9`, suffix length based on issue count to keep collision probability < 1e-12.
-- [ ] P2.2 Priority validation: enforce `0..99` in `add` and `update`.
+- [x] P2.2 Priority validation: enforce `0..99` in `add` and `update`.
 - [ ] P2.3 Status transitions:
 - [ ] P2.3.a `resolved_at` auto-set when moving to `done`/`canceled`.
 - [ ] P2.3.b `resolved_at` cleared when leaving terminal states.
 - [ ] P2.3.c `modified_at` always set on `update`.
-- [ ] P2.4 `add` output prints relative path from **current working directory**.
+- [x] P2.4 `add` output prints relative path from **current working directory**.
 - [ ] P2.5 Ensure new task files end with a trailing newline.
 - [ ] P2.6 `archive` behavior per contract: configurable threshold; collision suffixes; JSON output relative to `tasks-dir`.
 

@@ -24,6 +24,12 @@ pub enum TaskStatus {
     Canceled,
 }
 
+bounded_integer::bounded_integer! {
+    /// Newtype enforcing valid priority range at the type level.
+    #[repr(u32)]
+    pub struct Priority(0, 99);
+}
+
 /// Represents the exact structure of the TOML front matter.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaskFrontmatter {
@@ -32,7 +38,7 @@ pub struct TaskFrontmatter {
     // Status strictly validated against the enum.
     pub status: TaskStatus,
     // Valid range: 0..99. Lower number = higher priority.
-    pub priority: Option<u32>,
+    pub priority: Option<Priority>,
     pub created_at: Datetime,
     pub modified_at: Option<Datetime>,
     pub resolved_at: Option<Datetime>,

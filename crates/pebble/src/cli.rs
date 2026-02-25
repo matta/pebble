@@ -4,7 +4,7 @@
 //! It serves as the primary entry point for parsing arguments and dispatching
 //! to command handlers.
 
-use crate::models::TaskStatus;
+use crate::models::{Priority, TaskStatus};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -57,8 +57,8 @@ pub enum Commands {
         #[arg(long = "need", value_name = "ID")]
         needs: Vec<String>,
         /// Filter by priority (OR). Repeat for multiple. Valid range: 0..99.
-        #[arg(long = "priority", value_parser = clap::value_parser!(u8).range(0..=99), value_name = "PRIORITY")]
-        priorities: Vec<u8>,
+        #[arg(long = "priority", value_name = "PRIORITY")]
+        priorities: Vec<Priority>,
         /// Return only tasks whose dependencies are all terminal (done/canceled).
         #[arg(long)]
         is_ready: bool,
@@ -105,7 +105,7 @@ pub enum Commands {
         status: Option<TaskStatus>,
         /// Priority (0..99, lower is higher).
         #[arg(long, value_name = "PRIORITY")]
-        priority: Option<u8>,
+        priority: Option<Priority>,
         /// Initial markdown body content.
         #[arg(long, value_name = "TEXT")]
         body: Option<String>,
@@ -137,7 +137,7 @@ pub enum Commands {
         status: Option<TaskStatus>,
         /// Set task priority (0..99).
         #[arg(long, value_name = "PRIORITY")]
-        priority: Option<u8>,
+        priority: Option<Priority>,
         /// Clear existing priority (sets to None).
         #[arg(long)]
         clear_priority: bool,

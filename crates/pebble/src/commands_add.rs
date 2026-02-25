@@ -1,8 +1,9 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
+use std::env;
 use std::path::{Path, PathBuf};
 
 const ID_ALPHABET: &[char] = &[
@@ -119,7 +120,7 @@ pub fn slugify(s: &str) -> String {
 pub struct RunAddInput {
     pub title: String,
     pub status: Option<TaskStatus>,
-    pub priority: Option<u8>,
+    pub priority: Option<Priority>,
     pub body: Option<String>,
     pub needs: Vec<String>,
     pub tags: Vec<String>,
@@ -167,12 +168,17 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         .nodes
         .insert(node.frontmatter.id.clone(), node.clone());
 
+    let current_dir = env::current_dir()?;
+    let path_for_output = node.path.strip_prefix(&current_dir).unwrap_or(&node.path);
+    let display_path = path_for_output.display().to_string();
+
     if ctx.json {
         let updated_graph = TaskGraph::new(graph.nodes);
-        let obj = TaskObject::from_node(&node, &updated_graph, &ctx.tasks_dir);
+        let mut obj = TaskObject::from_node(&node, &updated_graph, &ctx.tasks_dir);
+        obj.path = display_path;
         println!("{}", serde_json::to_string(&obj)?);
     } else {
-        eprintln!("Created task {} at {}", new_id, node.path.display());
+        eprintln!("Created task {} at {}", new_id, display_path);
     }
 
     Ok(())

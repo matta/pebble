@@ -55,6 +55,15 @@ impl TaskStatus {
     }
 }
 
+bounded_integer::bounded_integer! {
+    /// Priority newtype constrained to the inclusive range `0..=99`.
+    ///
+    /// This enforces Pebble's domain invariant at the type level so invalid priorities
+    /// cannot be represented in parsed task data or command mutation inputs.
+    #[repr(u32)]
+    pub struct Priority(0, 99);
+}
+
 /// Represents the exact structure of the TOML front matter.
 ///
 /// This struct corresponds to the metadata block at the top of a task file.
@@ -70,8 +79,6 @@ impl TaskStatus {
 /// assert_eq!(fm.title, "Test");
 /// assert_eq!(fm.status, TaskStatus::Todo);
 /// ```
-// TODO: Widen `priority` from Option<u8> to Option<u32> with 0..99 range validation.
-//   Also update corresponding Option<u8> in: main.rs (Add, Update), commands_write.rs (run_add, run_update).
 // TODO: Implement unknown-key handling: reads ignore; doctor/fix warn; check errors; fix preserves.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct TaskFrontmatter {
@@ -82,7 +89,7 @@ pub struct TaskFrontmatter {
     /// Lifecycle state; strictly validated against the [`TaskStatus`] enum.
     pub status: TaskStatus,
     /// Optional priority for ordering (lower value = higher priority). Range 0–99.
-    pub priority: Option<u8>,
+    pub priority: Option<Priority>,
     /// Timestamp when the task was created.
     pub created_at: Datetime,
     /// Timestamp of the last modification, if the task has been edited.
@@ -149,6 +156,7 @@ impl TaskNode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryFrom;
 
     #[test]
     fn test_task_status_deserialization() {
@@ -200,11 +208,65 @@ needs = ["issue-122"]
         assert_eq!(fm.id, "issue-123");
         assert_eq!(fm.title, "Implement Task Node");
         assert_eq!(fm.status, TaskStatus::Todo);
-        assert_eq!(fm.priority, Some(1));
+        assert_eq!(fm.priority, Some(Priority::try_from(1).unwrap()));
         assert_eq!(fm.needs, vec!["issue-122"]);
         assert!(
             fm.tags.is_empty(),
             "Tags should default to empty vec if omitted"
         );
+    }
+
+    #[test]
+    fn test_priority_try_from_u8_enforces_range() {
+        assert_eq!(Priority::try_from(0u8).unwrap().get(), 0);
+        assert_eq!(Priority::try_from(99u8).unwrap().get(), 99);
+        assert!(Priority::try_from(100u8).is_err());
+    }
+
+    #[test]
+    fn test_task_frontmatter_rejects_out_of_range_priority() {
+        let toml_str = r#"
+id = "issue-123"
+title = "Implement Task Node"
+status = "todo"
+priority = 100
+created_at = 2026-02-21T17:00:00Z
+"#;
+
+        let err = toml::from_str::<TaskFrontmatter>(toml_str).unwrap_err();
+        assert!(
+            err.to_string().contains("priority"),
+            "Expected priority validation error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_priority_toml_serializes_as_integer() {
+        #[derive(Serialize)]
+        struct Wrapper {
+            priority: Priority,
+        }
+
+        let wrapper = Wrapper {
+            priority: Priority::try_from(5).unwrap(),
+        };
+        let toml = toml::to_string(&wrapper).unwrap();
+        assert_eq!(toml.trim(), "priority = 5");
+    }
+
+    #[test]
+    fn test_priority_uses_u32_representation_size() {
+        assert_eq!(
+            std::mem::size_of::<Priority>(),
+            std::mem::size_of::<u32>(),
+            "Priority should use u32 representation"
+        );
+    }
+
+    #[test]
+    fn test_priority_into_u32() {
+        let p = Priority::new(42).unwrap();
+        let v: u32 = p.into();
+        assert_eq!(v, 42);
     }
 }

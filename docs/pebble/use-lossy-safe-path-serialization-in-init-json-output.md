@@ -1,9 +1,10 @@
 +++
 id = "pebl-czi45zargx"
 title = "Use lossy-safe path serialization in init JSON output"
-status = "todo"
+status = "done"
 created_at = 2026-02-24T04:22:35.759998+00:00
-modified_at = 2026-02-24T04:23:00.413402+00:00
+modified_at = 2026-02-25T03:36:00.667911+00:00
+resolved_at = 2026-02-25T03:36:00.667902+00:00
 needs = []
 tags = ["review_followup", "self_hosted"]
 +++

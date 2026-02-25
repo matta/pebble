@@ -43,3 +43,34 @@ fn test_add_invalid_status_is_usage_error() {
     assert!(output.stdout.is_empty());
     assert!(!output.stderr.is_empty());
 }
+
+#[test]
+fn test_add_priority_above_99_is_usage_error() {
+    let env = setup_test_env();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Bad Priority", "--priority", "100", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert!(!output.stderr.is_empty());
+}
+
+#[test]
+fn test_update_priority_above_99_is_usage_error() {
+    let env = setup_test_env();
+    write_task_with_id(&env.tasks_dir, "PROJ-1");
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["update", "PROJ-1", "--priority", "100", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert!(!output.stderr.is_empty());
+}

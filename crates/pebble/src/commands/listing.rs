@@ -1,5 +1,5 @@
 use crate::graph::TaskGraph;
-use crate::models::{TaskNode, TaskStatus};
+use crate::models::{Priority, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -15,7 +15,7 @@ pub struct ListOptions {
     /// Filter by task dependencies (OR logic).
     pub needs: Vec<String>,
     /// Filter by priority values (OR logic).
-    pub priorities: Vec<u8>,
+    pub priorities: Vec<Priority>,
     /// Show only tasks that are ready to start.
     pub is_ready: bool,
     /// Include closed tasks (done/canceled) in results.
@@ -124,6 +124,7 @@ fn sort_list_tasks<'a>(
     };
 
     let spec = SortSpec::parse(sort_raw)?;
+    let min_priority = Priority::MIN;
     let status_rank = |status: &TaskStatus| -> u8 {
         match status {
             TaskStatus::Todo => 0,
@@ -141,12 +142,12 @@ fn sort_list_tasks<'a>(
                     .frontmatter
                     .priority
                     .map(|p| (false, p))
-                    .unwrap_or((true, 0));
+                    .unwrap_or((true, min_priority));
                 let b_key = b
                     .frontmatter
                     .priority
                     .map(|p| (false, p))
-                    .unwrap_or((true, 0));
+                    .unwrap_or((true, min_priority));
                 a_key.cmp(&b_key)
             }
             ListSortField::Blocking => {
