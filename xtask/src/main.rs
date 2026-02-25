@@ -191,7 +191,13 @@ fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result
 
     if !violations.is_empty() {
         violations.sort_by(|a, b| b.1.cmp(&a.1));
-        println!("The following Rust files exceed {} tokens:", limit);
+        println!("SOURCE TOKEN LIMIT EXCEEDED");
+        println!(
+            "This gate enforces Rust SOURCE CODE token count (limit: {}), NOT line count.",
+            limit
+        );
+        println!("Comments and whitespace are excluded from this token count.");
+        println!("\nThe following Rust files exceed the source token limit:");
         for (file, count) in violations {
             println!("{}: {} tokens", file, count);
         }
@@ -201,11 +207,11 @@ fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result
         );
         println!("- Improve modularization by extracting large components into new modules.");
         println!("- Refactor long functions into smaller, more manageable pieces.");
-        bail!("Files too large. Please refactor or split them.");
+        bail!("Source token limit exceeded (not line count; comments and whitespace excluded).");
     }
 
     println!(
-        "All Rust files are within the token limit ({} tokens).",
+        "All Rust files are within the source token limit ({} tokens; comments/whitespace excluded).",
         limit
     );
     Ok(())

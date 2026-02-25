@@ -3,7 +3,7 @@ mod support;
 use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::process::Command;
-use support::setup_test_env;
+use support::{setup_test_env, write_task};
 
 #[test]
 fn test_add_generates_id_with_lowercase_alphanumeric_suffix() {
@@ -95,5 +95,83 @@ fn test_add_id_suffix_length_scales_with_task_count() {
         random_part.len() >= 9,
         "Random ID length {} should be at least 9 for n=10",
         random_part.len()
+    );
+}
+
+#[test]
+fn test_add_blocks_updates_target_needs_with_new_task_id() {
+    let env = setup_test_env();
+    write_task(&env.tasks_dir, "PROJ-target", "Target Task", "todo");
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "add",
+            "Precondition Task",
+            "--blocks",
+            "PROJ-target",
+            "--json",
+        ])
+        .output()
+        .expect("Failed to execute pebble add");
+
+    assert!(
+        output.status.success(),
+        "pebble add with --blocks failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let created_stdout = String::from_utf8(output.stdout).unwrap();
+    let created_json: Value = serde_json::from_str(&created_stdout).unwrap();
+    let created_id = created_json["id"].as_str().expect("id should be present");
+
+    let show_output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["show", "PROJ-target", "--json"])
+        .output()
+        .expect("Failed to execute pebble show");
+
+    assert!(show_output.status.success());
+    let show_stdout = String::from_utf8(show_output.stdout).unwrap();
+    let show_json: Value = serde_json::from_str(&show_stdout).unwrap();
+    let needs = show_json["needs"]
+        .as_array()
+        .expect("needs should be an array")
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(
+        needs.contains(&created_id),
+        "Expected target needs to include new task ID {created_id}, got {needs:?}"
+    );
+
+    let created_needs = created_json["needs"]
+        .as_array()
+        .expect("created task needs should be an array");
+    assert!(
+        created_needs.is_empty(),
+        "Created task should not gain reverse needs when using --blocks"
+    );
+}
+
+#[test]
+fn test_add_blocks_fails_for_unknown_target_id() {
+    let env = setup_test_env();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Precondition Task", "--blocks", "PROJ-missing"])
+        .output()
+        .expect("Failed to execute pebble add");
+
+    assert!(
+        !output.status.success(),
+        "Expected add --blocks with missing task to fail"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("not found"),
+        "Expected error about missing blocked target, got: {stderr}"
     );
 }
