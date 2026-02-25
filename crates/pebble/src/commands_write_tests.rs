@@ -1,4 +1,4 @@
-use super::*;
+use crate::commands_add::slugify;
 
 #[test]
 fn test_slugify_basic() {

@@ -1,10 +1,27 @@
 use crate::commands::RunContext;
-use crate::commands_write::{run_add, run_update};
+use crate::commands_add::{RunAddInput, run_add};
+use crate::commands_write::{RunUpdateInput, run_update};
 use crate::config::Config;
 use crate::graph::TaskGraph;
 use crate::models::TaskStatus;
 use std::path::PathBuf;
 use tempfile::tempdir;
+
+fn add_task(ctx: &RunContext, title: &str) {
+    run_add(
+        ctx,
+        RunAddInput {
+            title: title.to_string(),
+            status: None,
+            priority: None,
+            body: None,
+            needs: vec![],
+            tags: vec![],
+            blocks: vec![],
+        },
+    )
+    .unwrap();
+}
 
 #[test]
 #[allow(clippy::cognitive_complexity)]
@@ -24,12 +41,15 @@ fn test_init_and_add() {
 
     run_add(
         &ctx,
-        "My First Task".to_string(),
-        None,
-        Some(5),
-        Some("Body text".to_string()),
-        vec![],
-        vec!["urgent".to_string()],
+        RunAddInput {
+            title: "My First Task".to_string(),
+            status: None,
+            priority: Some(5),
+            body: Some("Body text".to_string()),
+            needs: vec![],
+            tags: vec!["urgent".to_string()],
+            blocks: vec![],
+        },
     )
     .unwrap();
 
@@ -47,17 +67,21 @@ fn test_init_and_add() {
 
     run_update(
         &ctx,
-        id.clone(),
-        Some("Updated Title".to_string()),
-        Some(TaskStatus::InProgress),
-        None,
-        true, // clear_priority
-        None,
-        Some("Appended body".to_string()),
-        vec!["new_tag".to_string()],
-        vec!["urgent".to_string()],
-        vec![],
-        vec![],
+        RunUpdateInput {
+            id: id.clone(),
+            title: Some("Updated Title".to_string()),
+            status: Some(TaskStatus::InProgress),
+            priority: None,
+            clear_priority: true,
+            body: None,
+            append_body: Some("Appended body".to_string()),
+            add_tags: vec!["new_tag".to_string()],
+            remove_tags: vec!["urgent".to_string()],
+            add_needs: vec![],
+            remove_needs: vec![],
+            blocks: vec![],
+            remove_blocks: vec![],
+        },
     )
     .unwrap();
 
@@ -88,51 +112,36 @@ fn test_add_slug_filename() {
     };
 
     // 1. Basic slugification
-    run_add(
-        &ctx,
-        "Implement Task Node".to_string(),
-        None,
-        None,
-        None,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    add_task(&ctx, "Implement Task Node");
     assert!(tasks_dir.join("implement-task-node.md").exists());
 
     // 2. Collision handling
-    run_add(
-        &ctx,
-        "Implement Task Node".to_string(),
-        None,
-        None,
-        None,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    add_task(&ctx, "Implement Task Node");
     assert!(tasks_dir.join("implement-task-node-2.md").exists());
 
     // 3. Punctuation and spaces
-    run_add(
-        &ctx,
-        "Fix: Bug #123! (now)".to_string(),
-        None,
-        None,
-        None,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    add_task(&ctx, "Fix: Bug #123! (now)");
     assert!(tasks_dir.join("fix-bug-123-now.md").exists());
 
     // 4. Empty slug fallback
-    run_add(&ctx, "!!!".to_string(), None, None, None, vec![], vec![]).unwrap();
+    add_task(&ctx, "!!!");
     assert!(tasks_dir.join("task.md").exists());
 
     // 5. Long title is truncated
     let long_title = "a ".repeat(100); // 200 chars of "a " -> slug would be "a-a-a-..."
-    run_add(&ctx, long_title, None, None, None, vec![], vec![]).unwrap();
+    run_add(
+        &ctx,
+        RunAddInput {
+            title: long_title,
+            status: None,
+            priority: None,
+            body: None,
+            needs: vec![],
+            tags: vec![],
+            blocks: vec![],
+        },
+    )
+    .unwrap();
     let entries: Vec<_> = std::fs::read_dir(&tasks_dir)
         .unwrap()
         .filter_map(|e| e.ok())

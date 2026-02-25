@@ -119,11 +119,12 @@ In addition to the general requirements above, each command's `--help` **MUST** 
     * Result ordering (default list ordering).
 * `pebble add <title>`
     * Generated fields and defaults (`id`, timestamps, status defaults).
-    * Repeatable flags (`--need`, `--tag`) and semantics.
+    * Repeatable flags (`--need`, `--tag`, `--blocks`) and semantics.
     * Priority validation range (`0..99`).
 * `pebble update <id>`
     * Mutability surface (what can be changed and what cannot, especially immutable `id`).
     * Incremental list operations semantics (`--add-*`, `--remove-*`, and any clear/set behavior).
+    * Reverse-link operations semantics (`--blocks`, `--remove-blocks`) and target-ID behavior.
     * Timestamp transition semantics (`modified_at`, `resolved_at` transitions).
 * `pebble archive`
     * Selection criteria (terminal status + age threshold).
@@ -262,7 +263,8 @@ Case-insensitive substring search against task `title` (frontmatter) and raw Mar
 ### `pebble add <title>`
 Creates a new task file with generated boilerplate.
 * **Inputs**: `<title>` (string).
-    * Flags: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--need <id>` (repeatable), `--tag <tag>` (repeatable).
+    * Flags: `--status <status>`, `--priority <N>` (valid range: `0..99`), `--body <text>`, `--need <id>` (repeatable), `--tag <tag>` (repeatable), `--blocks <id>` (repeatable).
+    * `--blocks <id>` semantics: after creating the new task, append the new task ID to `needs` of each referenced task ID (deduplicated). Missing or duplicate target IDs cause the command to fail.
 * **ID Generation**: The generated ID follows the pattern `<issue-prefix>-<suffix>`, where `issue-prefix` comes from the `issue-prefix` config key (default: `issue`). The suffix uses the alphabet `a-z0-9` (36 characters). The suffix length is computed from the current issue count to keep collision probability under 1e-12 (birthday paradox sizing).
 * **Filename Generation**: The filename is derived from the `<title>` using a deterministic slug. To ensure maximum reach and cross-platform safety, slugs are strictly restricted to lowercase alphanumeric characters, dashes, and underscores:
     * lowercase
@@ -278,7 +280,10 @@ Creates a new task file with generated boilerplate.
 ### `pebble update <id>`
 Safely modifies existing frontmatter properties or appends body content.
 * **Inputs**: `<id>` (string).
-    * Flags: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>` (replaces entire body), `--append-body <text>` (appends to body), `--add-tag <tag>`, `--remove-tag <tag>`, `--add-need <id>`, `--remove-need <id>`.
+    * Flags: `--title <text>`, `--status <status>`, `--priority <N>` (valid range: `0..99`), `--clear-priority`, `--body <text>` (replaces entire body), `--append-body <text>` (appends to body), `--add-tag <tag>`, `--remove-tag <tag>`, `--add-need <id>`, `--remove-need <id>`, `--blocks <id>`, `--remove-blocks <id>`.
+    * `--blocks <id>` semantics: add this task's ID to `needs` of each referenced task ID.
+    * `--remove-blocks <id>` semantics: remove this task's ID from `needs` of each referenced task ID.
+    * Reverse-link flag behavior: referenced IDs are deduplicated; missing or duplicate target IDs cause failure.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>` representing the modified task.
 
 ### `pebble archive`

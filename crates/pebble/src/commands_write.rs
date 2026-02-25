@@ -1,47 +1,194 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{TaskNode, TaskStatus};
+use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::env;
 use std::path::PathBuf;
-use std::str::FromStr;
 
-/// Generate the current UTC time as a TOML-compatible datetime.
-fn current_toml_time() -> Result<toml_datetime::Datetime> {
-    let now = chrono::Utc::now();
-    let now_str = now.to_rfc3339();
-    // TODO: Use `chrono::Utc::now().into()` once `toml_datetime` implements `From<chrono::DateTime<Utc>>`.
-    // Currently, it does not seem to be available in the version/feature set we are using.
-    toml_datetime::Datetime::from_str(&now_str)
-        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))
-}
-
-/// Alphabet for generating random ID suffixes: digits 0–9 and lowercase letters a–z.
-const ID_ALPHABET: &[char] = &[
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
-    'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-];
-
-/// Calculate the required number of random characters in an ID to keep
-/// collision probability below 1e-12. Uses the birthday paradox approximation:
-/// P \approx n^2 / (2 * 36^L).
-fn required_random_id_length(n: usize) -> usize {
-    if n == 0 {
-        return 8;
+fn validate_reverse_targets(
+    graph: &TaskGraph,
+    source_id: &str,
+    targets: Vec<String>,
+    flag_name: &str,
+) -> Result<Vec<String>> {
+    let mut deduped = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for target_id in targets {
+        if !seen.insert(target_id.clone()) {
+            continue;
+        }
+        if target_id == source_id {
+            deduped.push(target_id);
+            continue;
+        }
+        if graph.is_duplicate_id(&target_id) {
+            return Err(eyre!(
+                "Duplicate task ID '{}' found in multiple files; cannot safely target this ID.",
+                target_id
+            ));
+        }
+        if !graph.nodes.contains_key(&target_id) {
+            return Err(eyre!("Task '{}' not found for {}", target_id, flag_name));
+        }
+        deduped.push(target_id);
     }
-    let n_f: f64 = n as f64;
-    let target_prob: f64 = 1e-12;
-    let alphabet_size: f64 = 36.0;
-
-    let l: f64 = ((n_f * n_f) / (2.0 * target_prob)).ln() / alphabet_size.ln();
-    l.ceil().max(8.0) as usize
+    Ok(deduped)
 }
 
-/// Initializes a new Pebble project in the current directory.
-///
-/// Creates a `.pebble/` directory containing `config.toml` and `AGENTS.md`,
-/// and ensures the configured tasks directory exists. Fails if the project is
-/// already initialized.
+fn apply_reverse_update(
+    graph: &mut TaskGraph,
+    source_node: &mut TaskNode,
+    add_targets: Vec<String>,
+    remove_targets: Vec<String>,
+) -> Result<()> {
+    let source_id = source_node.frontmatter.id.clone();
+
+    for target_id in add_targets {
+        if target_id == source_id {
+            if !source_node
+                .frontmatter
+                .needs
+                .iter()
+                .any(|need| need == &source_id)
+            {
+                source_node.frontmatter.needs.push(source_id.clone());
+            }
+            continue;
+        }
+        let mut target_node = graph
+            .nodes
+            .get(&target_id)
+            .cloned()
+            .ok_or_else(|| eyre!("Task '{}' not found for --blocks", target_id))?;
+        if target_node
+            .frontmatter
+            .needs
+            .iter()
+            .any(|need| need == &source_id)
+        {
+            continue;
+        }
+        target_node.frontmatter.needs.push(source_id.clone());
+        target_node.frontmatter.modified_at = Some(current_toml_time()?);
+        target_node.write_to_disk()?;
+        graph.nodes.insert(target_id, target_node);
+    }
+
+    for target_id in remove_targets {
+        if target_id == source_id {
+            source_node
+                .frontmatter
+                .needs
+                .retain(|need| need != &source_id);
+            continue;
+        }
+        let mut target_node = graph
+            .nodes
+            .get(&target_id)
+            .cloned()
+            .ok_or_else(|| eyre!("Task '{}' not found for --remove-blocks", target_id))?;
+        let before_len = target_node.frontmatter.needs.len();
+        target_node
+            .frontmatter
+            .needs
+            .retain(|need| need != &source_id);
+        if target_node.frontmatter.needs.len() == before_len {
+            continue;
+        }
+        target_node.frontmatter.modified_at = Some(current_toml_time()?);
+        target_node.write_to_disk()?;
+        graph.nodes.insert(target_id, target_node);
+    }
+
+    Ok(())
+}
+
+struct UpdateMutations {
+    title: Option<String>,
+    status: Option<TaskStatus>,
+    priority: Option<u8>,
+    clear_priority: bool,
+    body: Option<String>,
+    append_body: Option<String>,
+    add_tags: Vec<String>,
+    remove_tags: Vec<String>,
+    add_needs: Vec<String>,
+    remove_needs: Vec<String>,
+}
+
+pub struct RunUpdateInput {
+    pub id: String,
+    pub title: Option<String>,
+    pub status: Option<TaskStatus>,
+    pub priority: Option<u8>,
+    pub clear_priority: bool,
+    pub body: Option<String>,
+    pub append_body: Option<String>,
+    pub add_tags: Vec<String>,
+    pub remove_tags: Vec<String>,
+    pub add_needs: Vec<String>,
+    pub remove_needs: Vec<String>,
+    pub blocks: Vec<String>,
+    pub remove_blocks: Vec<String>,
+}
+
+fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Result<()> {
+    if let Some(t) = mutations.title {
+        node.frontmatter.title = t;
+    }
+    if let Some(new_status) = mutations.status {
+        if !node.frontmatter.status.is_closed() && new_status.is_closed() {
+            node.frontmatter.resolved_at = Some(current_toml_time()?);
+        } else if node.frontmatter.status.is_closed() && !new_status.is_closed() {
+            node.frontmatter.resolved_at = None;
+        }
+        node.frontmatter.status = new_status;
+    }
+    if let Some(p) = mutations.priority {
+        node.frontmatter.priority = Some(p);
+    }
+    if mutations.clear_priority {
+        node.frontmatter.priority = None;
+    }
+    node.frontmatter.modified_at = Some(current_toml_time()?);
+
+    let mut existing_tags: std::collections::HashSet<_> =
+        node.frontmatter.tags.iter().cloned().collect();
+    for t in mutations.add_tags {
+        if existing_tags.insert(t.clone()) {
+            node.frontmatter.tags.push(t);
+        }
+    }
+    for t in mutations.remove_tags {
+        node.frontmatter.tags.retain(|tag| tag != &t);
+    }
+
+    let mut existing_needs: std::collections::HashSet<_> =
+        node.frontmatter.needs.iter().cloned().collect();
+    for d in mutations.add_needs {
+        if existing_needs.insert(d.clone()) {
+            node.frontmatter.needs.push(d);
+        }
+    }
+    for d in mutations.remove_needs {
+        node.frontmatter.needs.retain(|dep| dep != &d);
+    }
+
+    if let Some(b) = mutations.body {
+        node.body = b;
+    } else if let Some(a) = mutations.append_body {
+        if node.body.is_empty() {
+            node.body = a;
+        } else {
+            node.body.push_str("\n\n");
+            node.body.push_str(&a);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn run_init(
     cli_dir_override: Option<PathBuf>,
     issue_prefix: Option<String>,
@@ -84,7 +231,6 @@ See documentation for implementation details.
 "#;
     std::fs::write(pebble_dir.join("AGENTS.md"), agents_md)?;
 
-    // Create tasks directory
     std::fs::create_dir_all(current_dir.join(&tasks_dir_path))?;
 
     if json {
@@ -104,142 +250,23 @@ See documentation for implementation details.
     Ok(())
 }
 
-/// Maximum length for a generated slug, to stay well within filesystem limits.
-const MAX_SLUG_LEN: usize = 80;
-
-/// Generates a cross-platform safe filename slug from a task title.
-///
-/// Slugs are strictly restricted to lowercase alphanumeric characters,
-/// dashes, and underscores. Any other characters are collapsed into single dashes.
-/// The result is truncated to [`MAX_SLUG_LEN`] characters to avoid filesystem errors.
-pub fn slugify(s: &str) -> String {
-    let mut slug = String::with_capacity(s.len());
-    let mut last_was_dash = false;
-
-    for c in s.chars() {
-        if c.is_ascii_alphanumeric() {
-            slug.push(c.to_ascii_lowercase());
-            last_was_dash = false;
-        } else if c == '_' {
-            slug.push('_');
-            last_was_dash = false;
-        } else if !last_was_dash && !slug.is_empty() {
-            slug.push('-');
-            last_was_dash = true;
-        }
-    }
-
-    slug.truncate(slug.trim_end_matches('-').len());
-    if slug.len() > MAX_SLUG_LEN {
-        slug.truncate(MAX_SLUG_LEN);
-        slug.truncate(slug.trim_end_matches('-').len());
-    }
-    if slug.is_empty() {
-        "task".to_string()
-    } else {
-        slug
-    }
-}
-
-/// Creates a new task file in the tasks directory and prints the result.
-///
-/// Generates a unique ID using the configured `issue-prefix` and a 6-character
-/// nanoid suffix, then writes a Markdown file with TOML frontmatter. If a file
-/// with the same slug already exists, a numeric suffix is appended to the name.
-/// Outputs JSON when `ctx.json` is set; otherwise prints a human-readable line to stderr.
-#[allow(clippy::too_many_arguments)]
-pub fn run_add(
-    ctx: &RunContext,
-    title: String,
-    status: Option<TaskStatus>,
-    priority: Option<u8>,
-    body: Option<String>,
-    needs: Vec<String>,
-    tags: Vec<String>,
-) -> Result<()> {
-    let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)
-        .unwrap_or_else(|_| TaskGraph::new(Default::default()));
-    let random_length = required_random_id_length(graph.nodes.len());
-    let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
-    let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
-
-    let parsed_status = status.unwrap_or(TaskStatus::Todo);
-
-    let created_at = current_toml_time()?;
-
-    let fm = TaskFrontmatter {
-        id: new_id.clone(),
-        title: title.clone(),
-        status: parsed_status,
+#[allow(clippy::cognitive_complexity)]
+pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
+    let RunUpdateInput {
+        id,
+        title,
+        status,
         priority,
-        created_at,
-        modified_at: None,
-        resolved_at: None,
-        needs,
-        tags,
-    };
-
-    let fm_toml = toml::to_string(&fm)?;
-    let body_text = body.unwrap_or_default();
-
-    let content = format!("+++\n{}+++\n{}", fm_toml, body_text);
-
-    std::fs::create_dir_all(&ctx.tasks_dir)?;
-
-    let base_slug = slugify(&title);
-    let mut filename = format!("{}.md", base_slug);
-    let mut filepath = ctx.tasks_dir.join(&filename);
-    let mut counter = 2;
-
-    // TODO(pebble: docs/pebble/toctou-race-in-slug-collision-loop.md): Use create_new + retry to make filename selection atomic.
-    while filepath.exists() {
-        filename = format!("{}-{}.md", base_slug, counter);
-        filepath = ctx.tasks_dir.join(&filename);
-        counter += 1;
-    }
-
-    std::fs::write(&filepath, content)?;
-
-    let node = TaskNode {
-        path: filepath,
-        frontmatter: fm,
-        body: body_text,
-    };
-
-    if ctx.json {
-        graph
-            .nodes
-            .insert(node.frontmatter.id.clone(), node.clone());
-        let obj = TaskObject::from_node(&node, &graph, &ctx.tasks_dir);
-        println!("{}", serde_json::to_string(&obj)?);
-    } else {
-        eprintln!("Created task {} at {}", new_id, node.path.display());
-    }
-
-    Ok(())
-}
-
-/// Updates an existing task's metadata and/or body in place.
-///
-/// Reads the task identified by `id` from the graph, applies all supplied
-/// mutations (title, status, priority, tags, needs, body), updates `modified_at`,
-/// and rewrites the file. Transitioning to a terminal status sets `resolved_at`;
-/// transitioning away from one clears it. Outputs JSON when `ctx.json` is set.
-#[allow(clippy::too_many_arguments, clippy::cognitive_complexity)]
-pub fn run_update(
-    ctx: &RunContext,
-    id: String,
-    title: Option<String>,
-    status: Option<TaskStatus>,
-    priority: Option<u8>,
-    clear_priority: bool,
-    body: Option<String>,
-    append_body: Option<String>,
-    add_tags: Vec<String>,
-    remove_tags: Vec<String>,
-    add_needs: Vec<String>,
-    remove_needs: Vec<String>,
-) -> Result<()> {
+        clear_priority,
+        body,
+        append_body,
+        add_tags,
+        remove_tags,
+        add_needs,
+        remove_needs,
+        blocks,
+        remove_blocks,
+    } = input;
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     if graph.is_duplicate_id(&id) {
         return Err(eyre!(
@@ -251,65 +278,32 @@ pub fn run_update(
         .nodes
         .remove(&id)
         .ok_or_else(|| eyre!("Task '{}' not found", id))?;
+    let add_blocks_targets = validate_reverse_targets(&graph, &id, blocks, "--blocks")?;
+    let remove_blocks_targets =
+        validate_reverse_targets(&graph, &id, remove_blocks, "--remove-blocks")?;
+    apply_update_mutations(
+        &mut node,
+        UpdateMutations {
+            title,
+            status,
+            priority,
+            clear_priority,
+            body,
+            append_body,
+            add_tags,
+            remove_tags,
+            add_needs,
+            remove_needs,
+        },
+    )?;
+    apply_reverse_update(
+        &mut graph,
+        &mut node,
+        add_blocks_targets,
+        remove_blocks_targets,
+    )?;
 
-    if let Some(t) = title {
-        node.frontmatter.title = t;
-    }
-    if let Some(new_status) = status {
-        // Handle transitions
-        if !node.frontmatter.status.is_closed() && new_status.is_closed() {
-            node.frontmatter.resolved_at = Some(current_toml_time()?);
-        } else if node.frontmatter.status.is_closed() && !new_status.is_closed() {
-            node.frontmatter.resolved_at = None;
-        }
-
-        node.frontmatter.status = new_status;
-    }
-    if let Some(p) = priority {
-        node.frontmatter.priority = Some(p);
-    }
-    if clear_priority {
-        node.frontmatter.priority = None;
-    }
-
-    node.frontmatter.modified_at = Some(current_toml_time()?);
-
-    let mut existing_tags: std::collections::HashSet<_> =
-        node.frontmatter.tags.iter().cloned().collect();
-    for t in add_tags {
-        if existing_tags.insert(t.clone()) {
-            node.frontmatter.tags.push(t);
-        }
-    }
-    for t in remove_tags {
-        node.frontmatter.tags.retain(|tag| tag != &t);
-    }
-
-    let mut existing_needs: std::collections::HashSet<_> =
-        node.frontmatter.needs.iter().cloned().collect();
-    for d in add_needs {
-        if existing_needs.insert(d.clone()) {
-            node.frontmatter.needs.push(d);
-        }
-    }
-    for d in remove_needs {
-        node.frontmatter.needs.retain(|dep| dep != &d);
-    }
-
-    if let Some(b) = body {
-        node.body = b;
-    } else if let Some(a) = append_body {
-        if node.body.is_empty() {
-            node.body = a;
-        } else {
-            node.body.push_str("\n\n");
-            node.body.push_str(&a);
-        }
-    }
-
-    let fm_toml = toml::to_string(&node.frontmatter)?;
-    let content = format!("+++\n{}+++\n{}", fm_toml, node.body);
-    std::fs::write(&node.path, content)?;
+    node.write_to_disk()?;
 
     if ctx.json {
         graph

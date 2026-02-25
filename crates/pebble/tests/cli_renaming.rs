@@ -152,3 +152,125 @@ fn test_cli_computed_blocking_fields() {
     let blocking = value.get("blocking").unwrap().as_array().unwrap();
     assert!(blocking.iter().any(|v| v.as_str() == Some(&child_id)));
 }
+
+#[test]
+fn test_update_blocks_and_remove_blocks_roundtrip() {
+    let env = setup_test_env();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Source Task", "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let source_json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let source_id = source_json["id"].as_str().unwrap().to_string();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Target Task", "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let target_json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let target_id = target_json["id"].as_str().unwrap().to_string();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "update", &source_id, "--blocks", &target_id, "--json", "--dir", "tasks",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "pebble update --blocks failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["show", &target_id, "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let target_after_add: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let needs = target_after_add["needs"]
+        .as_array()
+        .expect("needs should be an array");
+    assert!(
+        needs.iter().any(|v| v.as_str() == Some(&source_id)),
+        "Expected target needs to include source ID after --blocks"
+    );
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "update",
+            &source_id,
+            "--remove-blocks",
+            &target_id,
+            "--json",
+            "--dir",
+            "tasks",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "pebble update --remove-blocks failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["show", &target_id, "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let target_after_remove: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let needs = target_after_remove["needs"]
+        .as_array()
+        .expect("needs should be an array");
+    assert!(
+        !needs.iter().any(|v| v.as_str() == Some(&source_id)),
+        "Expected target needs to exclude source ID after --remove-blocks"
+    );
+}
+
+#[test]
+fn test_update_blocks_fails_for_unknown_target_id() {
+    let env = setup_test_env();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Source Task", "--json", "--dir", "tasks"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let source_json: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let source_id = source_json["id"].as_str().unwrap().to_string();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "update",
+            &source_id,
+            "--blocks",
+            "PROJ-missing",
+            "--dir",
+            "tasks",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        !output.status.success(),
+        "Expected update --blocks with missing target to fail"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("not found"),
+        "Expected missing-target error, got: {stderr}"
+    );
+}

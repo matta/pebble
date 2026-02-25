@@ -6,7 +6,7 @@ description: Find the next pebble work to do
 Find the next pebble work to do.
 
 # SELECTION CRITERIA
-- Pass the --json opion to all `pebble` commands.
+- Pass the --json option to all `pebble` commands.
 - Honor the needs/blocking status of pebble tasks (see 'pebble show <id> --json').
 - Keep work focused and manageable. A single pebble may contain many checklist items; you need not complete them all.
 - If the next work item is large or unclear or needs planning, use Adaptive Decomposition Rules to break it down.
