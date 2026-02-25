@@ -40,7 +40,6 @@ fn test_update_status_to_closed_sets_resolved_at() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     let json: Value = serde_json::from_str(&stdout).unwrap();
-    println!("JSON: {}", json);
 
     assert!(
         json["resolved_at"].is_string(),
