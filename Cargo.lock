@@ -134,6 +134,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "bounded-integer"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddfb439fc02606b667a4422a1667bfa6e4574223f7f6062518a41d399697a657"
+dependencies = [
+ "bounded-integer-macro",
+ "serde",
+]
+
+[[package]]
+name = "bounded-integer-macro"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9669c4b1b3c0df3d44300abe3d72d8272f74ef7fb682b3c4549382ef65fe37a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
 name = "bstr"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,6 +560,7 @@ name = "pebble"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
+ "bounded-integer",
  "chrono",
  "clap",
  "color-eyre",

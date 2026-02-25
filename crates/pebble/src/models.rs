@@ -55,66 +55,13 @@ impl TaskStatus {
     }
 }
 
-/// Priority newtype constrained to the inclusive range `0..=99`.
-///
-/// This enforces Pebble's domain invariant at the type level so invalid priorities
-/// cannot be represented in parsed task data or command mutation inputs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(try_from = "u8", into = "u8")]
-pub struct Priority(u8);
-
-impl Priority {
-    pub const MIN: u8 = 0;
-    pub const MAX: u8 = 99;
-
-    pub fn new(value: u8) -> std::result::Result<Self, String> {
-        if value <= Self::MAX {
-            Ok(Self(value))
-        } else {
-            Err(format!("priority must be in {}..={}", Self::MIN, Self::MAX))
-        }
-    }
-
-    pub fn get(self) -> u8 {
-        self.0
-    }
-}
-
-impl TryFrom<u8> for Priority {
-    type Error = String;
-
-    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
-        Self::new(value)
-    }
-}
-
-impl std::str::FromStr for Priority {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let value: u8 = s
-            .parse()
-            .map_err(|_| format!("invalid integer '{}': expected 0..=99", s))?;
-        Self::new(value)
-    }
-}
-
-impl std::fmt::Display for Priority {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<Priority> for u8 {
-    fn from(value: Priority) -> Self {
-        value.0
-    }
-}
-
-impl From<Priority> for u32 {
-    fn from(value: Priority) -> Self {
-        u32::from(value.0)
-    }
+bounded_integer::bounded_integer! {
+    /// Priority newtype constrained to the inclusive range `0..=99`.
+    ///
+    /// This enforces Pebble's domain invariant at the type level so invalid priorities
+    /// cannot be represented in parsed task data or command mutation inputs.
+    #[repr(u32)]
+    pub struct Priority(0, 99);
 }
 
 /// Represents the exact structure of the TOML front matter.
@@ -271,9 +218,9 @@ needs = ["issue-122"]
 
     #[test]
     fn test_priority_try_from_u8_enforces_range() {
-        assert_eq!(Priority::try_from(0).unwrap().get(), 0);
-        assert_eq!(Priority::try_from(99).unwrap().get(), 99);
-        assert!(Priority::try_from(100).is_err());
+        assert_eq!(Priority::try_from(0u8).unwrap().get(), 0);
+        assert_eq!(Priority::try_from(99u8).unwrap().get(), 99);
+        assert!(Priority::try_from(100u8).is_err());
     }
 
     #[test]
@@ -305,5 +252,21 @@ created_at = 2026-02-21T17:00:00Z
         };
         let toml = toml::to_string(&wrapper).unwrap();
         assert_eq!(toml.trim(), "priority = 5");
+    }
+
+    #[test]
+    fn test_priority_uses_u32_representation_size() {
+        assert_eq!(
+            std::mem::size_of::<Priority>(),
+            std::mem::size_of::<u32>(),
+            "Priority should use u32 representation"
+        );
+    }
+
+    #[test]
+    fn test_priority_into_u32() {
+        let p = Priority::new(42).unwrap();
+        let v: u32 = p.into();
+        assert_eq!(v, 42);
     }
 }

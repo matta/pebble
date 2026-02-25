@@ -24,10 +24,11 @@ pub enum TaskStatus {
     Canceled,
 }
 
-/// Newtype enforcing valid priority range at the type level.
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[serde(try_from = "u8", into = "u8")]
-pub struct Priority(u8);
+bounded_integer::bounded_integer! {
+    /// Newtype enforcing valid priority range at the type level.
+    #[repr(u32)]
+    pub struct Priority(0, 99);
+}
 
 /// Represents the exact structure of the TOML front matter.
 #[derive(Debug, Deserialize, Serialize, Clone)]

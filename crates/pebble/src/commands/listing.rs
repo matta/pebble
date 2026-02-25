@@ -124,7 +124,7 @@ fn sort_list_tasks<'a>(
     };
 
     let spec = SortSpec::parse(sort_raw)?;
-    let min_priority = Priority::try_from(Priority::MIN).expect("Priority::MIN must be valid");
+    let min_priority = Priority::MIN;
     let status_rank = |status: &TaskStatus| -> u8 {
         match status {
             TaskStatus::Todo => 0,
