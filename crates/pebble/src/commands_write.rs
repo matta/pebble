@@ -368,5 +368,4 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 }
 
 #[cfg(test)]
-#[path = "commands_write_tests.rs"]
-mod commands_write_tests;
+mod tests;
