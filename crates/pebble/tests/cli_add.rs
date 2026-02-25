@@ -178,8 +178,9 @@ fn test_add_json_includes_blocking_when_blocks_is_used() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let created_stdout = String::from_utf8(output.stdout).unwrap();
-    let created_json: Value = serde_json::from_str(&created_stdout).unwrap();
+    let created_stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let created_json: Value =
+        serde_json::from_str(&created_stdout).expect("stdout should be valid JSON");
     let blocking = created_json["blocking"]
         .as_array()
         .expect("blocking should be an array")
