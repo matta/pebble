@@ -56,6 +56,30 @@ pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
     None
 }
 
+/// Validates that the tasks directory path is safe.
+///
+/// Ensures the path is relative and does not contain `..` components.
+pub fn validate_tasks_dir(path: &Path) -> Result<()> {
+    if path.is_absolute() {
+        return Err(eyre!(
+            "Configuration error: 'tasks-dir' must be a relative path to the project root. Found: {}",
+            path.display()
+        ));
+    }
+
+    if path
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err(eyre!(
+            "Configuration error: 'tasks-dir' must not contain parent directory components ('..'). Found: {}",
+            path.display()
+        ));
+    }
+
+    Ok(())
+}
+
 /// Parses configuration from a TOML string, validating path constraints.
 ///
 /// Ensures that `tasks-dir` is a relative path and does not contain parent directory
@@ -90,23 +114,7 @@ pub fn parse_config(toml_str: &str) -> Result<Config> {
         toml::from_str(toml_str)?
     };
 
-    if config.tasks_dir.is_absolute() {
-        return Err(eyre!(
-            "Configuration error: 'tasks-dir' must be a relative path to the project root. Found: {}",
-            config.tasks_dir.display()
-        ));
-    }
-
-    if config
-        .tasks_dir
-        .components()
-        .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
-        return Err(eyre!(
-            "Configuration error: 'tasks-dir' must not contain parent directory components ('..'). Found: {}",
-            config.tasks_dir.display()
-        ));
-    }
+    validate_tasks_dir(&config.tasks_dir)?;
 
     Ok(config)
 }
