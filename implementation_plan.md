@@ -140,16 +140,16 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P4.5 Clippy warning suppression forbiddance in `just` checks (operator approval received).
 
 ## Phase 5: Test Coverage (TDD for Each Gap)
-- [ ] P5.1 Recursive scan and duplicate ID behavior (read + write).
-- [ ] P5.2 Blocking list and transitive blocking counts (cycles, terminal dependents, missing IDs).
-- [ ] P5.3 Default list ordering and explicit `--sort` tie-breakers.
-- [ ] P5.4 Filters and limits for `list`.
-- [ ] P5.5 `search` query behavior.
-- [ ] P5.6 `config get` and `help-json` output shapes.
-- [ ] P5.7 `--json` purity and stdout/stderr separation across commands.
-- [ ] P5.8 Exit code mapping for runtime vs usage errors.
-- [ ] P5.9 `archive` threshold and collision behavior.
-- [ ] P5.10 `add` slug transliteration + relative path output + newline termination.
+- [x] P5.1 Recursive scan and duplicate ID behavior (read + write).
+- [x] P5.2 Blocking list and transitive blocking counts (cycles, terminal dependents, missing IDs).
+- [x] P5.3 Default list ordering and explicit `--sort` tie-breakers.
+- [x] P5.4 Filters and limits for `list`.
+- [x] P5.5 `search` query behavior.
+- [x] P5.6 `config get` and `help-json` output shapes.
+- [x] P5.7 `--json` purity and stdout/stderr separation across commands.
+- [x] P5.8 Exit code mapping for runtime vs usage errors.
+- [x] P5.9 `archive` threshold and collision behavior.
+- [x] P5.10 `add` slug transliteration + relative path output + newline termination.
 
 ## Rules
 0. **Keep checkmarks up to date. Use [-] for in-progress, [ ] for not started, and [x] for done.**

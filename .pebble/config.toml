@@ -1,2 +1,2 @@
-issue-prefix = "pebl"
-tasks-dir = "docs/pebble/"
+issue-prefix = "issue"
+tasks-dir = "tasks"
