@@ -136,8 +136,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         tags,
         blocks,
     } = input;
-    let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)
-        .unwrap_or_else(|_| TaskGraph::new(Default::default()));
+    let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let deduped_blocks = dedupe_and_validate_blocks(&graph, blocks)?;
 
     let random_length = required_random_id_length(graph.nodes.len());
