@@ -2,6 +2,7 @@ use crate::get_files_to_check;
 use color_eyre::Result;
 use color_eyre::eyre::bail;
 use std::collections::HashSet;
+use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -17,7 +18,7 @@ pub fn check_forbidden_words(
     generate_whitelist: bool,
     minimize_whitelist: bool,
 ) -> Result<()> {
-    let root = std::env::current_dir()?;
+    let root = env::current_dir()?;
     let whitelist_path = root.join(".forbidden-word-whitelist");
 
     let scan_all = all || generate_whitelist || minimize_whitelist;
@@ -286,9 +287,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let relative = "crates/pebble/tests/fixtures/golden.jsonl";
         let file_path = temp_dir.path().join(relative);
-        std::fs::create_dir_all(file_path.parent().expect("fixture parent"))
+        fs::create_dir_all(file_path.parent().expect("fixture parent"))
             .expect("create fixture dirs");
-        std::fs::write(&file_path, "forbidden").expect("write fixture");
+        fs::write(&file_path, "forbidden").expect("write fixture");
 
         assert!(should_skip_forbidden_check(&file_path, relative));
     }

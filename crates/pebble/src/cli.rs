@@ -174,6 +174,13 @@ pub enum Commands {
     /// Archive terminal tasks older than the configured threshold.
     Archive,
     #[command(
+        about = "Read-only diagnostics for the task graph.",
+        long_about = "Performs a read-only health check on the graph. Does not rewrite state. Exits with status code 0 and emits warnings for unknown frontmatter keys, duplicate IDs, and dangling dependencies.",
+        after_help = "Examples:\n  pebble doctor\n  pebble doctor --json"
+    )]
+    /// Perform a read-only health check on the graph.
+    Doctor,
+    #[command(
         about = "Show one task by ID.",
         long_about = "Show full task details or only the relative file path. Exit code 1 if task is not found.",
         after_help = "Examples:\n  pebble show PEBL-1\n  pebble show PEBL-1 --path-only --json"

@@ -2,7 +2,7 @@
 
 use color_eyre::eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 /// Resolved project configuration loaded from `.pebble/config.toml`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -67,10 +67,7 @@ pub fn validate_tasks_dir(path: &Path) -> Result<()> {
         ));
     }
 
-    if path
-        .components()
-        .any(|c| matches!(c, std::path::Component::ParentDir))
-    {
+    if path.components().any(|c| matches!(c, Component::ParentDir)) {
         return Err(eyre!(
             "Configuration error: 'tasks-dir' must not contain parent directory components ('..'). Found: {}",
             path.display()
@@ -122,6 +119,7 @@ pub fn parse_config(toml_str: &str) -> Result<Config> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn test_parse_default_config() {
@@ -180,10 +178,10 @@ mod tests {
         let root = temp.path();
 
         let pebble_dir = root.join(".pebble");
-        std::fs::create_dir(&pebble_dir).unwrap();
+        fs::create_dir(&pebble_dir).unwrap();
 
         let deeply_nested = root.join("some").join("deep").join("path");
-        std::fs::create_dir_all(&deeply_nested).unwrap();
+        fs::create_dir_all(&deeply_nested).unwrap();
 
         // Should find the root when starting from the nested directory
         let found = find_project_root(&deeply_nested).expect("Should find root");

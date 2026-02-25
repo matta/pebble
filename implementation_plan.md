@@ -58,10 +58,11 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [x] `P1`: `pebl-cdIZGN`
 - [x] `P2`: `pebl--yb8d4`
 - [ ] `P3`: `pebl-hRuKk1`
+- [ ] `P3.1`: `pebl-cug7mpg7cz` Inject current_dir into RunContext to improve testability of diagnostics
 - [ ] `P4`: `pebl-fFdi_z`
 - [ ] `P5`: `pebl-pCyebx`
 - Child task IDs:
-- None currently. Add only when Adaptive Decomposition split criteria are met.
+- [x] `pebl-kntw9t388a`: P3.1 doctor command: unknown frontmatter key warnings + schema/graph diagnostics
 - Standalone task IDs:
 - [x] `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
 - [ ] `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
@@ -128,7 +129,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P2.6 `archive` behavior per contract: configurable threshold; collision suffixes; JSON output relative to `tasks-dir`.
 
 ## Phase 3: Diagnostics & Repairs
-- [ ] P3.1 `doctor` command: warnings for unknown frontmatter keys; schema/graph diagnostics.
+- [x] P3.1 `doctor` command: warnings for unknown frontmatter keys; schema/graph diagnostics.
 - [ ] P3.2 `check` command: unknown frontmatter keys are errors; exit code non-zero on issues.
 - [ ] P3.3 `fix` command: backfill missing `created_at`, warn on unknown keys, do not remove or rewrite dependencies.
 

@@ -12,6 +12,7 @@ The data layer is strictly defined by the following Rust structures. AI agents a
 
 ```rust
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use toml_datetime::Datetime;
 
@@ -46,6 +47,9 @@ pub struct TaskFrontmatter {
     pub needs: Vec<String>,
     #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub extra: HashMap<String, toml::Value>,
 }
 
 /// The in-memory representation.

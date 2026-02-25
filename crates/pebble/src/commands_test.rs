@@ -4,6 +4,7 @@ use crate::commands_write::{RunUpdateInput, run_update};
 use crate::config::Config;
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskStatus};
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
 
@@ -146,7 +147,7 @@ fn test_add_slug_filename() {
         },
     )
     .unwrap();
-    let entries: Vec<_> = std::fs::read_dir(&tasks_dir)
+    let entries: Vec<_> = fs::read_dir(&tasks_dir)
         .unwrap()
         .filter_map(|e| e.ok())
         .filter(|e| {

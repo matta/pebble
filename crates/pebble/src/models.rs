@@ -1,6 +1,10 @@
 use clap::ValueEnum;
 use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::error;
+use std::fmt;
+use std::fs;
 use std::path::PathBuf;
 use toml_datetime::Datetime;
 
@@ -8,12 +12,12 @@ use toml_datetime::Datetime;
 /// Should results in exit code 2.
 #[derive(Debug)]
 pub struct UsageError(pub String);
-impl std::fmt::Display for UsageError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for UsageError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
-impl std::error::Error for UsageError {}
+impl error::Error for UsageError {}
 
 /// Represents the lifecycle state of a task.
 ///
@@ -102,6 +106,10 @@ pub struct TaskFrontmatter {
     /// Arbitrary labels attached to the task.
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Unknown keys preserved from parsing.
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub extra: HashMap<String, toml::Value>,
 }
 
 /// The in-memory representation of a task.
@@ -151,7 +159,7 @@ impl TaskNode {
         if !content.ends_with('\n') {
             content.push('\n');
         }
-        std::fs::write(&self.path, content)?;
+        fs::write(&self.path, content)?;
         Ok(())
     }
 }
@@ -160,6 +168,7 @@ impl TaskNode {
 mod tests {
     use super::*;
     use std::convert::TryFrom;
+    use std::mem;
 
     #[test]
     fn test_task_status_deserialization() {
@@ -260,8 +269,8 @@ created_at = 2026-02-21T17:00:00Z
     #[test]
     fn test_priority_uses_u32_representation_size() {
         assert_eq!(
-            std::mem::size_of::<Priority>(),
-            std::mem::size_of::<u32>(),
+            mem::size_of::<Priority>(),
+            mem::size_of::<u32>(),
             "Priority should use u32 representation"
         );
     }

@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::{Priority, TaskFrontmatter, TaskStatus};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
@@ -16,6 +17,7 @@ fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
             resolved_at: None,
             needs: needs.into_iter().map(|s| s.to_string()).collect(),
             tags: vec![],
+            extra: HashMap::new(),
         },
     }
 }

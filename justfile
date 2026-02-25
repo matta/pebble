@@ -3,6 +3,8 @@ check *args:
     cargo clippy --workspace --all-targets -- -D warnings
     cargo xtask check {{args}}
 
+gauntlet: check test
+
 test:
     cargo test --workspace
 

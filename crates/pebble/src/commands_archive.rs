@@ -1,6 +1,8 @@
 use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use color_eyre::eyre::{Result, eyre};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Moves completed or canceled tasks older than the configured threshold into an `archive/` subdirectory.
 ///
@@ -10,7 +12,7 @@ use color_eyre::eyre::{Result, eyre};
 pub fn run_archive(ctx: &RunContext) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let archive_dir = ctx.tasks_dir.join("archive");
-    std::fs::create_dir_all(&archive_dir)?;
+    fs::create_dir_all(&archive_dir)?;
 
     let now = chrono::Utc::now();
     let threshold_days = chrono::Duration::days(ctx.config.archive_threshold_days);
@@ -27,7 +29,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 
             if now.signed_duration_since(resolved_at) >= threshold_days {
                 let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
-                std::fs::rename(&node.path, &new_path)?;
+                fs::rename(&node.path, &new_path)?;
 
                 if ctx.json {
                     archived.push(serde_json::json!({
@@ -52,10 +54,10 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 }
 
 fn get_archive_path(
-    archive_dir: &std::path::Path,
-    original_path: &std::path::Path,
-    mut exists: impl FnMut(&std::path::Path) -> bool,
-) -> Result<std::path::PathBuf> {
+    archive_dir: &Path,
+    original_path: &Path,
+    mut exists: impl FnMut(&Path) -> bool,
+) -> Result<PathBuf> {
     let stem = original_path
         .file_stem()
         .ok_or_else(|| eyre!("Invalid task path: {}", original_path.display()))?

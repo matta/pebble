@@ -3,7 +3,9 @@ use crate::parser::parse_task_file;
 use color_eyre::eyre::Result;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fs;
 use std::path::{Path, PathBuf};
+use std::result;
 
 mod ordering;
 
@@ -35,7 +37,7 @@ pub struct TaskGraph {
 impl TaskGraph {
     /// Recursively collect all Markdown files under `dir` in deterministic order.
     fn collect_markdown_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
-        let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<std::result::Result<_, _>>()?;
+        let mut entries: Vec<_> = fs::read_dir(dir)?.collect::<result::Result<_, _>>()?;
         entries.sort_by_key(|entry| entry.path());
 
         for entry in entries {
@@ -79,7 +81,7 @@ impl TaskGraph {
                     continue;
                 }
 
-                let content = std::fs::read_to_string(&path)?;
+                let content = fs::read_to_string(&path)?;
                 // Skip files that don't start with +++
                 if content.starts_with("+++") {
                     match parse_task_file(&path, &content) {

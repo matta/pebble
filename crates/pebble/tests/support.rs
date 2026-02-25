@@ -1,7 +1,7 @@
 //! Shared test helpers for CLI integration tests.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// Temp Pebble workspace with an initialized config and tasks directory.
@@ -43,7 +43,7 @@ pub fn setup_test_env() -> TestEnv {
 }
 
 /// Write a simple task file into the tasks directory.
-pub fn write_task(tasks_dir: &std::path::Path, id: &str, title: &str, status: &str) {
+pub fn write_task(tasks_dir: &Path, id: &str, title: &str, status: &str) {
     let content = format!(
         r#"+++
 id = "{id}"
@@ -63,6 +63,6 @@ Body
 /// Write a simple task file with title equal to the id.
 // TODO(pebl-Vs0xNh): Remove this helper or expand usage so this dead_code allowance is unnecessary.
 #[allow(dead_code)]
-pub fn write_task_with_id(tasks_dir: &std::path::Path, id: &str) {
+pub fn write_task_with_id(tasks_dir: &Path, id: &str) {
     write_task(tasks_dir, id, id, "todo");
 }

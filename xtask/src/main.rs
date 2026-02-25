@@ -10,6 +10,7 @@ use ra_ap_rustc_lexer::{FrontmatterAllowed, TokenKind};
 use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -168,7 +169,7 @@ struct ExceptionsConfig {
 /// When `print_counts` is set, prints per-file counts and exits without failing.
 /// Returns an error listing all violating files when any exceed `limit`.
 fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result<()> {
-    let root = std::env::current_dir()?;
+    let root = env::current_dir()?;
     let config_path = root.join(".rust-line-count-exceptions.toml");
 
     let exceptions = if config_path.exists() {
@@ -272,7 +273,7 @@ struct ClippySuppressionHit {
 /// Checks Rust files for `#[allow(...)]` or `#[expect(...)]` suppressions that
 /// target clippy lints denied by workspace policy.
 fn check_clippy_suppressions(all: bool) -> Result<()> {
-    let root = std::env::current_dir()?;
+    let root = env::current_dir()?;
     let files = get_files_to_check(&root, all)?;
     let mut violations: Vec<(String, ClippySuppressionHit)> = Vec::new();
 

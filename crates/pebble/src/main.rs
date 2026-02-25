@@ -6,6 +6,7 @@ pub mod cli;
 pub mod commands;
 pub mod commands_add;
 pub mod commands_archive;
+pub mod commands_diagnostics;
 pub mod commands_write;
 
 #[cfg(test)]
@@ -21,11 +22,15 @@ use crate::cli::{Cli, Commands, ConfigCommands};
 use crate::help_json::help_json_schema;
 use crate::models::UsageError;
 use clap::Parser;
+use clap::error::ErrorKind;
 use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_add::{RunAddInput, run_add};
 use commands_archive::run_archive;
 use commands_write::{RunUpdateInput, run_init, run_update};
+use std::env;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 fn run_help_json() -> Result<()> {
     println!("{}", serde_json::to_string(&help_json_schema())?);
@@ -44,12 +49,13 @@ enum DispatchCommand {
     Add(RunAddInput),
     Update(RunUpdateInput),
     Archive,
+    Doctor,
     Show { id: String, path_only: bool },
 }
 
 fn prepare_dispatch_command(
     command: Commands,
-    global_dir: Option<std::path::PathBuf>,
+    global_dir: Option<PathBuf>,
     json: bool,
 ) -> Result<Option<DispatchCommand>> {
     match command {
@@ -138,6 +144,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
             remove_blocks,
         }),
         Commands::Archive => DispatchCommand::Archive,
+        Commands::Doctor => DispatchCommand::Doctor,
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
@@ -145,28 +152,28 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
     }
 }
 
-fn main() -> std::process::ExitCode {
+fn main() -> ExitCode {
     if let Err(err) = run() {
         if let Some(clap_err) = err.downcast_ref::<clap::Error>() {
-            if clap_err.kind() == clap::error::ErrorKind::DisplayHelp
-                || clap_err.kind() == clap::error::ErrorKind::DisplayVersion
+            if clap_err.kind() == ErrorKind::DisplayHelp
+                || clap_err.kind() == ErrorKind::DisplayVersion
             {
                 let _ = clap_err.print();
-                return std::process::ExitCode::SUCCESS;
+                return ExitCode::SUCCESS;
             }
             let _ = clap_err.print();
-            return std::process::ExitCode::from(2);
+            return ExitCode::from(2);
         }
 
         if err.is::<UsageError>() {
             eprintln!("Usage error: {}", err);
-            return std::process::ExitCode::from(2);
+            return ExitCode::from(2);
         }
 
         eprintln!("Runtime error: {:?}", err);
-        return std::process::ExitCode::from(1);
+        return ExitCode::from(1);
     }
-    std::process::ExitCode::SUCCESS
+    ExitCode::SUCCESS
 }
 
 fn run() -> Result<()> {
@@ -175,7 +182,7 @@ fn run() -> Result<()> {
     let cli = Cli::try_parse()?;
 
     if let Some(ref dir) = cli.directory {
-        std::env::set_current_dir(dir)?;
+        env::set_current_dir(dir)?;
     }
 
     let Some(command) = prepare_dispatch_command(cli.command, cli.dir.clone(), cli.json)? else {
@@ -195,6 +202,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Add(input) => run_add(ctx, input),
         DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
+        DispatchCommand::Doctor => commands_diagnostics::run_doctor(ctx),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }
