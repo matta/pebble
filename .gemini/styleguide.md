@@ -8,3 +8,4 @@
 - @.agents/checks/specifications.md
 - @.agents/checks/docs-discoverability.md
 - @.agents/checks/warning-suppression-review.md
+- @.agents/checks/test-module-placement.md

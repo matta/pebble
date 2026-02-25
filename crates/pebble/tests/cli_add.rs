@@ -156,6 +156,45 @@ fn test_add_blocks_updates_target_needs_with_new_task_id() {
 }
 
 #[test]
+fn test_add_json_includes_blocking_when_blocks_is_used() {
+    let env = setup_test_env();
+    write_task(&env.tasks_dir, "PROJ-target", "Target Task", "todo");
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "add",
+            "Precondition Task",
+            "--blocks",
+            "PROJ-target",
+            "--json",
+        ])
+        .output()
+        .expect("Failed to execute pebble add");
+
+    assert!(
+        output.status.success(),
+        "pebble add with --blocks failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let created_stdout = String::from_utf8(output.stdout).unwrap();
+    let created_json: Value = serde_json::from_str(&created_stdout).unwrap();
+    let blocking = created_json["blocking"]
+        .as_array()
+        .expect("blocking should be an array")
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        blocking,
+        vec!["PROJ-target"],
+        "Expected created task JSON blocking to include the target task"
+    );
+}
+
+#[test]
 fn test_add_blocks_fails_for_unknown_target_id() {
     let env = setup_test_env();
 

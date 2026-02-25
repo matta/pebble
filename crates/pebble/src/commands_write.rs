@@ -366,6 +366,3 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests;
