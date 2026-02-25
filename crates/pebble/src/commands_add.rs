@@ -1,22 +1,15 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
 use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::task_io::{current_toml_time, write_task_file};
 use color_eyre::eyre::{Result, eyre};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 const ID_ALPHABET: &[char] = &[
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 const MAX_SLUG_LEN: usize = 80;
-
-fn current_toml_time() -> Result<toml_datetime::Datetime> {
-    let now = chrono::Utc::now();
-    let now_str = now.to_rfc3339();
-    toml_datetime::Datetime::from_str(&now_str)
-        .map_err(|e| eyre!("Failed to parse datetime for TOML: {}", e))
-}
 
 fn required_random_id_length(n: usize) -> usize {
     if n == 0 {
@@ -27,13 +20,6 @@ fn required_random_id_length(n: usize) -> usize {
     let alphabet_size: f64 = 36.0;
     let l: f64 = ((n_f * n_f) / (2.0 * target_prob)).ln() / alphabet_size.ln();
     l.ceil().max(8.0) as usize
-}
-
-fn write_task_node(node: &TaskNode) -> Result<()> {
-    let fm_toml = toml::to_string(&node.frontmatter)?;
-    let content = format!("+++\n{}+++\n{}", fm_toml, node.body);
-    std::fs::write(&node.path, content)?;
-    Ok(())
 }
 
 fn unique_task_path(tasks_dir: &Path, title: &str) -> PathBuf {
@@ -95,7 +81,11 @@ fn apply_reverse_blocks(
 
         target_node.frontmatter.needs.push(new_id.to_string());
         target_node.frontmatter.modified_at = Some(current_toml_time()?);
-        write_task_node(&target_node)?;
+        write_task_file(
+            &target_node.path,
+            &target_node.frontmatter,
+            &target_node.body,
+        )?;
         graph.nodes.insert(target_id, target_node);
     }
     Ok(())
@@ -175,7 +165,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         frontmatter: fm,
         body: body.unwrap_or_default(),
     };
-    write_task_node(&node)?;
+    write_task_file(&node.path, &node.frontmatter, &node.body)?;
 
     apply_reverse_blocks(&mut graph, deduped_blocks, &new_id)?;
     graph

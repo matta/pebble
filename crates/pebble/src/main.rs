@@ -14,6 +14,7 @@ pub mod graph;
 pub mod help_json;
 pub mod models;
 pub mod parser;
+mod task_io;
 
 use crate::cli::{Cli, Commands, ConfigCommands};
 use crate::help_json::help_json_schema;
