@@ -14,11 +14,11 @@ fn test_search_json_stdout_only() {
         .current_dir(&env.root)
         .args(["search", "search", "--json", "--dir", "tasks"])
         .output()
-        .expect("Failed to run search command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Invalid search JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert!(value.get("tasks").is_some());
 }
 
@@ -30,11 +30,11 @@ fn test_config_get_json_stdout_only() {
         .current_dir(&env.root)
         .args(["config", "get", "issue-prefix", "--json"])
         .output()
-        .expect("Failed to run config get");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Invalid config JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["key"].as_str(), Some("issue-prefix"));
 }
 
@@ -46,7 +46,7 @@ fn test_config_get_json_error_keeps_stdout_empty() {
         .current_dir(&env.root)
         .args(["config", "get", "invalid-key", "--json"])
         .output()
-        .expect("Failed to run config get");
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
@@ -61,11 +61,11 @@ fn test_archive_json_stdout_only() {
         .current_dir(&env.root)
         .args(["archive", "--json", "--dir", "tasks"])
         .output()
-        .expect("Failed to run archive");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Invalid archive JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert!(value.get("archived").is_some());
 }
 
@@ -74,26 +74,25 @@ fn test_help_json_stdout_only() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
-        .expect("Failed to run help-json");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    let value: Value =
-        serde_json::from_slice(&output.stdout).expect("Invalid help-json command output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["name"].as_str(), Some("pebble"));
 }
 
 #[test]
 fn test_init_json_stdout_only() {
-    let dir = tempfile::tempdir().expect("Failed to create tempdir");
+    let dir = tempfile::tempdir().expect("temp directory should be created");
     let output = Command::new(cargo_bin!())
         .current_dir(dir.path())
         .args(["init", "--json"])
         .output()
-        .expect("Failed to run init --json");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Invalid init JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["status"].as_str(), Some("success"));
 }

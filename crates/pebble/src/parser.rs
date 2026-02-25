@@ -98,7 +98,8 @@ created_at = 2026-02-21T17:00:00Z
 # Body
 This is the body.
 "#;
-        let node = parse_task_file(Path::new("issue-1.md"), content).unwrap();
+        let node = parse_task_file(Path::new("issue-1.md"), content)
+            .expect("Should parse valid task file");
         assert_eq!(node.frontmatter.id, "issue-1");
         assert_eq!(node.frontmatter.title, "Test");
         assert_eq!(node.frontmatter.status, TaskStatus::Todo);
@@ -108,7 +109,8 @@ This is the body.
     #[test]
     fn test_parse_missing_frontmatter() {
         let content = "# Just a markdown file";
-        let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
+        let err = parse_task_file(Path::new("file.md"), content)
+            .expect_err("Should fail when frontmatter is missing");
         assert!(err.to_string().contains("must start with '+++'"));
     }
 
@@ -120,7 +122,8 @@ title = "Test"
 status = "todo"
 created_at = 2026-02-21T17:00:00Z
 "#;
-        let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
+        let err = parse_task_file(Path::new("file.md"), content)
+            .expect_err("Should fail when frontmatter is unclosed");
         assert!(err.to_string().contains("Missing closing '+++'"));
     }
 
@@ -132,7 +135,8 @@ title = "Test"
 status = "invalid_status"
 created_at = 2026-02-21T17:00:00Z
 +++"#;
-        let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
+        let err = parse_task_file(Path::new("file.md"), content)
+            .expect_err("Should fail when frontmatter is invalid TOML");
         assert!(err.to_string().contains("Failed to parse TOML frontmatter"));
     }
 }

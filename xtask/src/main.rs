@@ -5,7 +5,7 @@
 use anyhow::Result as AnyhowResult;
 use clap::{Parser, Subcommand};
 use color_eyre::Result;
-use color_eyre::eyre::bail;
+use color_eyre::eyre::{bail, eyre};
 use ra_ap_rustc_lexer::{FrontmatterAllowed, TokenKind};
 use regex::Regex;
 use serde::Deserialize;
@@ -287,7 +287,7 @@ fn check_clippy_suppressions(all: bool) -> Result<()> {
         }
 
         let source = fs::read_to_string(&path)?;
-        for hit in find_denied_clippy_suppressions(&source) {
+        for hit in find_denied_clippy_suppressions(&source)? {
             violations.push((file_path.clone(), hit));
         }
     }
@@ -319,16 +319,16 @@ fn check_clippy_suppressions(all: bool) -> Result<()> {
 /// This uses regex matching over attribute syntax for pragmatic portability in `xtask`.
 /// It is intentionally conservative and may miss exotic macro-generated forms that only a
 /// clippy-integrated pass could model perfectly.
-fn find_denied_clippy_suppressions(source: &str) -> Vec<ClippySuppressionHit> {
+fn find_denied_clippy_suppressions(source: &str) -> Result<Vec<ClippySuppressionHit>> {
     let mut hits = Vec::new();
     for captures in LINT_ATTRIBUTE_REGEX.captures_iter(source) {
         let kind = captures
             .get(1)
-            .expect("capture group 1 exists for allow/expect")
+            .ok_or_else(|| eyre!("capture group 1 missing in lint attribute match"))?
             .as_str();
         let args = captures
             .get(2)
-            .expect("capture group 2 exists for attribute args");
+            .ok_or_else(|| eyre!("capture group 2 missing in lint attribute match"))?;
 
         for lint_match in CLIPPY_LINT_TOKEN_REGEX.find_iter(args.as_str()) {
             let lint = lint_match.as_str();
@@ -350,7 +350,7 @@ fn find_denied_clippy_suppressions(source: &str) -> Vec<ClippySuppressionHit> {
         }
     }
 
-    hits
+    Ok(hits)
 }
 
 /// Returns `true` when `lint` is denied from source-level suppression by policy.
@@ -402,7 +402,7 @@ mod tests {
 
     #[test]
     fn test_count_tokens() {
-        let temp = tempfile::tempdir().unwrap();
+        let temp = tempfile::tempdir().expect("Failed to create temp dir");
         let path = temp.path().join("test.rs");
 
         let code = r##"
@@ -412,9 +412,9 @@ mod tests {
                 let s = "This is a string // with a comment inside";
             }
         "##;
-        fs::write(&path, code).unwrap();
+        fs::write(&path, code).expect("Failed to write test file");
 
-        let count = count_tokens(&path).unwrap();
+        let count = count_tokens(&path).expect("Should count tokens");
         // Tokens:
         // 1: fn
         // 2: main
@@ -436,46 +436,33 @@ mod tests {
     }
 
     #[test]
-    fn test_find_denied_clippy_suppressions_detects_direct_and_group_lints() {
-        let source = [
-            "#[",
-            "allow(",
-            "clippy::cognitive_complexity",
-            ")]\n",
-            "fn one() {}\n\n",
-            "#[",
-            "expect(",
-            "clippy::large_enum_variant",
-            ", reason = \"temporary\")]\n",
-            "enum Two {}\n\n",
-            "#![",
-            "allow(\n",
-            "    clippy::complexity,\n",
-            "    clippy::unnecessary_wraps\n",
-            ")]\n",
-        ]
-        .concat();
+    fn test_find_denied_clippy_suppressions_detects_direct_and_group_lints() -> Result<()> {
+        let source = format!(
+            r#"
+            #[allow(clippy::{})]
+            fn heavy() {{}}
 
-        let hits = find_denied_clippy_suppressions(&source);
-        let found: Vec<&str> = hits.iter().map(|hit| hit.lint.as_str()).collect();
-
-        assert!(found.contains(&"clippy::cognitive_complexity"));
-        assert!(found.contains(&"clippy::large_enum_variant"));
-        assert!(found.contains(&"clippy::complexity"));
+            #[expect(clippy::{}, clippy::all)]
+            fn complex() {{}}
+        "#,
+            "cognitive_complexity", "too_many_lines"
+        );
+        let hits = find_denied_clippy_suppressions(&source)?;
+        assert_eq!(hits.len(), 2);
+        assert_eq!(hits[0].lint, "clippy::cognitive_complexity");
+        assert_eq!(hits[1].lint, "clippy::too_many_lines");
+        Ok(())
     }
 
     #[test]
-    fn test_find_denied_clippy_suppressions_ignores_unrelated_lints() {
-        let source = [
-            "#[",
-            "allow(",
-            "clippy::unnecessary_wraps",
-            ")]\n",
-            "fn one() {}\n",
-        ]
-        .concat();
-
-        let hits = find_denied_clippy_suppressions(&source);
+    fn test_find_denied_clippy_suppressions_ignores_unrelated_lints() -> Result<()> {
+        let source = r#"
+            #[allow(dead_code)]
+            #[expect(unused_variables)]
+            fn quiet() {}
+        "#;
+        let hits = find_denied_clippy_suppressions(source)?;
         assert!(hits.is_empty());
+        Ok(())
     }
 }

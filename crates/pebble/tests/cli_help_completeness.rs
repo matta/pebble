@@ -24,7 +24,7 @@ fn test_all_subcommands_include_examples_section() {
         let output = Command::new(cargo_bin!())
             .args(*args)
             .output()
-            .expect("Failed to execute help command");
+            .expect("pebble command should execute successfully");
         assert!(output.status.success());
         let stdout = String::from_utf8_lossy(&output.stdout);
         for needle in *contains_all {

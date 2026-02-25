@@ -14,7 +14,7 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
         .current_dir(&env.root)
         .args(["show", "PROJ-404", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
@@ -37,7 +37,7 @@ fn test_add_invalid_status_is_usage_error() {
             "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
@@ -52,7 +52,7 @@ fn test_add_priority_above_99_is_usage_error() {
         .current_dir(&env.root)
         .args(["add", "Bad Priority", "--priority", "100", "--json"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
@@ -68,7 +68,7 @@ fn test_update_priority_above_99_is_usage_error() {
         .current_dir(&env.root)
         .args(["update", "PROJ-1", "--priority", "100", "--json"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());

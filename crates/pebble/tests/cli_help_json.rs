@@ -7,12 +7,12 @@ fn test_help_json_emits_valid_schema_to_stdout_only() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
-        .expect("Failed to execute help-json command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse help JSON");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["name"].as_str(), Some("pebble"));
     assert!(value["global_options"].is_array());
     assert!(value["commands"].is_array());
@@ -23,13 +23,13 @@ fn test_help_json_lists_core_commands() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
-        .expect("Failed to execute help-json command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse help JSON");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let commands = value["commands"]
         .as_array()
-        .expect("Expected commands to be an array");
+        .expect("commands should be an array");
 
     let names: Vec<&str> = commands
         .iter()
@@ -48,14 +48,14 @@ fn test_help_json_treats_help_json_as_command_not_global_flag() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
-        .expect("Failed to execute help-json command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse help JSON");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
 
     let global_option_names: Vec<&str> = value["global_options"]
         .as_array()
-        .expect("Expected global_options to be an array")
+        .expect("global_options should be an array")
         .iter()
         .filter_map(|opt| opt["name"].as_str())
         .collect();
@@ -63,7 +63,7 @@ fn test_help_json_treats_help_json_as_command_not_global_flag() {
 
     let command_names: Vec<&str> = value["commands"]
         .as_array()
-        .expect("Expected commands to be an array")
+        .expect("commands should be an array")
         .iter()
         .filter_map(|cmd| cmd["name"].as_str())
         .collect();
@@ -75,21 +75,21 @@ fn test_help_json_includes_command_descriptions() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
-        .expect("Failed to execute help-json command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse help JSON");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let commands = value["commands"]
         .as_array()
-        .expect("Expected commands to be an array");
+        .expect("commands should be an array");
 
     for cmd in commands {
         let name = cmd["name"]
             .as_str()
-            .expect("Expected command name to be a string");
+            .expect("command name should be a string");
         let description = cmd["description"]
             .as_str()
-            .expect("Expected command description to be a string");
+            .expect("command description should be a string");
         assert!(
             !description.trim().is_empty(),
             "Expected non-empty description for command '{}'",
@@ -103,16 +103,21 @@ fn test_help_json_includes_options_for_add_command() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
-        .expect("Failed to execute help-json command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse help JSON");
-    let commands = value["commands"].as_array().unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout must be valid JSON");
+    let commands = value["commands"]
+        .as_array()
+        .expect("commands should be an array");
 
-    let add_cmd = commands.iter().find(|cmd| cmd["name"] == "add").unwrap();
+    let add_cmd = commands
+        .iter()
+        .find(|cmd| cmd["name"] == "add")
+        .expect("'add' command should be present in help JSON");
     let options = add_cmd["options"]
         .as_array()
-        .expect("Expected options to be an array for 'add' command");
+        .expect("options should be an array for 'add' command");
 
     let opt_names: Vec<&str> = options
         .iter()

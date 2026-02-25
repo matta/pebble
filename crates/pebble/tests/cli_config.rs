@@ -13,7 +13,7 @@ fn test_config_get_issue_prefix_human_output() {
         .current_dir(&env.root)
         .args(["config", "get", "issue-prefix"])
         .output()
-        .expect("Failed to run config get command");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
@@ -28,12 +28,12 @@ fn test_config_get_tasks_dir_json_shape() {
         .current_dir(&env.root)
         .args(["config", "get", "tasks-dir", "--json"])
         .output()
-        .expect("Failed to run config get command with --json");
+        .expect("pebble command should execute successfully");
 
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
 
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse config JSON");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     assert_eq!(value["key"].as_str(), Some("tasks-dir"));
     assert_eq!(value["value"].as_str(), Some("tasks"));
 }
@@ -46,7 +46,7 @@ fn test_config_get_unknown_key_is_usage_error() {
         .current_dir(&env.root)
         .args(["config", "get", "not-a-key", "--json"])
         .output()
-        .expect("Failed to run config get with unknown key");
+        .expect("pebble command should execute successfully");
 
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());

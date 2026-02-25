@@ -7,10 +7,9 @@ use std::process::Command;
 use support::setup_test_env;
 
 #[test]
-fn test_cli_renamed_flags_roundtrip() {
+fn test_cli_add_need_renaming() {
     let env = setup_test_env();
 
-    // 1. Test 'pebble add --need' (renamed from --dep)
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
@@ -23,7 +22,7 @@ fn test_cli_renamed_flags_roundtrip() {
             "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(
         output.status.success(),
@@ -31,18 +30,33 @@ fn test_cli_renamed_flags_roundtrip() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let child_id = value.get("id").unwrap().as_str().unwrap().to_string();
-
-    let needs = value.get("needs").unwrap().as_array().unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let needs = value
+        .get("needs")
+        .expect("needs should be present")
+        .as_array()
+        .expect("needs should be an array");
     assert_eq!(needs[0], "parent");
+}
 
-    // 2. Test 'pebble update --add-need' (renamed from --add-dep)
+#[test]
+fn test_cli_update_add_need_renaming() {
+    let env = setup_test_env();
+
+    // Create a task to update
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", "Task", "--json", "--dir", "tasks"])
+        .output()
+        .expect("pebble command should execute successfully");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let task_id = value["id"].as_str().expect("id should be a string");
+
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update",
-            &child_id,
+            task_id,
             "--add-need",
             "another-parent",
             "--json",
@@ -50,26 +64,34 @@ fn test_cli_renamed_flags_roundtrip() {
             "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
-    assert!(
-        output.status.success(),
-        "pebble update --add-need failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let needs = value["needs"].as_array().expect("needs should be an array");
+    assert!(needs.iter().any(|v| v.as_str() == Some("another-parent")));
+}
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let needs = value.get("needs").unwrap().as_array().unwrap();
-    let mut needs_strs: Vec<&str> = needs.iter().map(|v| v.as_str().unwrap()).collect();
-    needs_strs.sort();
-    assert_eq!(needs_strs, vec!["another-parent", "parent"]);
+#[test]
+fn test_cli_update_remove_need_renaming() {
+    let env = setup_test_env();
 
-    // 3. Test 'pebble update --remove-need' (renamed from --remove-dep)
+    // Create a task with a need
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "add", "Task", "--need", "parent", "--json", "--dir", "tasks",
+        ])
+        .output()
+        .expect("pebble command should execute successfully");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let task_id = value["id"].as_str().expect("id should be a string");
+
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args([
             "update",
-            &child_id,
+            task_id,
             "--remove-need",
             "parent",
             "--json",
@@ -77,18 +99,12 @@ fn test_cli_renamed_flags_roundtrip() {
             "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
-    assert!(
-        output.status.success(),
-        "pebble update --remove-need failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let needs = value.get("needs").unwrap().as_array().unwrap();
-    assert_eq!(needs.len(), 1);
-    assert_eq!(needs[0], "another-parent");
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let needs = value["needs"].as_array().expect("needs should be an array");
+    assert!(needs.is_empty());
 }
 
 #[test]
@@ -100,20 +116,30 @@ fn test_cli_computed_blocking_fields() {
         .current_dir(&env.root)
         .args(["add", "Child Task", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let child_id = value.get("id").unwrap().as_str().unwrap().to_string();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let child_id = value
+        .get("id")
+        .expect("id should be present")
+        .as_str()
+        .expect("id should be a string")
+        .to_string();
 
     // Create a parent task
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["add", "Parent Task", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let parent_id = value.get("id").unwrap().as_str().unwrap().to_string();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let parent_id = value
+        .get("id")
+        .expect("id should be present")
+        .as_str()
+        .expect("id should be a string")
+        .to_string();
 
     // Now update 'child' to need this new parent
     Command::new(cargo_bin!())
@@ -135,10 +161,14 @@ fn test_cli_computed_blocking_fields() {
         .current_dir(&env.root)
         .args(["show", &child_id, "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let blocked_by = value.get("blocked_by").unwrap().as_array().unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let blocked_by = value
+        .get("blocked_by")
+        .expect("blocked_by should be present")
+        .as_array()
+        .expect("blocked_by should be an array");
     assert!(blocked_by.iter().any(|v| v.as_str() == Some(&parent_id)));
 
     // parent_id should be blocking 'child'
@@ -146,34 +176,23 @@ fn test_cli_computed_blocking_fields() {
         .current_dir(&env.root)
         .args(["show", &parent_id, "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
-    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let blocking = value.get("blocking").unwrap().as_array().unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let blocking = value
+        .get("blocking")
+        .expect("blocking should be present")
+        .as_array()
+        .expect("blocking should be an array");
     assert!(blocking.iter().any(|v| v.as_str() == Some(&child_id)));
 }
 
 #[test]
-fn test_update_blocks_and_remove_blocks_roundtrip() {
+fn test_update_blocks_roundtrip() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
-        .args(["add", "Source Task", "--json", "--dir", "tasks"])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let source_json: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let source_id = source_json["id"].as_str().unwrap().to_string();
-
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
-        .args(["add", "Target Task", "--json", "--dir", "tasks"])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let target_json: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let target_id = target_json["id"].as_str().unwrap().to_string();
+    let source_id = add_task(&env, "Source Task");
+    let target_id = add_task(&env, "Target Task");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
@@ -181,20 +200,17 @@ fn test_update_blocks_and_remove_blocks_roundtrip() {
             "update", &source_id, "--blocks", &target_id, "--json", "--dir", "tasks",
         ])
         .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "pebble update --blocks failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        .expect("pebble command should execute successfully");
+    assert!(output.status.success());
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", &target_id, "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(output.status.success());
-    let target_after_add: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let target_after_add: Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let needs = target_after_add["needs"]
         .as_array()
         .expect("needs should be an array");
@@ -202,6 +218,23 @@ fn test_update_blocks_and_remove_blocks_roundtrip() {
         needs.iter().any(|v| v.as_str() == Some(&source_id)),
         "Expected target needs to include source ID after --blocks"
     );
+}
+
+#[test]
+fn test_update_remove_blocks_roundtrip() {
+    let env = setup_test_env();
+
+    let source_id = add_task(&env, "Source Task");
+    let target_id = add_task(&env, "Target Task");
+
+    // Setup: source blocks target
+    Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args([
+            "update", &source_id, "--blocks", &target_id, "--dir", "tasks",
+        ])
+        .assert()
+        .success();
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
@@ -215,20 +248,17 @@ fn test_update_blocks_and_remove_blocks_roundtrip() {
             "tasks",
         ])
         .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "pebble update --remove-blocks failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        .expect("pebble command should execute successfully");
+    assert!(output.status.success());
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
         .args(["show", &target_id, "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(output.status.success());
-    let target_after_remove: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let target_after_remove: Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let needs = target_after_remove["needs"]
         .as_array()
         .expect("needs should be an array");
@@ -236,6 +266,20 @@ fn test_update_blocks_and_remove_blocks_roundtrip() {
         !needs.iter().any(|v| v.as_str() == Some(&source_id)),
         "Expected target needs to exclude source ID after --remove-blocks"
     );
+}
+
+fn add_task(env: &support::TestEnv, title: &str) -> String {
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
+        .args(["add", title, "--json", "--dir", "tasks"])
+        .output()
+        .expect("pebble command should execute successfully");
+    assert!(output.status.success());
+    let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    json["id"]
+        .as_str()
+        .expect("id should be a string")
+        .to_string()
 }
 
 #[test]
@@ -246,10 +290,14 @@ fn test_update_blocks_fails_for_unknown_target_id() {
         .current_dir(&env.root)
         .args(["add", "Source Task", "--json", "--dir", "tasks"])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
     assert!(output.status.success());
-    let source_json: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let source_id = source_json["id"].as_str().unwrap().to_string();
+    let source_json: Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let source_id = source_json["id"]
+        .as_str()
+        .expect("id should be a string")
+        .to_string();
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
@@ -262,7 +310,7 @@ fn test_update_blocks_fails_for_unknown_target_id() {
             "tasks",
         ])
         .output()
-        .unwrap();
+        .expect("pebble command should execute successfully");
 
     assert!(
         !output.status.success(),

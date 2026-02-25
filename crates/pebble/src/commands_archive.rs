@@ -102,28 +102,32 @@ mod tests {
         // 1. With extension, no collision
         let p1 = PathBuf::from("PROJ-1.md");
         assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p)).unwrap(),
+            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
+                .expect("archive path should be generated"),
             archive_dir.join("PROJ-1.md")
         );
 
         // 2. Without extension, no collision
         let p2 = PathBuf::from("PROJ-2");
         assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p)).unwrap(),
+            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
+                .expect("archive path should be generated"),
             archive_dir.join("PROJ-2")
         );
 
         // 3. With extension, with collision
         mock_fs.insert(archive_dir.join("PROJ-1.md"));
         assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p)).unwrap(),
+            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
+                .expect("archive path should be generated"),
             archive_dir.join("PROJ-1-2.md")
         );
 
         // 4. Without extension, with collision
         mock_fs.insert(archive_dir.join("PROJ-2"));
         assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p)).unwrap(),
+            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
+                .expect("archive path should be generated"),
             archive_dir.join("PROJ-2-2")
         );
     }

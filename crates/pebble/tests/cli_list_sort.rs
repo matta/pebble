@@ -25,7 +25,7 @@ fn write_task_with_created_at(tasks_dir: &Path, task: SortTask<'_>) {
     }
     let content = format!("+++\n{frontmatter}+++\nBody\n");
     fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
-        .expect("Failed to write task file");
+        .expect("task file should be written");
 }
 
 #[test]
@@ -57,13 +57,13 @@ fn test_list_sort_title_descending() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--sort", "-title"])
         .output()
-        .expect("Failed to execute list command with descending title sort");
+        .expect("list command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let ids: Vec<&str> = value["tasks"]
         .as_array()
-        .expect("Expected 'tasks' to be an array")
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
@@ -109,13 +109,13 @@ fn test_list_sort_priority_uses_created_at_then_id_tiebreakers() {
         .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--sort", "priority"])
         .output()
-        .expect("Failed to execute list command with priority sort");
+        .expect("list command should execute successfully");
 
     assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("Failed to parse JSON output");
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let ids: Vec<&str> = value["tasks"]
         .as_array()
-        .expect("Expected 'tasks' to be an array")
+        .expect("tasks should be an array")
         .iter()
         .filter_map(|task| task["id"].as_str())
         .collect();
