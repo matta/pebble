@@ -120,7 +120,7 @@ fn sort_list_tasks<'a>(
     sort: Option<&str>,
 ) -> Result<Vec<&'a TaskNode>> {
     let Some(sort_raw) = sort else {
-        return Ok(graph.default_order(tasks));
+        return graph.default_order(tasks);
     };
 
     let spec = SortSpec::parse(sort_raw)?;
@@ -230,6 +230,6 @@ pub fn run_search(ctx: &RunContext, query: &str) -> Result<()> {
         })
         .collect();
 
-    let tasks = graph.default_order(tasks);
+    let tasks = graph.default_order(tasks)?;
     emit_task_list(ctx, &graph, tasks)
 }

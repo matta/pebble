@@ -1,5 +1,6 @@
 use super::{NodeKey, TaskGraph};
 use crate::models::TaskNode;
+use color_eyre::eyre::{Result, eyre};
 use std::cmp::{Ordering, Reverse};
 use std::collections::{HashMap, HashSet};
 
@@ -19,9 +20,9 @@ struct SccData {
 pub(super) fn default_order<'a>(
     graph: &'a TaskGraph,
     nodes: Vec<&'a TaskNode>,
-) -> Vec<&'a TaskNode> {
+) -> Result<Vec<&'a TaskNode>> {
     if nodes.len() <= 1 {
-        return nodes;
+        return Ok(nodes);
     }
 
     let ids = collect_ids(&nodes);
@@ -30,7 +31,7 @@ pub(super) fn default_order<'a>(
     let blocking_counts = compute_blocking_counts(graph, &ids);
 
     let scc_data = compute_sccs(&ids, &adjacency);
-    let scc_keys = scc_keys(&scc_data.sccs, &id_to_node, &blocking_counts);
+    let scc_keys = scc_keys(&scc_data.sccs, &id_to_node, &blocking_counts)?;
     let ordered_sccs = topo_order_sccs(&scc_data.sccs, &scc_data.index, &adjacency, &scc_keys);
 
     let mut ordered_nodes: Vec<&TaskNode> = Vec::with_capacity(ids.len());
@@ -39,7 +40,7 @@ pub(super) fn default_order<'a>(
         ordered_nodes.extend(order_scc_nodes(scc, &id_to_node, &adjacency));
     }
 
-    ordered_nodes
+    Ok(ordered_nodes)
 }
 
 /// Builds a [`NodeKey`] for a single task, using the pre-computed blocking count.
@@ -120,14 +121,14 @@ fn scc_keys(
     sccs: &[Vec<String>],
     id_to_node: &HashMap<String, &TaskNode>,
     blocking_counts: &HashMap<String, usize>,
-) -> Vec<NodeKey> {
+) -> Result<Vec<NodeKey>> {
     sccs.iter()
         .map(|scc| {
             scc.iter()
                 .filter_map(|id| id_to_node.get(id))
                 .map(|node| node_key(node, blocking_counts))
                 .min()
-                .expect("SCC must contain at least one node")
+                .ok_or_else(|| eyre!("Internal error: SCC must contain at least one node"))
         })
         .collect()
 }

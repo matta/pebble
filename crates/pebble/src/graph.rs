@@ -245,7 +245,7 @@ impl TaskGraph {
     }
 
     /// Order tasks by dependency-aware default sort (topology, blocking, priority, time, id).
-    pub fn default_order<'a>(&'a self, nodes: Vec<&'a TaskNode>) -> Vec<&'a TaskNode> {
+    pub fn default_order<'a>(&'a self, nodes: Vec<&'a TaskNode>) -> Result<Vec<&'a TaskNode>> {
         ordering::default_order(self, nodes)
     }
 

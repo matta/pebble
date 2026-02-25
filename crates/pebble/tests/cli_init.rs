@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use assert_cmd::Command;
 use std::fs;
 

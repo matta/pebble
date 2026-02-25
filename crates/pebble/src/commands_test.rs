@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use crate::commands::RunContext;
 use crate::commands_add::{RunAddInput, run_add};
 use crate::commands_write::{RunUpdateInput, run_update};

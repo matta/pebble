@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
 use assert_cmd::cargo_bin;

@@ -290,6 +290,7 @@ fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
     use crate::models::{TaskFrontmatter, TaskStatus};

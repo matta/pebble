@@ -92,17 +92,19 @@ pub fn validate_tasks_dir(path: &Path) -> Result<()> {
 /// # Examples
 ///
 /// ```
-/// use pebble::config::parse_config;
-/// use std::path::PathBuf;
-///
+/// # use pebble::config::parse_config;
+/// # use std::path::PathBuf;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let toml = r#"
 /// issue-prefix = "ticket"
 /// tasks-dir = "docs/tasks/"
 /// "#;
 ///
-/// let config = parse_config(toml).expect("Valid TDML config");
+/// let config = parse_config(toml)?;
 /// assert_eq!(config.issue_prefix, "ticket");
 /// assert_eq!(config.tasks_dir, PathBuf::from("docs/tasks/"));
+/// # Ok(())
+/// # }
 /// ```
 pub fn parse_config(toml_str: &str) -> Result<Config> {
     let config: Config = if toml_str.trim().is_empty() {
@@ -117,6 +119,7 @@ pub fn parse_config(toml_str: &str) -> Result<Config> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
     use std::fs;

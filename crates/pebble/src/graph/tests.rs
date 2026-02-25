@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use super::*;
 use crate::models::{Priority, TaskFrontmatter, TaskStatus};
 use std::collections::HashMap;
@@ -136,7 +137,9 @@ fn test_default_order_respects_needs_and_priority() {
 
     let graph = TaskGraph::new(nodes);
     let tasks: Vec<&TaskNode> = graph.nodes.values().collect();
-    let ordered = graph.default_order(tasks);
+    let ordered = graph
+        .default_order(tasks)
+        .expect("default_order should succeed");
     let ids: Vec<&str> = ordered
         .iter()
         .map(|node| node.frontmatter.id.as_str())
@@ -164,7 +167,9 @@ fn test_default_order_cycle_grouping_created_at() {
 
     let graph = TaskGraph::new(nodes);
     let tasks: Vec<&TaskNode> = graph.nodes.values().collect();
-    let ordered = graph.default_order(tasks);
+    let ordered = graph
+        .default_order(tasks)
+        .expect("default_order should succeed");
     let ids: Vec<&str> = ordered
         .iter()
         .map(|node| node.frontmatter.id.as_str())
@@ -185,7 +190,9 @@ fn test_default_order_id_tiebreaker() {
 
     let graph = TaskGraph::new(nodes);
     let tasks: Vec<&TaskNode> = graph.nodes.values().collect();
-    let ordered = graph.default_order(tasks);
+    let ordered = graph
+        .default_order(tasks)
+        .expect("default_order should succeed");
     let ids: Vec<&str> = ordered
         .iter()
         .map(|node| node.frontmatter.id.as_str())

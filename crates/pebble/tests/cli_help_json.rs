@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::process::Command;

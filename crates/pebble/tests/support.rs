@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 //! Shared test helpers for CLI integration tests.
 
 use std::fs;
