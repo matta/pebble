@@ -1,4 +1,5 @@
 use clap::ValueEnum;
+use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use toml_datetime::Datetime;
@@ -134,6 +135,15 @@ pub struct TaskNode {
     pub frontmatter: TaskFrontmatter,
     /// Raw Markdown content after the frontmatter delimiter. Free-form; no structural requirements.
     pub body: String,
+}
+
+impl TaskNode {
+    pub fn write_to_disk(&self) -> Result<()> {
+        let fm_toml = toml::to_string(&self.frontmatter)?;
+        let content = format!("+++\n{}+++\n{}", fm_toml, self.body);
+        std::fs::write(&self.path, content)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

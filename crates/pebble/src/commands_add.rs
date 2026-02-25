@@ -1,7 +1,7 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
 use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
-use crate::task_io::{current_toml_time, write_task_file};
+use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::path::{Path, PathBuf};
 
@@ -81,11 +81,7 @@ fn apply_reverse_blocks(
 
         target_node.frontmatter.needs.push(new_id.to_string());
         target_node.frontmatter.modified_at = Some(current_toml_time()?);
-        write_task_file(
-            &target_node.path,
-            &target_node.frontmatter,
-            &target_node.body,
-        )?;
+        target_node.write_to_disk()?;
         graph.nodes.insert(target_id, target_node);
     }
     Ok(())
@@ -165,7 +161,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         frontmatter: fm,
         body: body.unwrap_or_default(),
     };
-    write_task_file(&node.path, &node.frontmatter, &node.body)?;
+    node.write_to_disk()?;
 
     apply_reverse_blocks(&mut graph, deduped_blocks, &new_id)?;
     graph

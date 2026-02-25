@@ -1,7 +1,7 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
 use crate::models::{TaskNode, TaskStatus};
-use crate::task_io::{current_toml_time, write_task_file};
+use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::env;
 use std::path::PathBuf;
@@ -71,11 +71,7 @@ fn apply_reverse_update(
         }
         target_node.frontmatter.needs.push(source_id.clone());
         target_node.frontmatter.modified_at = Some(current_toml_time()?);
-        write_task_file(
-            &target_node.path,
-            &target_node.frontmatter,
-            &target_node.body,
-        )?;
+        target_node.write_to_disk()?;
         graph.nodes.insert(target_id, target_node);
     }
 
@@ -101,11 +97,7 @@ fn apply_reverse_update(
             continue;
         }
         target_node.frontmatter.modified_at = Some(current_toml_time()?);
-        write_task_file(
-            &target_node.path,
-            &target_node.frontmatter,
-            &target_node.body,
-        )?;
+        target_node.write_to_disk()?;
         graph.nodes.insert(target_id, target_node);
     }
 
@@ -295,7 +287,7 @@ pub fn run_update(
         remove_blocks_targets,
     )?;
 
-    write_task_file(&node.path, &node.frontmatter, &node.body)?;
+    node.write_to_disk()?;
 
     if ctx.json {
         graph
