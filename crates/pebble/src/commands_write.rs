@@ -183,10 +183,8 @@ pub fn run_init(
 
     let prefix = issue_prefix.unwrap_or_else(|| crate::config::Config::default().issue_prefix);
     let tasks_dir_path = if let Some(dir) = cli_dir_override {
-        if dir.is_absolute() {
-            return Err(
-                crate::models::UsageError("tasks-dir must be a relative path".to_string()).into(),
-            );
+        if let Err(e) = crate::config::validate_tasks_dir(&dir) {
+            return Err(crate::models::UsageError(e.to_string()).into());
         }
         dir
     } else {

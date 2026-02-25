@@ -11,3 +11,10 @@
 **Prevention:**
 1. Explicitly check for and reject `std::path::Component::ParentDir` in configuration paths intended to be sandbox-relative.
 2. Consider canonicalizing paths (resolving symlinks and `..`) and verifying they start with the intended root prefix, though this can be complex with symlinks.
+
+## 2025-02-21 - Inconsistent Validation between Config and CLI
+**Vulnerability:** While `tasks-dir` was validated in `config.rs` to prevent path traversal, the `pebble init --dir` command argument bypassed this check, allowing users to initialize repositories with unsafe paths.
+**Learning:** Security validation logic located in configuration parsing is easily bypassed by CLI argument overrides if not explicitly shared and reused.
+**Prevention:**
+1. Centralize validation logic (e.g., `validate_tasks_dir`) and call it from both configuration parsing and CLI argument handling.
+2. Ensure CLI arguments that override configuration values undergo the exact same security checks as the configuration values themselves.
