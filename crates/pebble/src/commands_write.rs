@@ -4,7 +4,11 @@ use crate::models::{TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+fn path_to_lossy_json_string(path: &Path) -> String {
+    path.as_os_str().to_string_lossy().into_owned()
+}
 
 fn validate_reverse_targets(
     graph: &TaskGraph,
@@ -238,8 +242,8 @@ See documentation for implementation details.
             "{}",
             serde_json::json!({
                 "status": "success",
-                "project_root": current_dir.display().to_string(),
-                "tasks_dir": tasks_dir_path.display().to_string(),
+                "project_root": path_to_lossy_json_string(current_dir.as_path()),
+                "tasks_dir": path_to_lossy_json_string(tasks_dir_path.as_path()),
                 "issue_prefix": prefix,
             })
         );
@@ -365,4 +369,28 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(unix)]
+    use std::ffi::OsString;
+    use std::path::Path;
+    #[cfg(unix)]
+    use std::path::PathBuf;
+
+    #[cfg(unix)]
+    #[test]
+    fn path_to_json_string_lossy_replaces_invalid_utf8() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let path = PathBuf::from(OsString::from_vec(vec![b'd', b'i', b'r', b'-', 0xFF]));
+        assert_eq!(super::path_to_lossy_json_string(path.as_path()), "dir-\u{FFFD}");
+    }
+
+    #[test]
+    fn path_to_json_string_lossy_preserves_utf8() {
+        let path = Path::new("docs/pebble");
+        assert_eq!(super::path_to_lossy_json_string(path), "docs/pebble");
+    }
 }
