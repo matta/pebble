@@ -18,9 +18,9 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```
-/// use std::path::Path;
-/// use pebble::parser::parse_task_file;
-///
+/// # use std::path::Path;
+/// # use pebble::parser::parse_task_file;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let content = r#"+++
 /// id = "issue-1"
 /// title = "Fix bug"
@@ -30,9 +30,11 @@ use std::path::Path;
 ///
 /// Description of the bug."#;
 ///
-/// let node = parse_task_file(Path::new("issue-1.md"), content).unwrap();
+/// let node = parse_task_file(Path::new("issue-1.md"), content)?;
 /// assert_eq!(node.frontmatter.title, "Fix bug");
 /// assert_eq!(node.body.trim(), "Description of the bug.");
+/// # Ok(())
+/// # }
 /// ```
 pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let lines: Vec<&str> = content.lines().collect();
@@ -82,6 +84,7 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
     use crate::models::TaskStatus;

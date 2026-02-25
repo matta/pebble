@@ -1,3 +1,4 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;

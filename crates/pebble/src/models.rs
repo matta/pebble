@@ -27,11 +27,13 @@ impl error::Error for UsageError {}
 /// # Examples
 ///
 /// ```
-/// use pebble::models::TaskStatus;
-///
+/// # use pebble::models::TaskStatus;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let status = TaskStatus::Todo;
 /// // Serializes to "todo"
-/// assert_eq!(toml::to_string(&status).unwrap().trim(), "\"todo\"");
+/// assert_eq!(toml::to_string(&status)?.trim(), "\"todo\"");
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, Copy, ValueEnum)]
 #[serde(rename_all = "snake_case")]
@@ -76,12 +78,14 @@ bounded_integer::bounded_integer! {
 /// # Examples
 ///
 /// ```
-/// use pebble::models::{TaskFrontmatter, TaskStatus};
-///
+/// # use pebble::models::{TaskFrontmatter, TaskStatus};
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let toml_str = "id = \"issue-123\"\ntitle = \"Test\"\nstatus = \"todo\"\ncreated_at = 2023-01-01T00:00:00Z";
-/// let fm: TaskFrontmatter = toml::from_str(toml_str).unwrap();
+/// let fm: TaskFrontmatter = toml::from_str(toml_str)?;
 /// assert_eq!(fm.title, "Test");
 /// assert_eq!(fm.status, TaskStatus::Todo);
+/// # Ok(())
+/// # }
 /// ```
 // TODO: Implement unknown-key handling: reads ignore; doctor/fix warn; check errors; fix preserves.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -120,11 +124,11 @@ pub struct TaskFrontmatter {
 /// # Examples
 ///
 /// ```
-/// use std::path::PathBuf;
-/// use std::str::FromStr;
-/// use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-/// use toml_datetime::Datetime;
-///
+/// # use std::path::PathBuf;
+/// # use std::str::FromStr;
+/// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
+/// # use toml_datetime::Datetime;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let node = TaskNode {
 ///     path: PathBuf::from("tasks/issue-123.md"),
 ///     frontmatter: TaskFrontmatter {
@@ -132,15 +136,18 @@ pub struct TaskFrontmatter {
 ///         title: "My Task".into(),
 ///         status: TaskStatus::Todo,
 ///         priority: None,
-///         created_at: Datetime::from_str("2023-01-01T00:00:00Z").expect("Valid ISO8601 string"),
+///         created_at: Datetime::from_str("2023-01-01T00:00:00Z")?,
 ///         modified_at: None,
 ///         resolved_at: None,
 ///         needs: vec![],
 ///         tags: vec![],
+///         extra: Default::default(),
 ///     },
 ///     body: "Detailed description".into(),
 /// };
 /// assert_eq!(node.frontmatter.title, "My Task");
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct TaskNode {
@@ -165,6 +172,7 @@ impl TaskNode {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
     use std::convert::TryFrom;

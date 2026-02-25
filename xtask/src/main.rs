@@ -14,7 +14,6 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use std::sync::LazyLock;
 
 /// Default maximum number of non-comment, non-whitespace tokens allowed per Rust file.
 const DEFAULT_TOKEN_LIMIT: usize = 2500;
@@ -37,19 +36,11 @@ const SUPPRESSION_DENYLIST_CLIPPY_LINTS: &[&str] = &[
 ];
 /// Clippy lint groups that are broad enough to suppress denylisted lints transitively.
 const SUPPRESSION_DENYLIST_CLIPPY_GROUPS: &[&str] = &["complexity", "perf", "pedantic"];
-/// Regex used to match Rust lint attributes of the form `#[allow(...)]` / `#[expect(...)]`.
-///
-/// Known limitation: this pattern uses dotall `(?s)` plus a lazy `(.*?)` capture for
-/// attribute arguments. In unusual nested-parenthesis cases, capture can terminate at an
-/// inner `)` instead of the outer attribute boundary, which can cause false negatives
-/// (missed matches) but should not create denylist false positives.
-static LINT_ATTRIBUTE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?s)#\s*!?\s*\[\s*(allow|expect)\s*\((.*?)\)\s*]")
-        .expect("attribute regex must compile")
-});
-/// Regex used to extract `clippy::...` lint tokens from lint-attribute argument lists.
-static CLIPPY_LINT_TOKEN_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"clippy::[a-z_]+").expect("lint regex must compile"));
+
+/// Regex pattern used to match Rust lint attributes of the form `#[allow(...)]` / `#[expect(...)]`.
+const LINT_ATTRIBUTE_PATTERN: &str = r"(?s)#\s*!?\s*\[\s*(allow|expect)\s*\((.*?)\)\s*]";
+/// Regex pattern used to extract `clippy::...` lint tokens from lint-attribute argument lists.
+const CLIPPY_LINT_TOKEN_PATTERN: &str = r"clippy::[a-z_]+";
 
 mod forbidden_words;
 use forbidden_words::check_forbidden_words;
@@ -277,6 +268,9 @@ fn check_clippy_suppressions(all: bool) -> Result<()> {
     let files = get_files_to_check(&root, all)?;
     let mut violations: Vec<(String, ClippySuppressionHit)> = Vec::new();
 
+    let lint_attr_re = Regex::new(LINT_ATTRIBUTE_PATTERN)?;
+    let clippy_lint_re = Regex::new(CLIPPY_LINT_TOKEN_PATTERN)?;
+
     for file_path in files {
         let path = root.join(&file_path);
         if !path.exists() || path.is_dir() {
@@ -287,7 +281,7 @@ fn check_clippy_suppressions(all: bool) -> Result<()> {
         }
 
         let source = fs::read_to_string(&path)?;
-        for hit in find_denied_clippy_suppressions(&source)? {
+        for hit in find_denied_clippy_suppressions(&source, &lint_attr_re, &clippy_lint_re)? {
             violations.push((file_path.clone(), hit));
         }
     }
@@ -319,9 +313,13 @@ fn check_clippy_suppressions(all: bool) -> Result<()> {
 /// This uses regex matching over attribute syntax for pragmatic portability in `xtask`.
 /// It is intentionally conservative and may miss exotic macro-generated forms that only a
 /// clippy-integrated pass could model perfectly.
-fn find_denied_clippy_suppressions(source: &str) -> Result<Vec<ClippySuppressionHit>> {
+fn find_denied_clippy_suppressions(
+    source: &str,
+    lint_attr_re: &Regex,
+    clippy_lint_re: &Regex,
+) -> Result<Vec<ClippySuppressionHit>> {
     let mut hits = Vec::new();
-    for captures in LINT_ATTRIBUTE_REGEX.captures_iter(source) {
+    for captures in lint_attr_re.captures_iter(source) {
         let kind = captures
             .get(1)
             .ok_or_else(|| eyre!("capture group 1 missing in lint attribute match"))?
@@ -330,7 +328,7 @@ fn find_denied_clippy_suppressions(source: &str) -> Result<Vec<ClippySuppression
             .get(2)
             .ok_or_else(|| eyre!("capture group 2 missing in lint attribute match"))?;
 
-        for lint_match in CLIPPY_LINT_TOKEN_REGEX.find_iter(args.as_str()) {
+        for lint_match in clippy_lint_re.find_iter(args.as_str()) {
             let lint = lint_match.as_str();
             if !is_denied_clippy_suppression(lint) {
                 continue;
@@ -397,6 +395,7 @@ fn get_git_files(root: &Path, args: &[&str]) -> Result<Vec<String>> {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
 
@@ -437,6 +436,9 @@ mod tests {
 
     #[test]
     fn test_find_denied_clippy_suppressions_detects_direct_and_group_lints() -> Result<()> {
+        let lint_attr_re = Regex::new(LINT_ATTRIBUTE_PATTERN)?;
+        let clippy_lint_re = Regex::new(CLIPPY_LINT_TOKEN_PATTERN)?;
+
         let source = format!(
             r#"
             #[allow(clippy::{})]
@@ -447,7 +449,7 @@ mod tests {
         "#,
             "cognitive_complexity", "too_many_lines"
         );
-        let hits = find_denied_clippy_suppressions(&source)?;
+        let hits = find_denied_clippy_suppressions(&source, &lint_attr_re, &clippy_lint_re)?;
         assert_eq!(hits.len(), 2);
         assert_eq!(hits[0].lint, "clippy::cognitive_complexity");
         assert_eq!(hits[1].lint, "clippy::too_many_lines");
@@ -456,12 +458,15 @@ mod tests {
 
     #[test]
     fn test_find_denied_clippy_suppressions_ignores_unrelated_lints() -> Result<()> {
+        let lint_attr_re = Regex::new(LINT_ATTRIBUTE_PATTERN)?;
+        let clippy_lint_re = Regex::new(CLIPPY_LINT_TOKEN_PATTERN)?;
+
         let source = r#"
             #[allow(dead_code)]
             #[expect(unused_variables)]
             fn quiet() {}
         "#;
-        let hits = find_denied_clippy_suppressions(source)?;
+        let hits = find_denied_clippy_suppressions(source, &lint_attr_re, &clippy_lint_re)?;
         assert!(hits.is_empty());
         Ok(())
     }

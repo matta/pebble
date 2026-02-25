@@ -89,6 +89,7 @@ fn get_archive_path(
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
     use std::collections::HashSet;
