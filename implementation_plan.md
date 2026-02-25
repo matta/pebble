@@ -79,7 +79,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [x] `pebl-czi45zargx`: Use lossy-safe path serialization in init JSON output
 - [ ] `pebl-6pv06nwvpl`: Align help-json guidance text with actual emitted keys
 - [x] `pebl-9fvf6xfco3`: Clarify global stream rules vs init human stderr output
-- [ ] `pebl-b4ei14wcbe`: Decide naming style in help-json guidance: exact keys vs conceptual labels
+- [x] `pebl-b4ei14wcbe`: Decide naming style in help-json guidance: exact keys vs conceptual labels
 - [x] `pebl-FU-FSN`: Forbid clippy warning suppressions
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)

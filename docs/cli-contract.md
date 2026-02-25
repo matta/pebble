@@ -153,14 +153,22 @@ The `pebble help-json` command returns machine-readable CLI metadata intended fo
 
 ### What it returns
 
+When this document discusses `help-json` fields, it uses exact emitted key names (for example, `global_options`, not paraphrases like "global flags list"). These names improve discoverability, but the output remains guidance rather than a versioned contract.
+
 The output is a JSON object that generally includes:
-* `name` — the CLI binary name.
-* `global_options` — a list of flags available on every command (e.g. `--json`, `--dir`) with names and short descriptions.
-* `commands` — a list of all subcommands, each with:
-    * `name` — canonical subcommand name.
-    * `description` — a one-line purpose statement.
-    * `options` — per-command flags with names and descriptions.
-    * `output` — a hint describing the kind of JSON value this command returns when `--json` is specified (e.g. `TaskObject`, `{"tasks": ["TaskObject"]}`).
+* Root keys:
+    * `name` — the CLI binary name.
+    * `global_options` — a list of global option objects.
+    * `commands` — a list of command objects.
+* Option object keys:
+    * `name` — option identifier (for example, `--json`).
+    * `description` — one-line option help text.
+* Command object keys:
+    * `name` — canonical command name.
+    * `description` — one-line purpose statement.
+    * `options` — list of option objects (`name`, `description`).
+    * `output` — hint for `--json` output shape on leaf commands (for example, `TaskObject`, `{"tasks": ["TaskObject"]}`).
+    * `subcommands` — list of nested command objects for command groups (for example, `config get`).
 
 ### How AI agents should use it
 
