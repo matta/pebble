@@ -35,44 +35,64 @@ use std::path::Path;
 /// assert_eq!(node.body.trim(), "Description of the bug.");
 /// ```
 pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
-    let lines: Vec<&str> = content.lines().collect();
-
     // Frontmatter must start on the first line.
-    if lines.is_empty() || lines[0].trim() != "+++" {
+    let (first_line, rest) = match content.split_once('\n') {
+        Some((l, r)) => (l, r),
+        None => (content, ""),
+    };
+
+    if first_line.trim() != "+++" {
         return Err(eyre!(
             "Missing or invalid TOML frontmatter: file must start with '+++'"
         ));
     }
 
-    // Find the end of the frontmatter.
-    let mut end_idx = None;
-    for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim() == "+++" {
-            end_idx = Some(i);
-            break;
+    // Find the end of the frontmatter (the second "+++" line).
+    let mut toml_end_offset = None;
+    let mut search_head = rest;
+    let mut relative_offset = 0;
+
+    loop {
+        match search_head.split_once('\n') {
+            Some((line, remaining)) => {
+                if line.trim() == "+++" {
+                    toml_end_offset = Some(relative_offset);
+                    break;
+                }
+                relative_offset += line.len() + 1; // +1 for the newline
+                search_head = remaining;
+            }
+            None => {
+                // Check the last line (if it doesn't end with a newline)
+                if search_head.trim() == "+++" {
+                    toml_end_offset = Some(relative_offset);
+                }
+                break;
+            }
         }
     }
 
-    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
+    let toml_len = toml_end_offset.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
 
-    // Extract frontmatter string.
-    let toml_str = lines[1..end_idx].join("\n");
+    // Slice the TOML content directly from the source string.
+    let toml_str = &rest[..toml_len];
+
+    // Find the start of the body.
+    // The closing "+++" line starts at `toml_len`.
+    // We need to skip the closing delimiter line to get to the body.
+    // We find the newline after the closing delimiter.
+    let closing_line_start = toml_len;
+    let body_start = match rest[closing_line_start..].find('\n') {
+        Some(idx) => closing_line_start + idx + 1,
+        None => rest.len(), // EOF after closing +++
+    };
+
     let frontmatter: TaskFrontmatter =
-        toml::from_str(&toml_str).map_err(|e| eyre!("Failed to parse TOML frontmatter: {}", e))?;
+        toml::from_str(toml_str).map_err(|e| eyre!("Failed to parse TOML frontmatter: {}", e))?;
 
-    // Extract body, stripping leading newlines after the closing '+++'.
-    let body_lines = &lines[end_idx + 1..];
-
-    // We want to reconstruct the body. We can use `join("\n")`,
-    // but if the file ended with a newline we might want to be faithful.
-    // For now, joining lines is standard.
-    let mut body = body_lines.join("\n");
-    if !body.is_empty() && content.ends_with('\n') {
-        body.push('\n');
-    }
-
-    // Trim leading whitespace/newlines from the body to drop the immediate gap after ---
-    let body = body.trim_start().to_string();
+    // Extract body, stripping leading whitespace/newlines.
+    // We allocate a String here, but we avoided the intermediate Vec and joins.
+    let body = rest[body_start..].trim_start().to_string();
 
     Ok(TaskNode {
         path: path.to_path_buf(),
@@ -134,5 +154,17 @@ created_at = 2026-02-21T17:00:00Z
 +++"#;
         let err = parse_task_file(Path::new("file.md"), content).unwrap_err();
         assert!(err.to_string().contains("Failed to parse TOML frontmatter"));
+    }
+
+    #[test]
+    fn test_parse_crlf_task() {
+        // Construct a string with CRLF line endings
+        let content = "+++\r\nid = \"issue-crlf\"\r\ntitle = \"CRLF Task\"\r\nstatus = \"todo\"\r\ncreated_at = 2026-02-21T17:00:00Z\r\n+++\r\n\r\n# Body\r\nThis is the body.\r\n";
+        let node = parse_task_file(Path::new("issue-crlf.md"), content).unwrap();
+        assert_eq!(node.frontmatter.id, "issue-crlf");
+        assert_eq!(node.frontmatter.title, "CRLF Task");
+        assert_eq!(node.frontmatter.status, TaskStatus::Todo);
+        // The parser preserves the body as-is (except trimming start)
+        assert_eq!(node.body, "# Body\r\nThis is the body.\r\n");
     }
 }
