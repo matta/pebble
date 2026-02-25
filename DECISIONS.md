@@ -16,4 +16,8 @@ We considered three options for storage:
 -   **Simplicity:** No need for a database engine or complex synchronization logic.
 -   **Deterministic Merging:** Since each task is a separate file, "merging" datasets is primarily about file system operations. Deterministic ordering in `list` and `next` commands ensures consistent views across environments.
 
+**Trade-offs:**
+-   **Inode Usage:** Creates one file per task, which may be inefficient for projects with tens of thousands of tasks.
+-   **Performance:** Listing tasks requires reading many small files, which can be slower than reading a single large file on some file systems. However, this is mitigated by the fact that typical project task counts (hundreds to low thousands) are negligible for modern file systems.
+
 **Status:** Implemented.
