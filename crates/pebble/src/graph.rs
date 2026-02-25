@@ -52,14 +52,20 @@ impl TaskGraph {
 
     /// Builds a graph from a directory of task files.
     ///
-    /// Scans the directory for Markdown (`.md`) files, parsing each as a [`TaskNode`].
-    /// Files named `AGENTS.md` are explicitly ignored. Files that start with `+++` but
-    /// fail to parse result in a warning printed to stderr but do not halt the loading
-    /// process. Files that do not start with `+++` are silently ignored.
+    /// Scans the directory and all subdirectories for Markdown (`.md`) files, parsing each
+    /// as a [`TaskNode`].
+    ///
+    /// The loading process handles the following cases:
+    /// * Valid Tasks: Files starting with `+++` and containing valid TOML frontmatter are loaded.
+    /// * Duplicates: If multiple files declare the same task ID, a warning is printed to stderr,
+    ///   and all occurrences of that ID are excluded from the graph to prevent ambiguity.
+    /// * Ignored Files: Files named `AGENTS.md` or those not starting with `+++` are silently skipped.
+    /// * Parse Errors: Files starting with `+++` but containing invalid frontmatter result in a
+    ///   warning to stderr but do not halt the loading process.
     ///
     /// # Errors
     ///
-    /// Returns an `Err` if the directory cannot be read or if any file read operation fails.
+    /// Returns an error if the directory walk fails or if any file read operation fails (e.g. permission denied).
     pub fn load_from_dir(tasks_dir: &Path) -> Result<Self> {
         let mut parsed_nodes = Vec::new();
 
@@ -125,7 +131,18 @@ impl TaskGraph {
         Self::new_with_duplicates(nodes, HashSet::new())
     }
 
-    /// Creates a TaskGraph from nodes and a set of duplicated IDs.
+    /// Creates a new [`TaskGraph`] from a map of nodes, computing the reverse dependency index.
+    ///
+    /// This constructor performs the following:
+    /// 1. Stores the provided `nodes` map.
+    /// 2. Iterates over all nodes to build the `blocking` index (a map from dependency ID to
+    ///    dependent task IDs).
+    /// 3. Stores the set of `duplicate_ids` for later validation or reporting.
+    ///
+    /// # Arguments
+    ///
+    /// * `nodes` - A map where keys are task IDs and values are the parsed [`TaskNode`]s.
+    /// * `duplicate_ids` - A set of task IDs that were found in multiple files during loading.
     pub fn new_with_duplicates(
         nodes: HashMap<String, TaskNode>,
         duplicate_ids: HashSet<String>,
@@ -150,12 +167,12 @@ impl TaskGraph {
         self.duplicate_ids.contains(task_id)
     }
 
-    /// Determines if a task is "ready" according to absolute readiness rules.
+    /// Determines if a task is "ready" to be worked on.
     ///
-    /// A task is considered ready if:
-    /// 1. Its status is actionable (`todo` or `in_progress`).
-    /// 2. All tasks in its `needs` list exist in the graph.
-    /// 3. All tasks in its `needs` list are in a terminal state (`done` or `canceled`).
+    /// A task is considered ready if it satisfies all of the following conditions:
+    /// 1. Its status is actionable (i.e., [`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`]).
+    /// 2. It has no missing dependencies (all tasks in `needs` exist in the graph).
+    /// 3. All its dependencies are in a terminal state (i.e., [`crate::models::TaskStatus::Done`] or [`crate::models::TaskStatus::Canceled`]).
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
