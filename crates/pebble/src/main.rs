@@ -195,7 +195,8 @@ fn run() -> Result<()> {
 
 fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
     match &command {
-        DispatchCommand::List(_)
+        DispatchCommand::Add(_)
+        | DispatchCommand::List(_)
         | DispatchCommand::Next
         | DispatchCommand::Search { .. }
         | DispatchCommand::Update(_)
@@ -203,7 +204,9 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         | DispatchCommand::Show { .. } => {
             ctx.ensure_project()?;
         }
-        _ => {}
+        DispatchCommand::ConfigGet { .. } => {
+            // No project required for config inspection.
+        }
     }
 
     match command {

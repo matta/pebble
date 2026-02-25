@@ -39,6 +39,22 @@ fn test_list_fails_when_no_project_found() {
 }
 
 #[test]
+fn test_add_fails_when_no_project_found() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path();
+
+    let output = Command::new(cargo_bin!())
+        .current_dir(root)
+        .args(["add", "New Task"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("No pebble project found"));
+}
+
+#[test]
 fn test_add_invalid_status_is_usage_error() {
     let env = setup_test_env();
 
