@@ -80,6 +80,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [ ] `pebl-6pv06nwvpl`: Align help-json guidance text with actual emitted keys
 - [ ] `pebl-9fvf6xfco3`: Clarify global stream rules vs init human stderr output
 - [ ] `pebl-b4ei14wcbe`: Decide naming style in help-json guidance: exact keys vs conceptual labels
+- [x] `pebl-FU-FSN`: Forbid clippy warning suppressions
 
 ## Phase Zero: Trustworthy Planning (Blockers Only)
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.
@@ -136,7 +137,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [ ] P4.2 Fix TOCTOU slug collision by using atomic create (`OpenOptions::create_new(true)` + retry).
 - [ ] P4.3 Transliterate non-ASCII in `slugify` (e.g., `deunicode`).
 - [ ] P4.4 Help text completeness test that exercises every subcommand.
-- [ ] P4.5 Clippy warning suppression forbiddance in `justfile` (requires operator approval before changes).
+- [x] P4.5 Clippy warning suppression forbiddance in `just` checks (operator approval received).
 
 ## Phase 5: Test Coverage (TDD for Each Gap)
 - [ ] P5.1 Recursive scan and duplicate ID behavior (read + write).

@@ -13,9 +13,42 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::sync::LazyLock;
 
 /// Default maximum number of non-comment, non-whitespace tokens allowed per Rust file.
 const DEFAULT_TOKEN_LIMIT: usize = 2500;
+/// Exact clippy lints that repository policy forbids suppressing with `allow`/`expect`.
+///
+/// We intentionally do **not** enforce this via `cargo clippy ... -F clippy::<lint>` in
+/// `justfile`, and we also tried crate-level `#![forbid(clippy::...)]`. Both approaches
+/// conflicted with clap derive internals that emit `#[allow(clippy::...)]` and produced
+/// hard errors (`E0453`) or future-incompat diagnostics (`forbidden_lint_groups`).
+///
+/// This regex scanner is less principled than an approach integrated directly with
+/// clippy/rustc lint plumbing, but it provides a reliable project-level guard today.
+const SUPPRESSION_DENYLIST_CLIPPY_LINTS: &[&str] = &[
+    "clippy::cognitive_complexity",
+    "clippy::type_complexity",
+    "clippy::too_many_arguments",
+    "clippy::too_many_lines",
+    "clippy::large_enum_variant",
+    "clippy::struct_excessive_bools",
+];
+/// Clippy lint groups that are broad enough to suppress denylisted lints transitively.
+const SUPPRESSION_DENYLIST_CLIPPY_GROUPS: &[&str] = &["complexity", "perf", "pedantic"];
+/// Regex used to match Rust lint attributes of the form `#[allow(...)]` / `#[expect(...)]`.
+///
+/// Known limitation: this pattern uses dotall `(?s)` plus a lazy `(.*?)` capture for
+/// attribute arguments. In unusual nested-parenthesis cases, capture can terminate at an
+/// inner `)` instead of the outer attribute boundary, which can cause false negatives
+/// (missed matches) but should not create denylist false positives.
+static LINT_ATTRIBUTE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?s)#\s*!?\s*\[\s*(allow|expect)\s*\((.*?)\)\s*]")
+        .expect("attribute regex must compile")
+});
+/// Regex used to extract `clippy::...` lint tokens from lint-attribute argument lists.
+static CLIPPY_LINT_TOKEN_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"clippy::[a-z_]+").expect("lint regex must compile"));
 
 mod forbidden_words;
 use forbidden_words::check_forbidden_words;
@@ -47,6 +80,12 @@ enum Commands {
         #[arg(long)]
         minimize_whitelist: bool,
     },
+    /// Check for suppressions of clippy lints denied by workspace policy.
+    CheckClippySuppressions {
+        /// Scan all tracked files instead of just edited ones
+        #[arg(long)]
+        all: bool,
+    },
     /// Check for Rust files that are too large (token count)
     CheckRustTokenCount {
         /// Scan all tracked files instead of just edited ones
@@ -69,6 +108,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Check { all } => {
             check_forbidden_words(all, false, false)?;
+            check_clippy_suppressions(all)?;
             check_rust_token_count(all, DEFAULT_TOKEN_LIMIT, false)?;
             Ok(())
         }
@@ -77,6 +117,7 @@ fn main() -> Result<()> {
             generate_whitelist,
             minimize_whitelist,
         } => check_forbidden_words(all, generate_whitelist, minimize_whitelist),
+        Commands::CheckClippySuppressions { all } => check_clippy_suppressions(all),
         Commands::CheckRustTokenCount {
             all,
             limit,
@@ -217,6 +258,110 @@ fn check_rust_token_count(all: bool, limit: usize, print_counts: bool) -> Result
     Ok(())
 }
 
+/// One source-level suppression hit for a policy-denied clippy lint.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ClippySuppressionHit {
+    /// Attribute kind (`allow` or `expect`) that performed the suppression.
+    kind: String,
+    /// Fully qualified clippy lint path (for example, `clippy::too_many_lines`).
+    lint: String,
+    /// 1-based line where the lint token appears in source.
+    line: usize,
+}
+
+/// Checks Rust files for `#[allow(...)]` or `#[expect(...)]` suppressions that
+/// target clippy lints denied by workspace policy.
+fn check_clippy_suppressions(all: bool) -> Result<()> {
+    let root = std::env::current_dir()?;
+    let files = get_files_to_check(&root, all)?;
+    let mut violations: Vec<(String, ClippySuppressionHit)> = Vec::new();
+
+    for file_path in files {
+        let path = root.join(&file_path);
+        if !path.exists() || path.is_dir() {
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+            continue;
+        }
+
+        let source = fs::read_to_string(&path)?;
+        for hit in find_denied_clippy_suppressions(&source) {
+            violations.push((file_path.clone(), hit));
+        }
+    }
+
+    if !violations.is_empty() {
+        violations.sort_by(|left, right| {
+            left.0
+                .cmp(&right.0)
+                .then_with(|| left.1.line.cmp(&right.1.line))
+                .then_with(|| left.1.lint.cmp(&right.1.lint))
+        });
+
+        println!("DISALLOWED CLIPPY SUPPRESSIONS FOUND");
+        println!(
+            "Policy-denied clippy lints must not be suppressed with #[allow(...)] or #[expect(...)]."
+        );
+        for (file, hit) in violations {
+            println!("{}:{} -> {}({})", file, hit.line, hit.kind, hit.lint);
+        }
+        bail!("Found suppressions of clippy lints denied by workspace policy.");
+    }
+
+    println!("No suppressions found for clippy lints denied by workspace policy.");
+    Ok(())
+}
+
+/// Finds denylisted clippy suppressions in Rust source text.
+///
+/// This uses regex matching over attribute syntax for pragmatic portability in `xtask`.
+/// It is intentionally conservative and may miss exotic macro-generated forms that only a
+/// clippy-integrated pass could model perfectly.
+fn find_denied_clippy_suppressions(source: &str) -> Vec<ClippySuppressionHit> {
+    let mut hits = Vec::new();
+    for captures in LINT_ATTRIBUTE_REGEX.captures_iter(source) {
+        let kind = captures
+            .get(1)
+            .expect("capture group 1 exists for allow/expect")
+            .as_str();
+        let args = captures
+            .get(2)
+            .expect("capture group 2 exists for attribute args");
+
+        for lint_match in CLIPPY_LINT_TOKEN_REGEX.find_iter(args.as_str()) {
+            let lint = lint_match.as_str();
+            if !is_denied_clippy_suppression(lint) {
+                continue;
+            }
+
+            let byte_index = args.start() + lint_match.start();
+            let line = source[..byte_index]
+                .bytes()
+                .filter(|byte| *byte == b'\n')
+                .count()
+                + 1;
+            hits.push(ClippySuppressionHit {
+                kind: kind.to_string(),
+                lint: lint.to_string(),
+                line,
+            });
+        }
+    }
+
+    hits
+}
+
+/// Returns `true` when `lint` is denied from source-level suppression by policy.
+fn is_denied_clippy_suppression(lint: &str) -> bool {
+    if SUPPRESSION_DENYLIST_CLIPPY_LINTS.contains(&lint) {
+        return true;
+    }
+
+    lint.strip_prefix("clippy::")
+        .is_some_and(|group| SUPPRESSION_DENYLIST_CLIPPY_GROUPS.contains(&group))
+}
+
 /// Counts non-comment, non-whitespace tokens in a Rust source file.
 ///
 /// Uses `ra_ap_rustc_lexer` to tokenize the file, filtering out
@@ -287,5 +432,49 @@ mod tests {
         // 15: ;
         // 16: }
         assert_eq!(count, 16);
+    }
+
+    #[test]
+    fn test_find_denied_clippy_suppressions_detects_direct_and_group_lints() {
+        let source = [
+            "#[",
+            "allow(",
+            "clippy::cognitive_complexity",
+            ")]\n",
+            "fn one() {}\n\n",
+            "#[",
+            "expect(",
+            "clippy::large_enum_variant",
+            ", reason = \"temporary\")]\n",
+            "enum Two {}\n\n",
+            "#![",
+            "allow(\n",
+            "    clippy::complexity,\n",
+            "    clippy::unnecessary_wraps\n",
+            ")]\n",
+        ]
+        .concat();
+
+        let hits = find_denied_clippy_suppressions(&source);
+        let found: Vec<&str> = hits.iter().map(|hit| hit.lint.as_str()).collect();
+
+        assert!(found.contains(&"clippy::cognitive_complexity"));
+        assert!(found.contains(&"clippy::large_enum_variant"));
+        assert!(found.contains(&"clippy::complexity"));
+    }
+
+    #[test]
+    fn test_find_denied_clippy_suppressions_ignores_unrelated_lints() {
+        let source = [
+            "#[",
+            "allow(",
+            "clippy::unnecessary_wraps",
+            ")]\n",
+            "fn one() {}\n",
+        ]
+        .concat();
+
+        let hits = find_denied_clippy_suppressions(&source);
+        assert!(hits.is_empty());
     }
 }

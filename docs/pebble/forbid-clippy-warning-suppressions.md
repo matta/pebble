@@ -1,9 +1,10 @@
 +++
 id = "pebl-FU-FSN"
 title = "Forbid clippy warning suppressions"
-status = "todo"
+status = "done"
 created_at = 2026-02-22T23:14:28.82665+00:00
-modified_at = 2026-02-25T01:55:39.881689+00:00
+modified_at = 2026-02-25T02:47:14.80352+00:00
+resolved_at = 2026-02-25T02:47:14.803515+00:00
 needs = []
 tags = []
 +++
