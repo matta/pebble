@@ -1,11 +1,12 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{TaskNode, UsageError};
+use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::env;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 mod listing;
 pub use listing::{ListOptions, run_list, run_search};
@@ -15,8 +16,8 @@ pub use listing::{ListOptions, run_list, run_search};
 pub struct TaskObject<'a> {
     pub id: &'a str,
     pub title: &'a str,
-    pub status: crate::models::TaskStatus,
-    pub priority: Option<crate::models::Priority>,
+    pub status: TaskStatus,
+    pub priority: Option<Priority>,
     pub created_at: String,
     pub modified_at: Option<String>,
     pub resolved_at: Option<String>,
@@ -31,7 +32,7 @@ pub struct TaskObject<'a> {
 
 impl<'a> TaskObject<'a> {
     /// Build a serializable task view from a graph node and tasks directory.
-    pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &std::path::Path) -> Self {
+    pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &Path) -> Self {
         let is_ready = graph.is_ready(&node.frontmatter.id);
 
         let blocked_by: Vec<String> = node
@@ -119,7 +120,7 @@ impl RunContext {
         });
 
         let config = if config_path.exists() {
-            let toml_str = std::fs::read_to_string(&config_path)?;
+            let toml_str = fs::read_to_string(&config_path)?;
             parse_config(&toml_str)?
         } else {
             Config::default()
@@ -239,7 +240,7 @@ pub fn validate_task_references(
     flag_name: &str,
 ) -> Result<Vec<String>> {
     let mut deduped = Vec::new();
-    let mut seen = std::collections::HashSet::new();
+    let mut seen = HashSet::new();
 
     for target_id in targets {
         if !seen.insert(target_id.clone()) {
@@ -292,7 +293,7 @@ fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
 mod tests {
     use super::*;
     use crate::models::{TaskFrontmatter, TaskStatus};
-    use std::collections::HashMap;
+    use std::collections::{BTreeSet, HashMap};
     use std::path::PathBuf;
     use std::str::FromStr;
 
@@ -310,7 +311,7 @@ mod tests {
                 resolved_at: None,
                 needs: needs.into_iter().map(|s| s.to_string()).collect(),
                 tags: vec![],
-                extra: std::collections::HashMap::new(),
+                extra: HashMap::new(),
             },
         }
     }
@@ -351,11 +352,8 @@ mod tests {
             .expect("Serialized config should be an object")
             .keys()
             .cloned()
-            .collect::<std::collections::BTreeSet<_>>();
-        let extracted_keys = extracted
-            .keys()
-            .cloned()
-            .collect::<std::collections::BTreeSet<_>>();
+            .collect::<BTreeSet<_>>();
+        let extracted_keys = extracted.keys().cloned().collect::<BTreeSet<_>>();
 
         assert_eq!(extracted_keys, serialized_keys);
     }

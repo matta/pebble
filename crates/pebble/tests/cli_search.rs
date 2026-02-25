@@ -3,16 +3,11 @@ mod support;
 use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use support::{setup_test_env, write_task};
 
-fn write_task_with_body(
-    tasks_dir: &std::path::Path,
-    id: &str,
-    title: &str,
-    status: &str,
-    body: &str,
-) {
+fn write_task_with_body(tasks_dir: &Path, id: &str, title: &str, status: &str, body: &str) {
     let content = format!(
         "+++\nid = \"{id}\"\ntitle = \"{title}\"\nstatus = \"{status}\"\ncreated_at = 2024-01-01T00:00:00Z\n+++\n{body}\n"
     );

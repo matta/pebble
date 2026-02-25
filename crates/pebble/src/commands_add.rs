@@ -3,7 +3,9 @@ use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
+use std::collections::HashMap;
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 const ID_ALPHABET: &[char] = &[
@@ -140,10 +142,10 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         resolved_at,
         needs,
         tags,
-        extra: std::collections::HashMap::new(),
+        extra: HashMap::new(),
     };
 
-    std::fs::create_dir_all(&ctx.tasks_dir)?;
+    fs::create_dir_all(&ctx.tasks_dir)?;
     let node = TaskNode {
         path: unique_task_path(&ctx.tasks_dir, &title),
         frontmatter,

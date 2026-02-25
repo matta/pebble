@@ -1,6 +1,6 @@
 use super::{NodeKey, TaskGraph};
 use crate::models::TaskNode;
-use std::cmp::Reverse;
+use std::cmp::{Ordering, Reverse};
 use std::collections::{HashMap, HashSet};
 
 /// Adjacency list mapping each task ID to the IDs of tasks that depend on it.
@@ -215,7 +215,7 @@ fn order_scc_nodes<'a>(
     if is_cycle(scc, adjacency) {
         scc_nodes.sort_by(|a, b| {
             let cmp = a.frontmatter.created_at.cmp(&b.frontmatter.created_at);
-            if cmp != std::cmp::Ordering::Equal {
+            if cmp != Ordering::Equal {
                 return cmp;
             }
             a.frontmatter.id.cmp(&b.frontmatter.id)

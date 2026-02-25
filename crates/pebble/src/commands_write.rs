@@ -1,9 +1,12 @@
 use crate::commands::{RunContext, TaskObject, validate_task_references};
+use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
-use crate::models::{Priority, TaskNode, TaskStatus};
+use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
+use std::collections::HashSet;
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 fn path_to_lossy_json_string(path: &Path) -> String {
@@ -127,8 +130,7 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
     }
     node.frontmatter.modified_at = Some(current_toml_time()?);
 
-    let mut existing_tags: std::collections::HashSet<_> =
-        node.frontmatter.tags.iter().cloned().collect();
+    let mut existing_tags: HashSet<_> = node.frontmatter.tags.iter().cloned().collect();
     for t in mutations.add_tags {
         if existing_tags.insert(t.clone()) {
             node.frontmatter.tags.push(t);
@@ -138,8 +140,7 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
         node.frontmatter.tags.retain(|tag| tag != &t);
     }
 
-    let mut existing_needs: std::collections::HashSet<_> =
-        node.frontmatter.needs.iter().cloned().collect();
+    let mut existing_needs: HashSet<_> = node.frontmatter.needs.iter().cloned().collect();
     for d in mutations.add_needs {
         if existing_needs.insert(d.clone()) {
             node.frontmatter.needs.push(d);
@@ -179,16 +180,16 @@ pub fn run_init(
         ));
     }
 
-    std::fs::create_dir_all(&pebble_dir)?;
+    fs::create_dir_all(&pebble_dir)?;
 
-    let prefix = issue_prefix.unwrap_or_else(|| crate::config::Config::default().issue_prefix);
+    let prefix = issue_prefix.unwrap_or_else(|| Config::default().issue_prefix);
     let tasks_dir_path = if let Some(dir) = cli_dir_override {
-        if let Err(e) = crate::config::validate_tasks_dir(&dir) {
-            return Err(crate::models::UsageError(e.to_string()).into());
+        if let Err(e) = validate_tasks_dir(&dir) {
+            return Err(UsageError(e.to_string()).into());
         }
         dir
     } else {
-        crate::config::Config::default().tasks_dir
+        Config::default().tasks_dir
     };
 
     let config_toml = format!(
@@ -197,14 +198,14 @@ tasks-dir = "{tasks_dir_path}"
 "#,
         tasks_dir_path = tasks_dir_path.display()
     );
-    std::fs::write(pebble_dir.join("config.toml"), config_toml)?;
+    fs::write(pebble_dir.join("config.toml"), config_toml)?;
 
     let agents_md = r#"# Project: Pebble
 See documentation for implementation details.
 "#;
-    std::fs::write(pebble_dir.join("AGENTS.md"), agents_md)?;
+    fs::write(pebble_dir.join("AGENTS.md"), agents_md)?;
 
-    std::fs::create_dir_all(current_dir.join(&tasks_dir_path))?;
+    fs::create_dir_all(current_dir.join(&tasks_dir_path))?;
 
     if json {
         println!(

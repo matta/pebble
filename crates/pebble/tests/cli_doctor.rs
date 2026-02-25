@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use assert_cmd::cargo_bin;
 use predicates::prelude::*;
+use std::fs;
 
 mod support;
 use support::setup_test_env;
@@ -24,8 +25,8 @@ created_at = 2026-03-01T00:00:00Z
 needs = ["A"]
 +++
 "#;
-    std::fs::write(env.tasks_dir.join("A.md"), a).unwrap();
-    std::fs::write(env.tasks_dir.join("B.md"), b).unwrap();
+    fs::write(env.tasks_dir.join("A.md"), a).unwrap();
+    fs::write(env.tasks_dir.join("B.md"), b).unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
@@ -55,8 +56,8 @@ created_at = 2026-03-01T00:00:00Z
 needs = ["A"]
 +++
 "#;
-    std::fs::write(env.tasks_dir.join("A.md"), a).unwrap();
-    std::fs::write(env.tasks_dir.join("B.md"), b).unwrap();
+    fs::write(env.tasks_dir.join("A.md"), a).unwrap();
+    fs::write(env.tasks_dir.join("B.md"), b).unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     let assert = cmd
@@ -93,8 +94,8 @@ created_at = 2026-03-01T00:00:00Z
 needs = ["A", "MISSING_TASK"]
 +++
 "#;
-    std::fs::write(env.tasks_dir.join("A.md"), a).unwrap();
-    std::fs::write(env.tasks_dir.join("B.md"), b).unwrap();
+    fs::write(env.tasks_dir.join("A.md"), a).unwrap();
+    fs::write(env.tasks_dir.join("B.md"), b).unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
@@ -119,7 +120,7 @@ weird_key = "abc"
 other_key = 123
 +++
 Body"#;
-    std::fs::write(env.tasks_dir.join("X.md"), frontmatter).unwrap();
+    fs::write(env.tasks_dir.join("X.md"), frontmatter).unwrap();
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     let assert = cmd

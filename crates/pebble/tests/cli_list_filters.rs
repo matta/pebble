@@ -3,6 +3,7 @@ mod support;
 use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use support::{setup_test_env, write_task};
 
@@ -15,7 +16,7 @@ struct CustomTask<'a> {
     tags: &'a [&'a str],
 }
 
-fn write_task_custom(tasks_dir: &std::path::Path, task: CustomTask<'_>) {
+fn write_task_custom(tasks_dir: &Path, task: CustomTask<'_>) {
     let mut frontmatter = format!(
         "id = \"{}\"\ntitle = \"{}\"\nstatus = \"{}\"\ncreated_at = 2024-01-01T00:00:00Z\n",
         task.id, task.title, task.status

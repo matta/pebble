@@ -3,6 +3,7 @@ mod support;
 use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use support::setup_test_env;
 
@@ -14,7 +15,7 @@ struct SortTask<'a> {
     priority: Option<u8>,
 }
 
-fn write_task_with_created_at(tasks_dir: &std::path::Path, task: SortTask<'_>) {
+fn write_task_with_created_at(tasks_dir: &Path, task: SortTask<'_>) {
     let mut frontmatter = format!(
         "id = \"{}\"\ntitle = \"{}\"\nstatus = \"{}\"\ncreated_at = {}\n",
         task.id, task.title, task.status, task.created_at
