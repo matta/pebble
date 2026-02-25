@@ -246,11 +246,11 @@ pub fn validate_task_references(
             continue;
         }
 
-        if let Some(sid) = self_id {
-            if target_id == sid {
-                deduped.push(target_id);
-                continue;
-            }
+        if let Some(sid) = self_id
+            && target_id == sid
+        {
+            deduped.push(target_id);
+            continue;
         }
 
         if graph.is_duplicate_id(&target_id) {
