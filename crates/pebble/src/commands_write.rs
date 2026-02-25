@@ -1,6 +1,6 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
-use crate::models::{TaskNode, TaskStatus};
+use crate::models::{Priority, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::env;
@@ -111,7 +111,7 @@ fn apply_reverse_update(
 struct UpdateMutations {
     title: Option<String>,
     status: Option<TaskStatus>,
-    priority: Option<u8>,
+    priority: Option<Priority>,
     clear_priority: bool,
     body: Option<String>,
     append_body: Option<String>,
@@ -125,7 +125,7 @@ pub struct RunUpdateInput {
     pub id: String,
     pub title: Option<String>,
     pub status: Option<TaskStatus>,
-    pub priority: Option<u8>,
+    pub priority: Option<Priority>,
     pub clear_priority: bool,
     pub body: Option<String>,
     pub append_body: Option<String>,

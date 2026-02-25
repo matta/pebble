@@ -3,7 +3,7 @@ use crate::commands_add::{RunAddInput, run_add};
 use crate::commands_write::{RunUpdateInput, run_update};
 use crate::config::Config;
 use crate::graph::TaskGraph;
-use crate::models::TaskStatus;
+use crate::models::{Priority, TaskStatus};
 use std::path::PathBuf;
 use tempfile::tempdir;
 
@@ -43,7 +43,7 @@ fn test_init_and_add() {
         RunAddInput {
             title: "My First Task".to_string(),
             status: None,
-            priority: Some(5),
+            priority: Some(Priority::try_from(5).unwrap()),
             body: Some("Body text".to_string()),
             needs: vec![],
             tags: vec!["urgent".to_string()],
@@ -58,7 +58,10 @@ fn test_init_and_add() {
 
     assert_eq!(node.frontmatter.title, "My First Task");
     assert_eq!(node.frontmatter.status, TaskStatus::Todo);
-    assert_eq!(node.frontmatter.priority, Some(5));
+    assert_eq!(
+        node.frontmatter.priority,
+        Some(Priority::try_from(5).unwrap())
+    );
     assert_eq!(node.frontmatter.tags, vec!["urgent".to_string()]);
     assert_eq!(node.body, "Body text");
 

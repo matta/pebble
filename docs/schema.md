@@ -24,6 +24,11 @@ pub enum TaskStatus {
     Canceled,
 }
 
+/// Newtype enforcing valid priority range at the type level.
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(try_from = "u8", into = "u8")]
+pub struct Priority(u8);
+
 /// Represents the exact structure of the TOML front matter.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaskFrontmatter {
@@ -32,7 +37,7 @@ pub struct TaskFrontmatter {
     // Status strictly validated against the enum.
     pub status: TaskStatus,
     // Valid range: 0..99. Lower number = higher priority.
-    pub priority: Option<u32>,
+    pub priority: Option<Priority>,
     pub created_at: Datetime,
     pub modified_at: Option<Datetime>,
     pub resolved_at: Option<Datetime>,

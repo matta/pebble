@@ -1,6 +1,6 @@
 use crate::commands::{RunContext, TaskObject};
 use crate::graph::TaskGraph;
-use crate::models::{TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::env;
@@ -120,7 +120,7 @@ pub fn slugify(s: &str) -> String {
 pub struct RunAddInput {
     pub title: String,
     pub status: Option<TaskStatus>,
-    pub priority: Option<u8>,
+    pub priority: Option<Priority>,
     pub body: Option<String>,
     pub needs: Vec<String>,
     pub tags: Vec<String>,

@@ -1,6 +1,5 @@
 use super::*;
-use crate::models::TaskFrontmatter;
-use crate::models::TaskStatus;
+use crate::models::{Priority, TaskFrontmatter, TaskStatus};
 use std::str::FromStr;
 
 fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
@@ -51,10 +50,10 @@ fn test_dynamic_scoring() {
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
-    a.frontmatter.priority = Some(1);
+    a.frontmatter.priority = Some(Priority::try_from(1).unwrap());
 
     let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
-    b.frontmatter.priority = Some(5);
+    b.frontmatter.priority = Some(Priority::try_from(5).unwrap());
 
     let c = make_test_node("C", TaskStatus::Todo, vec!["B"]);
     let d = make_test_node("D", TaskStatus::Todo, vec!["B"]);
@@ -121,10 +120,10 @@ fn test_default_order_respects_needs_and_priority() {
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
-    a.frontmatter.priority = Some(5);
+    a.frontmatter.priority = Some(Priority::try_from(5).unwrap());
 
     let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
-    b.frontmatter.priority = Some(1);
+    b.frontmatter.priority = Some(Priority::try_from(1).unwrap());
 
     let c = make_test_node("C", TaskStatus::Todo, vec!["A", "B"]);
 
