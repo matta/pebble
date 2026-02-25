@@ -1,9 +1,10 @@
 +++
 id = "pebl-uj0hll5buc"
 title = "Fix stale reverse index in run_add JSON output"
-status = "todo"
+status = "done"
 created_at = 2026-02-24T04:22:30.29217+00:00
-modified_at = 2026-02-24T04:22:52.184369+00:00
+modified_at = 2026-02-25T03:25:19.371601+00:00
+resolved_at = 2026-02-25T03:25:19.371595+00:00
 needs = []
 tags = ["review_followup", "self_hosted"]
 +++
