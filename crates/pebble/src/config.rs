@@ -16,6 +16,11 @@ pub struct Config {
     #[serde(default = "default_tasks_dir")]
     #[serde(rename = "tasks-dir")]
     pub tasks_dir: PathBuf,
+
+    /// Number of days a terminal task must be resolved before it is eligible for archiving.
+    #[serde(default = "default_archive_threshold_days")]
+    #[serde(rename = "archive-threshold-days")]
+    pub archive_threshold_days: i64,
 }
 
 fn default_issue_prefix() -> String {
@@ -26,11 +31,16 @@ fn default_tasks_dir() -> PathBuf {
     PathBuf::from("docs/pebble/")
 }
 
+fn default_archive_threshold_days() -> i64 {
+    30
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
             issue_prefix: default_issue_prefix(),
             tasks_dir: default_tasks_dir(),
+            archive_threshold_days: default_archive_threshold_days(),
         }
     }
 }

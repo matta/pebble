@@ -33,6 +33,7 @@ fn test_init_and_add() {
         config: Config {
             issue_prefix: "TEST".to_string(),
             tasks_dir: PathBuf::from("docs/pebble"),
+            ..Config::default()
         },
         tasks_dir: current_dir.join("docs/pebble"),
         json: false,
@@ -63,7 +64,7 @@ fn test_init_and_add() {
         Some(Priority::try_from(5).unwrap())
     );
     assert_eq!(node.frontmatter.tags, vec!["urgent".to_string()]);
-    assert_eq!(node.body, "Body text");
+    assert_eq!(node.body, "Body text\n");
 
     let id = node.frontmatter.id.clone();
 
@@ -94,7 +95,7 @@ fn test_init_and_add() {
     assert_eq!(updated_node.frontmatter.status, TaskStatus::InProgress);
     assert_eq!(updated_node.frontmatter.priority, None);
     assert_eq!(updated_node.frontmatter.tags, vec!["new_tag".to_string()]);
-    assert_eq!(updated_node.body, "Body text\n\nAppended body");
+    assert_eq!(updated_node.body, "Body text\n\nAppended body\n");
 }
 
 #[test]
@@ -108,6 +109,7 @@ fn test_add_slug_filename() {
         config: Config {
             issue_prefix: "TEST".to_string(),
             tasks_dir: PathBuf::from("docs/pebble"),
+            ..Config::default()
         },
         tasks_dir: tasks_dir.clone(),
         json: false,

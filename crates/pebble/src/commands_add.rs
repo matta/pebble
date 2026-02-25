@@ -143,14 +143,22 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     let random_length = required_random_id_length(graph.nodes.len());
     let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
-    let fm = TaskFrontmatter {
+    let status = status.unwrap_or(TaskStatus::Todo);
+    let created_at = current_toml_time()?;
+    let resolved_at = if status.is_closed() {
+        Some(created_at)
+    } else {
+        None
+    };
+
+    let frontmatter = TaskFrontmatter {
         id: new_id.clone(),
         title: title.clone(),
-        status: status.unwrap_or(TaskStatus::Todo),
+        status,
         priority,
-        created_at: current_toml_time()?,
+        created_at,
         modified_at: None,
-        resolved_at: None,
+        resolved_at,
         needs,
         tags,
     };
@@ -158,7 +166,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     std::fs::create_dir_all(&ctx.tasks_dir)?;
     let node = TaskNode {
         path: unique_task_path(&ctx.tasks_dir, &title),
-        frontmatter: fm,
+        frontmatter,
         body: body.unwrap_or_default(),
     };
     node.write_to_disk()?;
