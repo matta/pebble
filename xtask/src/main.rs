@@ -38,6 +38,11 @@ const SUPPRESSION_DENYLIST_CLIPPY_LINTS: &[&str] = &[
 const SUPPRESSION_DENYLIST_CLIPPY_GROUPS: &[&str] = &["complexity", "perf", "pedantic"];
 
 /// Regex pattern used to match Rust lint attributes of the form `#[allow(...)]` / `#[expect(...)]`.
+///
+/// Known limitation: this pattern uses dotall `(?s)` plus a lazy `(.*?)` capture for
+/// attribute arguments. In unusual nested-parenthesis cases, capture can terminate at an
+/// inner `)` instead of the outer attribute boundary, which can cause false negatives
+/// (missed matches) but should not create denylist false positives.
 const LINT_ATTRIBUTE_PATTERN: &str = r"(?s)#\s*!?\s*\[\s*(allow|expect)\s*\((.*?)\)\s*]";
 /// Regex pattern used to extract `clippy::...` lint tokens from lint-attribute argument lists.
 const CLIPPY_LINT_TOKEN_PATTERN: &str = r"clippy::[a-z_]+";
