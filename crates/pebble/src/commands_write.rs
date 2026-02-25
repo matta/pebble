@@ -1,4 +1,4 @@
-use crate::commands::{RunContext, TaskObject};
+use crate::commands::{RunContext, TaskObject, validate_task_references};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
@@ -8,36 +8,6 @@ use std::path::{Path, PathBuf};
 
 fn path_to_lossy_json_string(path: &Path) -> String {
     path.as_os_str().to_string_lossy().into_owned()
-}
-
-fn validate_reverse_targets(
-    graph: &TaskGraph,
-    source_id: &str,
-    targets: Vec<String>,
-    flag_name: &str,
-) -> Result<Vec<String>> {
-    let mut deduped = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-    for target_id in targets {
-        if !seen.insert(target_id.clone()) {
-            continue;
-        }
-        if target_id == source_id {
-            deduped.push(target_id);
-            continue;
-        }
-        if graph.is_duplicate_id(&target_id) {
-            return Err(eyre!(
-                "Duplicate task ID '{}' found in multiple files; cannot safely target this ID.",
-                target_id
-            ));
-        }
-        if !graph.nodes.contains_key(&target_id) {
-            return Err(eyre!("Task '{}' not found for {}", target_id, flag_name));
-        }
-        deduped.push(target_id);
-    }
-    Ok(deduped)
 }
 
 fn apply_reverse_update(
@@ -282,9 +252,10 @@ pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
         .nodes
         .remove(&id)
         .ok_or_else(|| eyre!("Task '{}' not found", id))?;
-    let add_blocks_targets = validate_reverse_targets(&graph, &id, blocks, "--blocks")?;
+    let add_blocks_targets =
+        validate_task_references(&graph, blocks, Some(id.as_str()), "--blocks")?;
     let remove_blocks_targets =
-        validate_reverse_targets(&graph, &id, remove_blocks, "--remove-blocks")?;
+        validate_task_references(&graph, remove_blocks, Some(id.as_str()), "--remove-blocks")?;
     apply_update_mutations(
         &mut node,
         UpdateMutations {
