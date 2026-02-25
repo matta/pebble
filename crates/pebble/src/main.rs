@@ -6,6 +6,7 @@ pub mod cli;
 pub mod commands;
 pub mod commands_add;
 pub mod commands_archive;
+pub mod commands_diagnostics;
 pub mod commands_write;
 
 #[cfg(test)]
@@ -44,6 +45,7 @@ enum DispatchCommand {
     Add(RunAddInput),
     Update(RunUpdateInput),
     Archive,
+    Doctor,
     Show { id: String, path_only: bool },
 }
 
@@ -138,6 +140,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
             remove_blocks,
         }),
         Commands::Archive => DispatchCommand::Archive,
+        Commands::Doctor => DispatchCommand::Doctor,
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
@@ -195,6 +198,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Add(input) => run_add(ctx, input),
         DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
+        DispatchCommand::Doctor => commands_diagnostics::run_doctor(ctx),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }

@@ -102,6 +102,10 @@ pub struct TaskFrontmatter {
     /// Arbitrary labels attached to the task.
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Unknown keys preserved from parsing.
+    #[serde(flatten)]
+    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub extra: std::collections::HashMap<String, toml::Value>,
 }
 
 /// The in-memory representation of a task.

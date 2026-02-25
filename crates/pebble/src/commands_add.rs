@@ -140,6 +140,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         resolved_at,
         needs,
         tags,
+        extra: std::collections::HashMap::new(),
     };
 
     std::fs::create_dir_all(&ctx.tasks_dir)?;

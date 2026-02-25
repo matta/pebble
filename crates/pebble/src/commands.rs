@@ -310,6 +310,7 @@ mod tests {
                 resolved_at: None,
                 needs: needs.into_iter().map(|s| s.to_string()).collect(),
                 tags: vec![],
+                extra: std::collections::HashMap::new(),
             },
         }
     }

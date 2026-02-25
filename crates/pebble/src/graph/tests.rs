@@ -16,6 +16,7 @@ fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
             resolved_at: None,
             needs: needs.into_iter().map(|s| s.to_string()).collect(),
             tags: vec![],
+            extra: std::collections::HashMap::new(),
         },
     }
 }
