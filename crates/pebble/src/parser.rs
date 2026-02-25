@@ -72,7 +72,8 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
         }
     }
 
-    let toml_len = toml_end_offset.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
+    let toml_len =
+        toml_end_offset.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
 
     // Slice the TOML content directly from the source string.
     let toml_str = &rest[..toml_len];
