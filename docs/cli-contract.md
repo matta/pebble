@@ -4,7 +4,7 @@ This document defines the strict specification for the Pebble Command Line Inter
 
 ## Streams
 
-- `stdout`: Primary command output only. Human-readable by default, machine-readable with `--json`.
+- `stdout`: Primary command output only. Human-readable by default, machine-readable with `--json`, except `pebble init` in human mode (see [`pebble init`](#pebble-init)).
 - `stderr`: Diagnostics, warnings, progress logs, and error messages. Never emit JSON data to `stderr`.
 
 ## Exit Codes
