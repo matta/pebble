@@ -59,8 +59,8 @@ struct Frontmatter {
 
 fn parse_file(content: &str) -> Result<Frontmatter, Box<dyn std::error::Error>> {
     // 1. Locate boundaries (Assuming strictly formatted YAML frontmatter)
-    let end_index = content[4..].find("\n---").ok_or("No closing delimiter")?;
-    let yaml_slice = &content[4..end_index + 4];
+    let content_after_delimiter = content.strip_prefix("---\n").ok_or("File must start with '---\n' delimiter.")?;
+    let yaml_slice = content_after_delimiter.split_once("\n---").ok_or("No closing delimiter")?.0;
 
     // 2. Parse directly into the struct using serde-saphyr
     let frontmatter: Frontmatter = serde_saphyr::from_str(yaml_slice)?;
