@@ -18,3 +18,9 @@
 **Prevention:**
 1. Centralize validation logic (e.g., `validate_tasks_dir`) and call it from both configuration parsing and CLI argument handling.
 2. Ensure CLI arguments that override configuration values undergo the exact same security checks as the configuration values themselves.
+
+## 2025-02-24 - CLI Override Validation Gap in RunContext
+**Vulnerability:** While `pebble init` was secured, `RunContext::load` (used by `list`, `add`, etc.) still allowed `tasks-dir` override via `--dir` to contain `..`, bypassing the `tasks-dir` safety invariant.
+**Learning:** When multiple code paths (e.g., initialization vs runtime loading) handle the same configuration override, security validation must be applied to ALL of them. Centralizing validation logic is not enough; you must ensure every *call site* uses it.
+**Prevention:**
+1. Audit all entry points that accept configuration overrides (CLI flags, env vars) and ensure they invoke the centralized validation function.

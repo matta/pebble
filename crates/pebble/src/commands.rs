@@ -132,11 +132,11 @@ impl RunContext {
 
         // Resolve tasks_dir
         let tasks_dir = if let Some(dir_override) = cli_dir_override {
-            if dir_override.is_absolute() {
-                dir_override
-            } else {
-                current_dir.join(dir_override)
+            if let Err(e) = crate::config::validate_tasks_dir(&dir_override) {
+                return Err(UsageError(e.to_string()).into());
             }
+            // validate_tasks_dir ensures it is relative.
+            current_dir.join(dir_override)
         } else if let Some(root) = &project_root {
             root.join(&config.tasks_dir)
         } else {
