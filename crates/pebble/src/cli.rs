@@ -28,12 +28,16 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
+    /// Output the CLI structure in a machine-readable JSON format.
+    #[arg(long, global = true)]
+    pub help_json: bool,
+
     /// Path to the tasks directory (overrides config)
     #[arg(long, global = true, value_name = "PATH")]
     pub dir: Option<PathBuf>,
 
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 /// Top-level Pebble subcommands accepted by the CLI.

@@ -21,8 +21,8 @@ mod task_io;
 use crate::cli::{Cli, Commands, ConfigCommands};
 use crate::help_json::help_json_schema;
 use crate::models::UsageError;
-use clap::Parser;
 use clap::error::ErrorKind;
+use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_add::{RunAddInput, run_add};
@@ -187,20 +187,28 @@ fn run() -> Result<()> {
 
     let cli = Cli::try_parse()?;
 
+    if cli.help_json {
+        return run_help_json();
+    }
+
     if let Some(ref dir) = cli.directory {
         env::set_current_dir(dir)?;
     }
 
     let current_dir = env::current_dir()?;
 
-    if let Some(command) =
-        prepare_dispatch_command(&current_dir, cli.command, cli.dir.clone(), cli.json)?
-    {
-        let ctx = RunContext::load(current_dir, cli.dir.clone(), cli.config, cli.json)?;
-        dispatch_command(&ctx, command)
+    if let Some(command) = cli.command {
+        if let Some(dispatch_cmd) =
+            prepare_dispatch_command(&current_dir, command, cli.dir.clone(), cli.json)?
+        {
+            let ctx = RunContext::load(current_dir, cli.dir.clone(), cli.config, cli.json)?;
+            dispatch_command(&ctx, dispatch_cmd)?;
+        }
     } else {
-        Ok(())
+        let _ = Cli::command().print_help();
     }
+
+    Ok(())
 }
 
 fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
