@@ -29,7 +29,7 @@ use commands_add::{RunAddInput, run_add};
 use commands_archive::run_archive;
 use commands_write::{RunUpdateInput, run_init, run_update};
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 fn run_help_json() -> Result<()> {
@@ -54,6 +54,7 @@ enum DispatchCommand {
 }
 
 fn prepare_dispatch_command(
+    current_dir: &Path,
     command: Commands,
     global_dir: Option<PathBuf>,
     json: bool,
@@ -64,7 +65,12 @@ fn prepare_dispatch_command(
             Ok(None)
         }
         Commands::Init { issue_prefix, dir } => {
-            run_init(global_dir.or(dir), issue_prefix, json)?;
+            run_init(
+                current_dir.to_path_buf(),
+                global_dir.or(dir),
+                issue_prefix,
+                json,
+            )?;
             Ok(None)
         }
         cmd => Ok(Some(to_dispatch_command(cmd))),
@@ -185,12 +191,16 @@ fn run() -> Result<()> {
         env::set_current_dir(dir)?;
     }
 
-    let Some(command) = prepare_dispatch_command(cli.command, cli.dir.clone(), cli.json)? else {
-        return Ok(());
-    };
+    let current_dir = env::current_dir()?;
 
-    let ctx = RunContext::load(cli.dir.clone(), cli.config, cli.json)?;
-    dispatch_command(&ctx, command)
+    if let Some(command) =
+        prepare_dispatch_command(&current_dir, cli.command, cli.dir.clone(), cli.json)?
+    {
+        let ctx = RunContext::load(current_dir, cli.dir.clone(), cli.config, cli.json)?;
+        dispatch_command(&ctx, command)
+    } else {
+        Ok(())
+    }
 }
 
 fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {

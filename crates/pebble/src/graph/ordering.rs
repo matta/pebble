@@ -289,45 +289,77 @@ impl Tarjan {
         }
     }
 
-    /// Visits a single node, recursively visiting unvisited neighbors and
-    /// emitting an SCC when a root is detected.
-    fn strongconnect(&mut self, v: &str) {
-        self.indices.insert(v.to_string(), self.index);
-        self.lowlink.insert(v.to_string(), self.index);
+    /// Visits a single node, using an iterative approach with an explicit stack
+    /// to avoid recursion depth limits and repeated allocations.
+    fn strongconnect(&mut self, start_v: &str) {
+        // A frame contains the node being visited and its current neighbor index.
+        let mut dfs_path = vec![(start_v.to_string(), 0)];
+
+        self.indices.insert(start_v.to_string(), self.index);
+        self.lowlink.insert(start_v.to_string(), self.index);
         self.index += 1;
-        self.stack.push(v.to_string());
-        self.on_stack.insert(v.to_string());
+        self.stack.push(start_v.to_string());
+        self.on_stack.insert(start_v.to_string());
 
-        let neighbors = self.adjacency.get(v).cloned().unwrap_or_default();
-        for w in &neighbors {
-            if !self.indices.contains_key(w) {
-                self.strongconnect(w);
-                if let (Some(low_v), Some(low_w)) =
-                    (self.lowlink.get(v).copied(), self.lowlink.get(w).copied())
-                    && low_w < low_v
-                {
-                    self.lowlink.insert(v.to_string(), low_w);
+        while let Some((v, neighbor_idx)) = dfs_path.pop() {
+            let mut next_step = None;
+            let mut current_neighbor_idx = neighbor_idx;
+
+            if let Some(neighbors) = self.adjacency.get(&v) {
+                while current_neighbor_idx < neighbors.len() {
+                    let w = &neighbors[current_neighbor_idx];
+                    current_neighbor_idx += 1;
+
+                    if !self.indices.contains_key(w) {
+                        self.indices.insert(w.clone(), self.index);
+                        self.lowlink.insert(w.clone(), self.index);
+                        self.index += 1;
+                        self.stack.push(w.clone());
+                        self.on_stack.insert(w.clone());
+
+                        // Push the current node back with the *next* neighbor to resume later
+                        dfs_path.push((v.clone(), current_neighbor_idx));
+                        // Set up the next step in the depth-first search
+                        next_step = Some((w.clone(), 0));
+                        break;
+                    } else if self.on_stack.contains(w)
+                        && let (Some(&low_v), Some(&index_w)) =
+                            (self.lowlink.get(&v), self.indices.get(w))
+                        && index_w < low_v
+                    {
+                        self.lowlink.insert(v.clone(), index_w);
+                    }
                 }
-            } else if self.on_stack.contains(w)
-                && let (Some(low_v), Some(index_w)) =
-                    (self.lowlink.get(v).copied(), self.indices.get(w).copied())
-                && index_w < low_v
+            }
+
+            if let Some(next_frame) = next_step {
+                dfs_path.push(next_frame);
+                continue;
+            }
+
+            // Node `v` has finished processing all its neighbors.
+            // Check if it's the root of an SCC.
+            let is_root = self.indices.get(&v) == self.lowlink.get(&v);
+            if is_root {
+                let mut scc: Vec<String> = Vec::new();
+                while let Some(w) = self.stack.pop() {
+                    self.on_stack.remove(&w);
+                    scc.push(w.clone());
+                    if w == v {
+                        break;
+                    }
+                }
+                self.sccs.push(scc);
+            }
+
+            // Propagate `lowlink` to the parent in the DFS tree.
+            if let Some((caller_v, _)) = dfs_path.last()
+                && let (Some(&low_caller), Some(&low_v)) =
+                    (self.lowlink.get(caller_v), self.lowlink.get(&v))
+                && low_v < low_caller
             {
-                self.lowlink.insert(v.to_string(), index_w);
+                self.lowlink.insert(caller_v.clone(), low_v);
             }
-        }
-
-        let is_root = self.indices.get(v) == self.lowlink.get(v);
-        if is_root {
-            let mut scc: Vec<String> = Vec::new();
-            while let Some(w) = self.stack.pop() {
-                self.on_stack.remove(&w);
-                scc.push(w.clone());
-                if w == v {
-                    break;
-                }
-            }
-            self.sccs.push(scc);
         }
     }
 }

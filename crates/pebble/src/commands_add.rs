@@ -4,7 +4,6 @@ use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashMap;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -158,8 +157,8 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         .nodes
         .insert(node.frontmatter.id.clone(), node.clone());
 
-    let current_dir = env::current_dir()?;
-    let path_for_output = node.path.strip_prefix(&current_dir).unwrap_or(&node.path);
+    let current_dir = &ctx.current_dir;
+    let path_for_output = node.path.strip_prefix(current_dir).unwrap_or(&node.path);
     let display_path = path_for_output.display().to_string();
 
     if ctx.json {

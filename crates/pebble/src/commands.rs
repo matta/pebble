@@ -4,7 +4,6 @@ use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -96,6 +95,7 @@ impl<'a> TaskObject<'a> {
 
 /// Resolved runtime configuration and paths for command execution.
 pub struct RunContext {
+    pub current_dir: PathBuf,
     pub project_root: Option<PathBuf>,
     pub config: Config,
     pub tasks_dir: PathBuf,
@@ -105,11 +105,11 @@ pub struct RunContext {
 impl RunContext {
     /// Load configuration and resolve paths based on CLI overrides and the current directory.
     pub fn load(
+        current_dir: PathBuf,
         cli_dir_override: Option<PathBuf>,
         cli_config_override: Option<PathBuf>,
         json: bool,
     ) -> Result<Self> {
-        let current_dir = env::current_dir()?;
         let project_root = find_project_root(&current_dir);
 
         let config_path = cli_config_override.unwrap_or_else(|| {
@@ -140,6 +140,7 @@ impl RunContext {
         };
 
         Ok(Self {
+            current_dir,
             project_root,
             config,
             tasks_dir,

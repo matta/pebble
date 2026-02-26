@@ -31,6 +31,7 @@ fn test_init_and_add() {
     let current_dir = dir.path();
 
     let ctx = RunContext {
+        current_dir: current_dir.to_path_buf(),
         project_root: Some(current_dir.to_path_buf()),
         config: Config {
             issue_prefix: "TEST".to_string(),
@@ -111,6 +112,7 @@ fn test_add_slug_filename() {
     let tasks_dir = current_dir.join("docs/pebble");
 
     let ctx = RunContext {
+        current_dir: current_dir.to_path_buf(),
         project_root: Some(current_dir.to_path_buf()),
         config: Config {
             issue_prefix: "TEST".to_string(),
