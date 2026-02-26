@@ -1,4 +1,4 @@
-use crate::config::{Config, find_project_root, parse_config};
+use crate::config::{Config, find_project_root, parse_config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
 use color_eyre::eyre::{Result, eyre};
@@ -132,7 +132,7 @@ impl RunContext {
 
         // Resolve tasks_dir
         let tasks_dir = if let Some(dir_override) = cli_dir_override {
-            if let Err(e) = crate::config::validate_tasks_dir(&dir_override) {
+            if let Err(e) = validate_tasks_dir(&dir_override) {
                 return Err(UsageError(e.to_string()).into());
             }
             // validate_tasks_dir ensures it is relative.

@@ -2,6 +2,7 @@ use assert_cmd::Command;
 use std::fs;
 
 #[test]
+#[expect(clippy::expect_used, reason = "test assertions rely on panics")]
 fn test_list_path_traversal_prevention() {
     let temp = tempfile::tempdir().expect("temp directory should be created");
     let root = temp.path();
@@ -53,14 +54,15 @@ This is a secret task outside the project.
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         if stdout.contains("Secret Task") {
-            panic!("Vulnerability confirmed: 'pebble list --dir ../outside' accessed external files!");
+            panic!(
+                "Vulnerability confirmed: 'pebble list --dir ../outside' accessed external files!"
+            );
         }
     } else {
         // If it failed, check the error message
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("tasks-dir") && stderr.contains("parent directory components") {
             // This is the desired behavior (once fixed)
-            return;
         }
     }
 }
