@@ -20,7 +20,8 @@ needs = ["MISSING-ID"]
 +++
 Body
 "#;
-    std::fs::write(env.tasks_dir.join("blocked.md"), task_content).expect("task file should be written");
+    std::fs::write(env.tasks_dir.join("blocked.md"), task_content)
+        .expect("task file should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
@@ -32,7 +33,11 @@ Body
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     // This assertion is expected to fail initially.
-    assert!(stderr.contains("No ready tasks found. (1 task is blocked)"), "Stderr was: {}", stderr);
+    assert!(
+        stderr.contains("No ready tasks found. (1 task is blocked)"),
+        "Stderr was: {}",
+        stderr
+    );
 }
 
 #[test]
@@ -50,9 +55,17 @@ fn test_next_with_no_tasks() {
     assert_eq!(output.status.code(), Some(1));
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("No ready tasks found."), "Stderr was: {}", stderr);
+    assert!(
+        stderr.contains("No ready tasks found."),
+        "Stderr was: {}",
+        stderr
+    );
     // Should NOT contain the blocked message
-    assert!(!stderr.contains("task is blocked"), "Stderr was: {}", stderr);
+    assert!(
+        !stderr.contains("task is blocked"),
+        "Stderr was: {}",
+        stderr
+    );
 }
 
 #[test]
@@ -89,5 +102,9 @@ needs = ["MISSING-ID"]
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     // This assertion is expected to fail initially.
-    assert!(stderr.contains("No ready tasks found. (2 tasks are blocked)"), "Stderr was: {}", stderr);
+    assert!(
+        stderr.contains("No ready tasks found. (2 tasks are blocked)"),
+        "Stderr was: {}",
+        stderr
+    );
 }
