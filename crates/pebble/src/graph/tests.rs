@@ -1,43 +1,29 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use super::*;
-use crate::models::{Priority, TaskFrontmatter, TaskStatus};
+use crate::models::TaskStatus;
+use crate::models::test_utils::TaskNodeBuilder;
 use std::collections::HashMap;
-use std::str::FromStr;
-
-fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
-    TaskNode {
-        path: Path::new("").to_path_buf(),
-        body: "".to_string(),
-        frontmatter: TaskFrontmatter {
-            id: id.to_string(),
-            title: id.to_string(),
-            status,
-            priority: None,
-            created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-                .expect("Failed to parse datetime"),
-            modified_at: None,
-            resolved_at: None,
-            needs: needs.into_iter().map(|s| s.to_string()).collect(),
-            tags: vec![],
-            extra: HashMap::new(),
-        },
-    }
-}
 
 #[test]
 fn test_absolute_readiness() {
     let mut nodes = HashMap::new();
     nodes.insert(
         "A".to_string(),
-        make_test_node("A", TaskStatus::Todo, vec![]),
+        TaskNodeBuilder::new("A").status(TaskStatus::Todo).build(),
     );
     nodes.insert(
         "B".to_string(),
-        make_test_node("B", TaskStatus::Todo, vec!["A"]),
+        TaskNodeBuilder::new("B")
+            .status(TaskStatus::Todo)
+            .needs(vec!["A"])
+            .build(),
     );
     nodes.insert(
         "C".to_string(),
-        make_test_node("C", TaskStatus::Todo, vec!["X"]),
+        TaskNodeBuilder::new("C")
+            .status(TaskStatus::Todo)
+            .needs(vec!["X"])
+            .build(),
     ); // Dangling pointer
 
     let graph = TaskGraph::new(nodes);
@@ -53,14 +39,24 @@ fn test_dynamic_scoring() {
     // C and D depend on B
     let mut nodes = HashMap::new();
 
-    let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
-    a.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
+    let a = TaskNodeBuilder::new("A")
+        .status(TaskStatus::Todo)
+        .priority(1)
+        .build();
 
-    let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
-    b.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
+    let b = TaskNodeBuilder::new("B")
+        .status(TaskStatus::Todo)
+        .priority(5)
+        .build();
 
-    let c = make_test_node("C", TaskStatus::Todo, vec!["B"]);
-    let d = make_test_node("D", TaskStatus::Todo, vec!["B"]);
+    let c = TaskNodeBuilder::new("C")
+        .status(TaskStatus::Todo)
+        .needs(vec!["B"])
+        .build();
+    let d = TaskNodeBuilder::new("D")
+        .status(TaskStatus::Todo)
+        .needs(vec!["B"])
+        .build();
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -82,11 +78,23 @@ fn test_dynamic_scoring() {
 fn test_count_blocking_excludes_terminal_and_self() {
     let mut nodes = HashMap::new();
 
-    let a = make_test_node("A", TaskStatus::Todo, vec![]);
-    let b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
-    let c = make_test_node("C", TaskStatus::Done, vec!["B"]);
-    let d = make_test_node("D", TaskStatus::Todo, vec!["C"]);
-    let e = make_test_node("E", TaskStatus::Todo, vec!["B"]);
+    let a = TaskNodeBuilder::new("A").status(TaskStatus::Todo).build();
+    let b = TaskNodeBuilder::new("B")
+        .status(TaskStatus::Todo)
+        .needs(vec!["A"])
+        .build();
+    let c = TaskNodeBuilder::new("C")
+        .status(TaskStatus::Done)
+        .needs(vec!["B"])
+        .build();
+    let d = TaskNodeBuilder::new("D")
+        .status(TaskStatus::Todo)
+        .needs(vec!["C"])
+        .build();
+    let e = TaskNodeBuilder::new("E")
+        .status(TaskStatus::Todo)
+        .needs(vec!["B"])
+        .build();
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -106,11 +114,17 @@ fn test_count_blocking_cycle_excludes_self() {
     let mut nodes = HashMap::new();
     nodes.insert(
         "A".to_string(),
-        make_test_node("A", TaskStatus::Todo, vec!["B"]),
+        TaskNodeBuilder::new("A")
+            .status(TaskStatus::Todo)
+            .needs(vec!["B"])
+            .build(),
     );
     nodes.insert(
         "B".to_string(),
-        make_test_node("B", TaskStatus::Todo, vec!["A"]),
+        TaskNodeBuilder::new("B")
+            .status(TaskStatus::Todo)
+            .needs(vec!["A"])
+            .build(),
     );
 
     let graph = TaskGraph::new(nodes);
@@ -123,13 +137,20 @@ fn test_count_blocking_cycle_excludes_self() {
 fn test_default_order_respects_needs_and_priority() {
     let mut nodes = HashMap::new();
 
-    let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
-    a.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
+    let a = TaskNodeBuilder::new("A")
+        .status(TaskStatus::Todo)
+        .priority(5)
+        .build();
 
-    let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
-    b.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
+    let b = TaskNodeBuilder::new("B")
+        .status(TaskStatus::Todo)
+        .priority(1)
+        .build();
 
-    let c = make_test_node("C", TaskStatus::Todo, vec!["A", "B"]);
+    let c = TaskNodeBuilder::new("C")
+        .status(TaskStatus::Todo)
+        .needs(vec!["A", "B"])
+        .build();
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -152,14 +173,20 @@ fn test_default_order_respects_needs_and_priority() {
 fn test_default_order_cycle_grouping_created_at() {
     let mut nodes = HashMap::new();
 
-    let mut a = make_test_node("A", TaskStatus::Todo, vec!["B"]);
-    let mut b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
-    let c = make_test_node("C", TaskStatus::Todo, vec!["A"]);
-
-    a.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-02T00:00:00Z")
-        .expect("Failed to parse datetime");
-    b.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-        .expect("Failed to parse datetime");
+    let a = TaskNodeBuilder::new("A")
+        .status(TaskStatus::Todo)
+        .needs(vec!["B"])
+        .created_at("2026-01-02T00:00:00Z")
+        .build();
+    let b = TaskNodeBuilder::new("B")
+        .status(TaskStatus::Todo)
+        .needs(vec!["A"])
+        .created_at("2026-01-01T00:00:00Z")
+        .build();
+    let c = TaskNodeBuilder::new("C")
+        .status(TaskStatus::Todo)
+        .needs(vec!["A"])
+        .build();
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -182,8 +209,8 @@ fn test_default_order_cycle_grouping_created_at() {
 fn test_default_order_id_tiebreaker() {
     let mut nodes = HashMap::new();
 
-    let a = make_test_node("A", TaskStatus::Todo, vec![]);
-    let b = make_test_node("B", TaskStatus::Todo, vec![]);
+    let a = TaskNodeBuilder::new("A").status(TaskStatus::Todo).build();
+    let b = TaskNodeBuilder::new("B").status(TaskStatus::Todo).build();
 
     nodes.insert("B".to_string(), b);
     nodes.insert("A".to_string(), a);
@@ -206,11 +233,17 @@ fn test_cycle_readiness() {
     let mut nodes = HashMap::new();
     nodes.insert(
         "X".to_string(),
-        make_test_node("X", TaskStatus::Todo, vec!["Y"]),
+        TaskNodeBuilder::new("X")
+            .status(TaskStatus::Todo)
+            .needs(vec!["Y"])
+            .build(),
     );
     nodes.insert(
         "Y".to_string(),
-        make_test_node("Y", TaskStatus::Todo, vec!["X"]),
+        TaskNodeBuilder::new("Y")
+            .status(TaskStatus::Todo)
+            .needs(vec!["X"])
+            .build(),
     );
 
     let graph = TaskGraph::new(nodes);

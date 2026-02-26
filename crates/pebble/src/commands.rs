@@ -305,45 +305,31 @@ fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
 #[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
-    use crate::models::{TaskFrontmatter, TaskStatus};
+    use crate::models::TaskStatus;
+    use crate::models::test_utils::TaskNodeBuilder;
     use std::collections::{BTreeSet, HashMap};
     use std::path::PathBuf;
-    use std::str::FromStr;
-
-    fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
-        TaskNode {
-            path: PathBuf::from(format!("{id}.md")),
-            body: String::new(),
-            frontmatter: TaskFrontmatter {
-                id: id.to_string(),
-                title: id.to_string(),
-                status,
-                priority: None,
-                created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-                    .expect("datetime should be valid ISO 8601"),
-                modified_at: None,
-                resolved_at: None,
-                needs: needs.into_iter().map(|s| s.to_string()).collect(),
-                tags: vec![],
-                extra: HashMap::new(),
-            },
-        }
-    }
 
     #[test]
     fn test_blocking_list_excludes_terminal_dependents() {
         let mut nodes = HashMap::new();
         nodes.insert(
             "A".to_string(),
-            make_test_node("A", TaskStatus::Todo, vec![]),
+            TaskNodeBuilder::new("A").status(TaskStatus::Todo).build(),
         );
         nodes.insert(
             "B".to_string(),
-            make_test_node("B", TaskStatus::Todo, vec!["A"]),
+            TaskNodeBuilder::new("B")
+                .status(TaskStatus::Todo)
+                .needs(vec!["A"])
+                .build(),
         );
         nodes.insert(
             "C".to_string(),
-            make_test_node("C", TaskStatus::Done, vec!["A"]),
+            TaskNodeBuilder::new("C")
+                .status(TaskStatus::Done)
+                .needs(vec!["A"])
+                .build(),
         );
 
         let graph = TaskGraph::new(nodes);

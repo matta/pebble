@@ -172,6 +172,88 @@ impl TaskNode {
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "test helpers can panic")]
+pub mod test_utils {
+    use super::*;
+    use std::path::PathBuf;
+    use std::str::FromStr;
+    use toml_datetime::Datetime;
+
+    pub struct TaskNodeBuilder {
+        id: String,
+        title: String,
+        status: TaskStatus,
+        priority: Option<Priority>,
+        created_at: Datetime,
+        needs: Vec<String>,
+        path: PathBuf,
+    }
+
+    impl TaskNodeBuilder {
+        pub fn new(id: impl Into<String>) -> Self {
+            let id = id.into();
+            Self {
+                title: id.clone(),
+                id,
+                status: TaskStatus::Todo,
+                priority: None,
+                created_at: Datetime::from_str("2026-01-01T00:00:00Z").expect("valid date"),
+                needs: Vec::new(),
+                path: PathBuf::from(""),
+            }
+        }
+
+        pub fn status(mut self, status: TaskStatus) -> Self {
+            self.status = status;
+            self
+        }
+
+        pub fn priority(mut self, priority: u8) -> Self {
+            self.priority = Some(Priority::try_from(priority).expect("valid priority"));
+            self
+        }
+
+        pub fn needs(mut self, needs: Vec<&str>) -> Self {
+            self.needs = needs.into_iter().map(String::from).collect();
+            self
+        }
+
+        pub fn created_at(mut self, date: &str) -> Self {
+            self.created_at = Datetime::from_str(date).expect("valid date");
+            self
+        }
+
+        pub fn path(mut self, path: impl Into<PathBuf>) -> Self {
+            self.path = path.into();
+            self
+        }
+
+        pub fn build(self) -> TaskNode {
+            TaskNode {
+                path: if self.path.as_os_str().is_empty() {
+                    PathBuf::from(format!("{}.md", self.id))
+                } else {
+                    self.path
+                },
+                body: String::new(),
+                frontmatter: TaskFrontmatter {
+                    id: self.id,
+                    title: self.title,
+                    status: self.status,
+                    priority: self.priority,
+                    created_at: self.created_at,
+                    modified_at: None,
+                    resolved_at: None,
+                    needs: self.needs,
+                    tags: vec![],
+                    extra: HashMap::new(),
+                },
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 #[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
