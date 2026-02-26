@@ -2,6 +2,7 @@ check *args:
     cargo fmt -- --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo xtask check {{args}}
+    cargo pebble check
 
 gauntlet: check test
 
@@ -11,6 +12,7 @@ test:
 fix:
     cargo fmt
     cargo clippy --fix --workspace --all-targets --allow-dirty --allow-staged
+    cargo pebble check --fix
 
 # Install the pebble binary to the Cargo bin directory
 install:
