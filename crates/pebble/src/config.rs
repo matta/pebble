@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use color_eyre::eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};

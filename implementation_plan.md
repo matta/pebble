@@ -57,7 +57,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - Phase task IDs:
 - [x] `P1`: `pebl-cdIZGN`
 - [x] `P2`: `pebl--yb8d4`
-- [ ] `P3`: `pebl-hRuKk1`
+- [-] `P3`: `pebl-hRuKk1`
 - [x] `P3.1`: `pebl-cug7mpg7cz` Inject current_dir into RunContext to improve testability of diagnostics
 - [ ] `P4`: `pebl-fFdi_z`
 - [ ] `P5`: `pebl-pCyebx`
@@ -130,7 +130,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 
 ## Phase 3: Diagnostics & Repairs
 - [x] P3.1 `doctor` command: warnings for unknown frontmatter keys; schema/graph diagnostics.
-- [ ] P3.2 `check` command: unknown frontmatter keys are errors; exit code non-zero on issues.
+- [x] P3.2 `check` command: unknown frontmatter keys are errors; exit code non-zero on issues.
 - [ ] P3.3 `fix` command: backfill missing `created_at`, warn on unknown keys, do not remove or rewrite dependencies.
 
 ## Phase 4: Spec-Driven UX Issues (`docs/pebble/*.md`)
