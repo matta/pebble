@@ -355,3 +355,31 @@ fn test_legacy_doctor_command_is_no_longer_available() {
         .code(2)
         .stderr(predicate::str::contains("unrecognized subcommand 'doctor'"));
 }
+
+#[test]
+fn test_legacy_fix_command_is_no_longer_available() {
+    let env = setup_test_env();
+
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(&env.root)
+        .arg("fix")
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("unrecognized subcommand 'fix'"));
+}
+
+#[test]
+fn test_check_warn_only_and_fix_are_mutually_exclusive() {
+    let env = setup_test_env();
+
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(&env.root)
+        .args(["check", "--warn-only", "--fix"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains(
+            "the argument '--warn-only' cannot be used with '--fix'",
+        ));
+}

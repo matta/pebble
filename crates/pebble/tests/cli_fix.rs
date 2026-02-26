@@ -10,11 +10,12 @@ use support::{TestEnv, setup_test_env};
 
 fn run_fix(root: &Path, json: bool) -> Output {
     let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(root).arg("fix");
+    cmd.current_dir(root).arg("check").arg("--fix");
     if json {
         cmd.arg("--json");
     }
-    cmd.output().expect("pebble fix command should execute")
+    cmd.output()
+        .expect("pebble check --fix command should execute")
 }
 
 fn stderr_text(output: &Output) -> String {

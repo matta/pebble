@@ -4,7 +4,7 @@ use crate::graph::TaskGraph;
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 
-/// Executes the `pebble fix` command to repair task files.
+/// Executes repair behavior for `pebble check --fix`.
 pub fn run_fix(ctx: &RunContext) -> Result<()> {
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut modified_ids = Vec::new();
@@ -32,6 +32,7 @@ pub fn run_fix(ctx: &RunContext) -> Result<()> {
     let ok = errors.is_empty();
 
     if !ok {
+        eprintln!("Graph is unhealthy.");
         for err in &errors {
             eprintln!("{}: {}", err.file, err.message);
         }
@@ -54,6 +55,6 @@ pub fn run_fix(ctx: &RunContext) -> Result<()> {
     if ok {
         Ok(())
     } else {
-        Err(eyre!("Fix failed: unresolved findings remain."))
+        Err(eyre!("Check --fix failed: unresolved findings remain."))
     }
 }

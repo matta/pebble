@@ -51,8 +51,7 @@ enum DispatchCommand {
     Add(RunAddInput),
     Update(RunUpdateInput),
     Archive,
-    Check { warn_only: bool },
-    Fix,
+    Check { warn_only: bool, fix: bool },
     Show { id: String, path_only: bool },
 }
 
@@ -153,8 +152,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
             remove_blocks,
         }),
         Commands::Archive => DispatchCommand::Archive,
-        Commands::Check { warn_only } => DispatchCommand::Check { warn_only },
-        Commands::Fix => DispatchCommand::Fix,
+        Commands::Check { warn_only, fix } => DispatchCommand::Check { warn_only, fix },
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
@@ -216,8 +214,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         | DispatchCommand::Update(_)
         | DispatchCommand::Archive
         | DispatchCommand::Show { .. }
-        | DispatchCommand::Check { .. }
-        | DispatchCommand::Fix => {
+        | DispatchCommand::Check { .. } => {
             ctx.ensure_project()?;
         }
         DispatchCommand::ConfigGet { .. } => {
@@ -233,8 +230,13 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Add(input) => run_add(ctx, input),
         DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
-        DispatchCommand::Check { warn_only } => commands_diagnostics::run_check(ctx, warn_only),
-        DispatchCommand::Fix => run_fix(ctx),
+        DispatchCommand::Check { warn_only, fix } => {
+            if fix {
+                run_fix(ctx)
+            } else {
+                commands_diagnostics::run_check(ctx, warn_only)
+            }
+        }
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }

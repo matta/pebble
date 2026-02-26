@@ -132,7 +132,7 @@ fn test_help_json_includes_options_for_add_command() {
 }
 
 #[test]
-fn test_help_json_replaces_doctor_with_check_warn_only() {
+fn test_help_json_replaces_doctor_and_fix_with_check_flags() {
     let output = Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
@@ -150,6 +150,7 @@ fn test_help_json_replaces_doctor_with_check_warn_only() {
         .collect();
     assert!(names.contains(&"check"));
     assert!(!names.contains(&"doctor"));
+    assert!(!names.contains(&"fix"));
 
     let check_options = commands
         .iter()
@@ -163,29 +164,15 @@ fn test_help_json_replaces_doctor_with_check_warn_only() {
         .filter_map(|opt| opt["name"].as_str())
         .collect();
     assert!(check_option_names.contains(&"--warn-only"));
-}
+    assert!(check_option_names.contains(&"--fix"));
 
-#[test]
-fn test_help_json_fix_output_includes_errors_array() {
-    let output = Command::new(cargo_bin!())
-        .args(["help-json"])
-        .output()
-        .expect("pebble command should execute successfully");
-
-    assert!(output.status.success());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout must be valid JSON");
-    let commands = value["commands"]
-        .as_array()
-        .expect("commands should be an array");
-
-    let fix_output = commands
+    let check_output = commands
         .iter()
-        .find(|cmd| cmd["name"] == "fix")
-        .expect("'fix' command should exist")["output"]
+        .find(|cmd| cmd["name"] == "check")
+        .expect("'check' command should exist")["output"]
         .as_object()
-        .expect("'fix' output should be an object");
-
-    assert!(fix_output.contains_key("ok"));
-    assert!(fix_output.contains_key("fixed_tasks"));
-    assert!(fix_output.contains_key("errors"));
+        .expect("'check' output should be an object");
+    assert!(check_output.contains_key("ok"));
+    assert!(check_output.contains_key("errors"));
+    assert!(check_output.contains_key("fixed_tasks"));
 }
