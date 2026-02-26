@@ -1,6 +1,6 @@
-[STATUS: DRAFT]
+[STATUS: SUPERSEDED by RFC 005]
 
-# RFC 003: TOML Frontmatter (Exclusive)
+# RFC 004: TOML Frontmatter (Exclusive)
 
 ## 1. Summary
 
