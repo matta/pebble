@@ -291,6 +291,44 @@ impl TaskGraph {
 
         ready_tasks
     }
+
+    /// Computes strongly connected components (SCCs) for all tasks in the graph.
+    pub(crate) fn compute_sccs(&self) -> ordering::SccData {
+        let ids: Vec<String> = self.nodes.keys().cloned().collect();
+        let adjacency = self.build_adjacency(&ids);
+        ordering::compute_sccs(&ids, adjacency)
+    }
+
+    /// Builds an adjacency list for the provided IDs based on graph edges.
+    fn build_adjacency(&self, ids: &[String]) -> ordering::Adjacency {
+        let mut adjacency: ordering::Adjacency = HashMap::new();
+        let included: HashSet<String> = ids.iter().cloned().collect();
+
+        for id in ids {
+            adjacency.entry(id.clone()).or_default();
+        }
+
+        for node in self.nodes.values() {
+            if !included.contains(&node.frontmatter.id) {
+                continue;
+            }
+            for dep in &node.frontmatter.needs {
+                if included.contains(dep) {
+                    adjacency
+                        .entry(dep.clone())
+                        .or_default()
+                        .push(node.frontmatter.id.clone());
+                }
+            }
+        }
+
+        for edges in adjacency.values_mut() {
+            edges.sort();
+            edges.dedup();
+        }
+
+        adjacency
+    }
 }
 
 #[cfg(test)]

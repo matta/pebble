@@ -5,15 +5,35 @@ use std::cmp::{Ordering, Reverse};
 use std::collections::{HashMap, HashSet};
 
 /// Adjacency list mapping each task ID to the IDs of tasks that depend on it.
-type Adjacency = HashMap<String, Vec<String>>;
+pub(crate) type Adjacency = HashMap<String, Vec<String>>;
 
 /// Output of Tarjan's SCC algorithm: groups of tasks and a reverse-lookup index.
 #[derive(Clone, Debug)]
-struct SccData {
+pub(crate) struct SccData {
     /// Strongly connected components; each inner `Vec` is one SCC (may be a cycle).
-    sccs: Vec<Vec<String>>,
+    pub(crate) sccs: Vec<Vec<String>>,
     /// Maps each task ID to the index of its SCC in `sccs`.
-    index: HashMap<String, usize>,
+    pub(crate) index: HashMap<String, usize>,
+    /// The adjacency list used to compute these SCCs.
+    pub(crate) adjacency: Adjacency,
+}
+
+impl SccData {
+    /// Returns `true` if the given SCC represents a dependency cycle.
+    ///
+    /// An SCC is a cycle when it contains more than one node, or when a single node
+    /// lists itself as a need (self-loop).
+    pub(crate) fn is_cycle(&self, scc: &[String]) -> bool {
+        scc.len() > 1
+            || scc
+                .first()
+                .map(|id| {
+                    self.adjacency
+                        .get(id)
+                        .is_some_and(|edges| edges.contains(id))
+                })
+                .unwrap_or(false)
+    }
 }
 
 /// Order tasks using the dependency-aware default ordering rules.
@@ -30,14 +50,14 @@ pub(super) fn default_order<'a>(
     let adjacency = build_adjacency(&ids, &id_to_node);
     let blocking_counts = compute_blocking_counts(graph, &ids);
 
-    let scc_data = compute_sccs(&ids, &adjacency);
+    let scc_data = compute_sccs(&ids, adjacency.clone());
     let scc_keys = scc_keys(&scc_data.sccs, &id_to_node, &blocking_counts)?;
     let ordered_sccs = topo_order_sccs(&scc_data.sccs, &scc_data.index, &adjacency, &scc_keys);
 
     let mut ordered_nodes: Vec<&TaskNode> = Vec::with_capacity(ids.len());
     for scc_idx in ordered_sccs {
         let scc = &scc_data.sccs[scc_idx];
-        ordered_nodes.extend(order_scc_nodes(scc, &id_to_node, &adjacency));
+        ordered_nodes.extend(order_scc_nodes(scc, &id_to_node, &scc_data));
     }
 
     Ok(ordered_nodes)
@@ -187,18 +207,6 @@ fn topo_order_sccs(
     ordered
 }
 
-/// Returns `true` if the given SCC represents a dependency cycle.
-///
-/// An SCC is a cycle when it contains more than one node, or when a single node
-/// lists itself as a need (self-loop).
-fn is_cycle(scc: &[String], adjacency: &Adjacency) -> bool {
-    scc.len() > 1
-        || scc
-            .first()
-            .map(|id| adjacency.get(id).is_some_and(|edges| edges.contains(id)))
-            .unwrap_or(false)
-}
-
 /// Orders the nodes within a single SCC for output.
 ///
 /// For acyclic SCCs (single nodes with no self-loop) the original order is
@@ -206,14 +214,14 @@ fn is_cycle(scc: &[String], adjacency: &Adjacency) -> bool {
 fn order_scc_nodes<'a>(
     scc: &[String],
     id_to_node: &HashMap<String, &'a TaskNode>,
-    adjacency: &Adjacency,
+    scc_data: &SccData,
 ) -> Vec<&'a TaskNode> {
     let mut scc_nodes: Vec<&TaskNode> = scc
         .iter()
         .filter_map(|id| id_to_node.get(id).copied())
         .collect();
 
-    if is_cycle(scc, adjacency) {
+    if scc_data.is_cycle(scc) {
         scc_nodes.sort_by(|a, b| {
             let cmp = a.frontmatter.created_at.cmp(&b.frontmatter.created_at);
             if cmp != Ordering::Equal {
@@ -227,7 +235,7 @@ fn order_scc_nodes<'a>(
 }
 
 /// Runs Tarjan's SCC algorithm on the given IDs and adjacency list.
-fn compute_sccs(ids: &[String], adjacency: &Adjacency) -> SccData {
+pub(crate) fn compute_sccs(ids: &[String], adjacency: Adjacency) -> SccData {
     Tarjan::new(adjacency).run(ids)
 }
 
@@ -235,19 +243,19 @@ fn compute_sccs(ids: &[String], adjacency: &Adjacency) -> SccData {
 ///
 /// This is the classic Tarjan algorithm for SCC detection, used here to group
 /// dependency cycles so the default ordering can treat cycles as a single unit.
-struct Tarjan<'a> {
+struct Tarjan {
     index: usize,
     indices: HashMap<String, usize>,
     lowlink: HashMap<String, usize>,
     stack: Vec<String>,
     on_stack: HashSet<String>,
-    adjacency: &'a Adjacency,
+    adjacency: Adjacency,
     sccs: Vec<Vec<String>>,
 }
 
-impl<'a> Tarjan<'a> {
+impl Tarjan {
     /// Creates a new Tarjan walker over the given adjacency list.
-    fn new(adjacency: &'a Adjacency) -> Self {
+    fn new(adjacency: Adjacency) -> Self {
         Self {
             index: 0,
             indices: HashMap::new(),
@@ -277,6 +285,7 @@ impl<'a> Tarjan<'a> {
         SccData {
             sccs: self.sccs,
             index: scc_index,
+            adjacency: self.adjacency,
         }
     }
 
@@ -289,23 +298,22 @@ impl<'a> Tarjan<'a> {
         self.stack.push(v.to_string());
         self.on_stack.insert(v.to_string());
 
-        if let Some(neighbors) = self.adjacency.get(v) {
-            for w in neighbors {
-                if !self.indices.contains_key(w) {
-                    self.strongconnect(w);
-                    if let (Some(low_v), Some(low_w)) =
-                        (self.lowlink.get(v).copied(), self.lowlink.get(w).copied())
-                        && low_w < low_v
-                    {
-                        self.lowlink.insert(v.to_string(), low_w);
-                    }
-                } else if self.on_stack.contains(w)
-                    && let (Some(low_v), Some(index_w)) =
-                        (self.lowlink.get(v).copied(), self.indices.get(w).copied())
-                    && index_w < low_v
+        let neighbors = self.adjacency.get(v).cloned().unwrap_or_default();
+        for w in &neighbors {
+            if !self.indices.contains_key(w) {
+                self.strongconnect(w);
+                if let (Some(low_v), Some(low_w)) =
+                    (self.lowlink.get(v).copied(), self.lowlink.get(w).copied())
+                    && low_w < low_v
                 {
-                    self.lowlink.insert(v.to_string(), index_w);
+                    self.lowlink.insert(v.to_string(), low_w);
                 }
+            } else if self.on_stack.contains(w)
+                && let (Some(low_v), Some(index_w)) =
+                    (self.lowlink.get(v).copied(), self.indices.get(w).copied())
+                && index_w < low_v
+            {
+                self.lowlink.insert(v.to_string(), index_w);
             }
         }
 

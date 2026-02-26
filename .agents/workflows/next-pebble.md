@@ -6,6 +6,7 @@ description: Find the next pebble work to do
 Find the next pebble work to do.
 
 # SELECTION CRITERIA
+- Run pebble with `cargo pebble <ARGS>`.
 - Pass the --json opion to all `pebble` commands.
 - Honor the needs/blocking status of pebble tasks (see 'pebble show <id> --json').
 - Keep work focused and manageable. A single pebble may contain many checklist items; you need not complete them all.

@@ -163,3 +163,33 @@ Body"#;
             .any(|m| m.contains("Unknown frontmatter key: 'other_key'"))
     );
 }
+
+#[test]
+fn test_doctor_detects_cycle() {
+    let env = setup_test_env();
+    let a = r#"+++
+id = "A"
+title = "A"
+status = "todo"
+created_at = 2026-03-01T00:00:00Z
+needs = ["B"]
++++
+"#;
+    let b = r#"+++
+id = "B"
+title = "B"
+status = "todo"
+created_at = 2026-03-01T00:00:00Z
+needs = ["A"]
++++
+"#;
+    fs::write(env.tasks_dir.join("A.md"), a).expect("task file A.md should be written");
+    fs::write(env.tasks_dir.join("B.md"), b).expect("task file B.md should be written");
+
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(&env.root)
+        .arg("doctor")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Dependency cycle detected: A, B"));
+}

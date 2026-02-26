@@ -304,6 +304,11 @@ Automated lifecycle manager that sweeps completed (`done`, `canceled`) tasks who
 ### `pebble doctor`
 Performs a read-only health check on the graph. Does not rewrite state. Exits with status code `0`.
 * **Inputs**: None.
+* **Checks Performed**:
+    * **Unknown Frontmatter Keys**: Warns if a task file contains keys not recognized by the schema.
+    * **Duplicate Task IDs**: Warns if multiple files declare the same `id`.
+    * **Dangling References**: Warns if a task lists a `needs` ID that does not exist in the graph.
+    * **Dependency Cycles**: Warns if a set of tasks forms a circular dependency (e.g., A needs B, B needs A).
 * **Output (`--json`)**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
 
 ### `pebble check`

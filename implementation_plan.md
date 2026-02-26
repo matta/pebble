@@ -142,8 +142,27 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 
 ## Phase 5: Test Coverage (TDD for Each Gap)
 - [ ] P5.1 Recursive scan and duplicate ID behavior (read + write).
-- [ ] P5.2 Blocking list and transitive blocking counts (cycles, terminal dependents, missing IDs).
-- [ ] P5.3 Default list ordering and explicit `--sort` tie-breakers.
+- [ ] P5.2 Graph Behavior: Cycles
+  - [ ] P5.2.a `list`: tasks in cycles are never ready.
+  - [ ] P5.2.b `list`: default topological sort groups cycles.
+  - [ ] P5.2.c `next`: tasks in cycles are never ready.
+  - [ ] P5.2.d `show`: `blocking` and `transitive_blocking_count` are cycle-safe.
+  - [ ] P5.2.e `doctor`: reports dependency cycles.
+  - [ ] P5.2.f `check`: reports dependency cycles and exits non-zero.
+- [ ] P5.3 Graph Behavior: Terminal Dependents
+  - [ ] P5.3.a `list`: readiness requires terminal (`done`/`canceled`) status of all `needs`.
+  - [ ] P5.3.b `next`: readiness requires terminal (`done`/`canceled`) status of all `needs`.
+  - [ ] P5.3.c `show`: `blocked_by` and `blocking` exclude terminal nodes.
+  - [ ] P5.3.d `show`: `transitive_blocking_count` traversal stops at terminal nodes.
+- [ ] P5.4 Graph Behavior: Missing IDs (Dangling Pointers)
+  - [ ] P5.4.a `list`: tasks with missing `needs` are never ready.
+  - [ ] P5.4.b `next`: tasks with missing `needs` are never ready.
+  - [ ] P5.4.c `show`: `blocked_by` includes missing IDs.
+  - [ ] P5.4.d `add`: `--blocks` fails if target ID is missing.
+  - [ ] P5.4.e `update`: `--blocks` fails if target ID is missing.
+  - [ ] P5.4.f `doctor`: reports dangling `needs`.
+  - [ ] P5.4.g `check`: reports dangling `needs` and exits non-zero.
+- [ ] P5.5 Default list ordering and explicit `--sort` tie-breakers.
 - [ ] P5.4 Filters and limits for `list`.
 - [ ] P5.5 `search` query behavior.
 - [ ] P5.6 `config get` and `help-json` output shapes.

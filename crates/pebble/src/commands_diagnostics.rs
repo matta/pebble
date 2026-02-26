@@ -77,6 +77,34 @@ pub fn run_doctor(ctx: &RunContext) -> Result<()> {
         }
     }
 
+    // 3. Cycle detection
+    let scc_data = graph.compute_sccs();
+    for scc in &scc_data.sccs {
+        if scc_data.is_cycle(scc) {
+            let mut cycle_ids = scc.clone();
+            cycle_ids.sort();
+            let message = format!("Dependency cycle detected: {}", cycle_ids.join(", "));
+
+            for id in scc {
+                if let Some(node) = graph.nodes.get(id) {
+                    let rel_path = node
+                        .path
+                        .strip_prefix(&current_dir)
+                        .unwrap_or(&node.path)
+                        .display()
+                        .to_string();
+
+                    errors.push(DiagnosticError {
+                        file: rel_path,
+                        line: None,
+                        message: message.clone(),
+                        code: Some("dependency_cycle".to_string()),
+                    });
+                }
+            }
+        }
+    }
+
     // Sort to make testing easier
     errors.sort_by(|a, b| a.file.cmp(&b.file).then(a.message.cmp(&b.message)));
 
