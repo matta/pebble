@@ -29,6 +29,51 @@ pub struct DoctorOutput {
 /// and unknown keys left in a file's frontend parser map (the `extra` property).
 /// Exits with Code 0 under all healthy and non-healthy valid execution runs.
 pub fn run_doctor(ctx: &RunContext) -> Result<()> {
+    let errors = collect_diagnostics(ctx)?;
+    let ok = errors.is_empty();
+
+    if ctx.json {
+        let out = DoctorOutput { ok, errors };
+        println!("{}", serde_json::to_string(&out)?);
+    } else if ok {
+        println!("Graph is healthy. No issues found.");
+    } else {
+        for err in &errors {
+            eprintln!("{}: {}", err.file, err.message);
+        }
+    }
+
+    Ok(())
+}
+
+/// Executes a strict graph check for `pebble check`.
+///
+/// Similar to `doctor`, but exits with an error status if any issues are found.
+pub fn run_check(ctx: &RunContext) -> Result<()> {
+    let errors = collect_diagnostics(ctx)?;
+    let ok = errors.is_empty();
+
+    if ctx.json {
+        let out = DoctorOutput { ok, errors };
+        println!("{}", serde_json::to_string(&out)?);
+    } else if ok {
+        println!("Graph is healthy. No issues found.");
+    } else {
+        for err in &errors {
+            eprintln!("{}: {}", err.file, err.message);
+        }
+    }
+
+    if !ok {
+        // We use a generic Result error here which will be handled by main/color_eyre
+        // and usually results in exit code 1.
+        return Err(color_eyre::eyre::eyre!("Check failed: graph has issues."));
+    }
+
+    Ok(())
+}
+
+fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticError>> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut errors = Vec::new();
 
@@ -107,18 +152,5 @@ pub fn run_doctor(ctx: &RunContext) -> Result<()> {
     // Sort to make testing easier
     errors.sort_by(|a, b| a.file.cmp(&b.file).then(a.message.cmp(&b.message)));
 
-    let ok = errors.is_empty();
-
-    if ctx.json {
-        let out = DoctorOutput { ok, errors };
-        println!("{}", serde_json::to_string(&out)?);
-    } else if ok {
-        println!("Graph is healthy. No issues found.");
-    } else {
-        for err in &errors {
-            eprintln!("{}: {}", err.file, err.message);
-        }
-    }
-
-    Ok(())
+    Ok(errors)
 }

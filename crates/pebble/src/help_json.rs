@@ -114,7 +114,7 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
         ("add", None) => json!("TaskObject"),
         ("update", None) => json!("TaskObject"),
         ("archive", None) => json!({ "archived": [{ "id": "string", "moved_to": "string" }] }),
-        ("doctor", None) => {
+        ("doctor", None) | ("check", None) => {
             json!({ "ok": "bool", "errors": [{ "file": "string", "line": "number|null", "message": "string", "code": "string|null" }] })
         }
         ("help-json", None) => json!("HelpSchema"),

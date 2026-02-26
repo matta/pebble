@@ -181,6 +181,13 @@ pub enum Commands {
     /// Perform a read-only health check on the graph.
     Doctor,
     #[command(
+        about = "Perform a strict health check on the graph.",
+        long_about = "Performs a strict health check on the graph. Does not rewrite state. Exits with status code 1 if any issues are found, including unknown frontmatter keys, duplicate IDs, dangling dependencies, or dependency cycles.",
+        after_help = "Examples:\n  pebble check\n  pebble check --json"
+    )]
+    /// Perform a strict health check on the graph.
+    Check,
+    #[command(
         about = "Show one task by ID.",
         long_about = "Show full task details or only the relative file path. Exit code 1 if task is not found.",
         after_help = "Examples:\n  pebble show PEBL-1\n  pebble show PEBL-1 --path-only --json"
