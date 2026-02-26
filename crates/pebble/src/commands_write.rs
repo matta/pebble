@@ -5,7 +5,6 @@ use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
 use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashSet;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -166,11 +165,11 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
 }
 
 pub fn run_init(
+    current_dir: PathBuf,
     cli_dir_override: Option<PathBuf>,
     issue_prefix: Option<String>,
     json: bool,
 ) -> Result<()> {
-    let current_dir = env::current_dir()?;
     let pebble_dir = current_dir.join(".pebble");
 
     if pebble_dir.exists() {

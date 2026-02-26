@@ -2,7 +2,6 @@ use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use color_eyre::eyre::Result;
 use serde::Serialize;
-use std::env;
 
 /// A standard error shape emitted by the doctor's checks (suitable for JSON).
 /// Contains a human-readable message, an identifier for the file (if applicable),
@@ -33,7 +32,7 @@ pub fn run_doctor(ctx: &RunContext) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut errors = Vec::new();
 
-    let current_dir = env::current_dir()?;
+    let current_dir = &ctx.current_dir;
 
     // 1. Check for duplicate IDs
     for id in &graph.duplicate_ids {
@@ -49,7 +48,7 @@ pub fn run_doctor(ctx: &RunContext) -> Result<()> {
     for node in graph.nodes.values() {
         let rel_path = node
             .path
-            .strip_prefix(&current_dir)
+            .strip_prefix(current_dir)
             .unwrap_or(&node.path)
             .display()
             .to_string();
@@ -89,7 +88,7 @@ pub fn run_doctor(ctx: &RunContext) -> Result<()> {
                 if let Some(node) = graph.nodes.get(id) {
                     let rel_path = node
                         .path
-                        .strip_prefix(&current_dir)
+                        .strip_prefix(current_dir)
                         .unwrap_or(&node.path)
                         .display()
                         .to_string();
