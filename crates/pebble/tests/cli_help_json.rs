@@ -130,3 +130,37 @@ fn test_help_json_includes_options_for_add_command() {
     assert!(opt_names.contains(&"--need"));
     assert!(opt_names.contains(&"--tag"));
 }
+
+#[test]
+fn test_help_json_replaces_doctor_with_check_warn_only() {
+    let output = Command::new(cargo_bin!())
+        .args(["help-json"])
+        .output()
+        .expect("pebble command should execute successfully");
+
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout must be valid JSON");
+    let commands = value["commands"]
+        .as_array()
+        .expect("commands should be an array");
+
+    let names: Vec<&str> = commands
+        .iter()
+        .filter_map(|cmd| cmd["name"].as_str())
+        .collect();
+    assert!(names.contains(&"check"));
+    assert!(!names.contains(&"doctor"));
+
+    let check_options = commands
+        .iter()
+        .find(|cmd| cmd["name"] == "check")
+        .expect("'check' command should exist")["options"]
+        .as_array()
+        .expect("'check' options should be an array");
+
+    let check_option_names: Vec<&str> = check_options
+        .iter()
+        .filter_map(|opt| opt["name"].as_str())
+        .collect();
+    assert!(check_option_names.contains(&"--warn-only"));
+}

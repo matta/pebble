@@ -87,7 +87,7 @@ bounded_integer::bounded_integer! {
 /// # Ok(())
 /// # }
 /// ```
-// TODO: Implement unknown-key handling: reads ignore; doctor/fix warn; check errors; fix preserves.
+// TODO: Implement unknown-key handling: reads ignore; check --warn-only/fix warn; check errors; fix preserves.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct TaskFrontmatter {
     /// Unique, immutable task identifier (e.g. `"issue-abc123"`).

@@ -52,7 +52,7 @@ Pebble locates its configuration and task files using strict path resolution rul
 * The CLI **recursively** treats every `*.md` file under `tasks-dir` as a potential task file.
 * If a file contains unparseable TOML frontmatter, the CLI skips it with a warning to `stderr`.
 * If multiple files share the same `id`, read commands skip all files with that ID (logging a warning to `stderr`). Write commands targeting a duplicated ID fail with a clear error.
-* Unknown frontmatter keys are ignored by read commands (no warnings). `pebble doctor` and `pebble fix` emit warnings. `pebble check` treats them as errors. `pebble fix` does not remove unknown fields.
+* Unknown frontmatter keys are ignored by read commands (no warnings). `pebble check --warn-only` and `pebble fix` emit warnings. `pebble check` treats them as errors. `pebble fix` does not remove unknown fields.
 * Renaming or moving a file within `tasks-dir` does not change the `id` and does not break references — the frontmatter `id` is canonical; filenames are advisory.
 * The CLI never rewrites the frontmatter `id` for an existing task file.
 
@@ -129,11 +129,10 @@ In addition to the general requirements above, each command's `--help` **MUST** 
 * `pebble archive`
     * Selection criteria (terminal status + age threshold).
     * Destination path behavior and filename collision handling.
-* `pebble doctor`
-    * Read-only diagnostics scope and non-mutating behavior.
-    * Warning/error reporting shape and exit behavior.
 * `pebble check`
-    * How it differs from `doctor` (strictness and non-zero exit on issues).
+    * Read-only diagnostics scope and non-mutating behavior.
+    * Default strict behavior (non-zero exit on issues).
+    * `--warn-only` behavior (same diagnostics, exit code `0`).
 * `pebble fix`
     * What repairs are allowed, what is explicitly not rewritten, and warning behavior for unknown keys.
 
@@ -301,20 +300,17 @@ Automated lifecycle manager that sweeps completed (`done`, `canceled`) tasks who
 
 ## Validation & Diagnostics
 
-### `pebble doctor`
-Performs a read-only health check on the graph. Does not rewrite state. Exits with status code `0`.
-* **Inputs**: None.
-* **Checks Performed**:
-    * **Unknown Frontmatter Keys**: Warns if a task file contains keys not recognized by the schema.
-    * **Duplicate Task IDs**: Warns if multiple files declare the same `id`.
-    * **Dangling References**: Warns if a task lists a `needs` ID that does not exist in the graph.
-    * **Dependency Cycles**: Warns if a set of tasks forms a circular dependency (e.g., A needs B, B needs A).
-* **Output (`--json`)**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
-
 ### `pebble check`
-Strict verification tool. Functions identically to `pebble doctor` but exits with a non-zero status code if graph or schema errors exist.
-* **Inputs**: None.
-* **Output (`--json`)**: Same shape as `pebble doctor`.
+Read-only graph verification tool. Does not rewrite state.
+* **Inputs**:
+    * `--warn-only`: report issues but always exit with status code `0`.
+* **Default behavior** (without `--warn-only`): exits with a non-zero status code if graph or schema errors exist.
+* **Checks Performed**:
+    * **Unknown Frontmatter Keys**: reports keys not recognized by the schema.
+    * **Duplicate Task IDs**: reports when multiple files declare the same `id`.
+    * **Dangling References**: reports when a task lists a `needs` ID that does not exist in the graph.
+    * **Dependency Cycles**: reports circular dependencies (for example, A needs B, B needs A).
+* **Output (`--json`)**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
 
 ### `pebble fix`
 Applies safe, deterministic repairs such as whitespace normalization or backfilling missing `created_at`. Does not rewrite dependency edges.

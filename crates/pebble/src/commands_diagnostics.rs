@@ -3,7 +3,7 @@ use crate::graph::TaskGraph;
 use color_eyre::eyre::Result;
 use serde::Serialize;
 
-/// A standard error shape emitted by the doctor's checks (suitable for JSON).
+/// A standard error shape emitted by diagnostics checks (suitable for JSON).
 /// Contains a human-readable message, an identifier for the file (if applicable),
 /// and an optional machine-readable error code.
 #[derive(Serialize)]
@@ -15,37 +15,23 @@ pub struct DiagnosticError {
     pub code: Option<String>,
 }
 
-/// Represents the JSON payload containing the results of the `doctor` command.
+/// Represents the JSON payload containing diagnostics results.
 /// Includes an overall true/false health indicator and an array of individual issues.
 #[derive(Serialize)]
-pub struct DoctorOutput {
+pub struct DiagnosticsOutput {
     pub ok: bool,
     pub errors: Vec<DiagnosticError>,
 }
 
-/// Executes the read-only graph check for `pebble doctor`.
-///
-/// It emits warnings for duplicated files, dangling downstream dependencies,
-/// and unknown keys left in a file's frontend parser map (the `extra` property).
-///
-/// This command always returns `Ok(())` if the diagnostics could be performed,
-/// even if the graph has issues. Operational failures (like IO errors) return `Err`.
-pub fn run_doctor(ctx: &RunContext) -> Result<()> {
-    let errors = collect_diagnostics(ctx)?;
-    report_diagnostics(ctx, errors)?;
-    Ok(())
-}
-
 /// Executes a strict graph check for `pebble check`.
 ///
-/// Similar to `doctor`, but exits with an error status if any issues are found.
-/// It elevates a "found issues" result from `report_diagnostics` into a `Result::Err`
-/// to ensure the CLI returns a non-zero exit code.
-pub fn run_check(ctx: &RunContext) -> Result<()> {
+/// By default this exits with an error status if any issues are found. With
+/// `warn_only` enabled it still reports issues but always exits successfully.
+pub fn run_check(ctx: &RunContext, warn_only: bool) -> Result<()> {
     let errors = collect_diagnostics(ctx)?;
     let ok = report_diagnostics(ctx, errors)?;
 
-    if !ok {
+    if !ok && !warn_only {
         // We use a generic Result error here which will be handled by main/color_eyre
         // and usually results in exit code 1.
         return Err(color_eyre::eyre::eyre!("Check failed: graph has issues."));
@@ -64,11 +50,12 @@ fn report_diagnostics(ctx: &RunContext, errors: Vec<DiagnosticError>) -> Result<
     let ok = errors.is_empty();
 
     if ctx.json {
-        let out = DoctorOutput { ok, errors };
+        let out = DiagnosticsOutput { ok, errors };
         println!("{}", serde_json::to_string(&out)?);
     } else if ok {
         println!("Graph is healthy. No issues found.");
     } else {
+        eprintln!("Graph is unhealthy.");
         for err in &errors {
             eprintln!("{}: {}", err.file, err.message);
         }

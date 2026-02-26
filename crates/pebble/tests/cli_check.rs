@@ -52,6 +52,7 @@ Body"#;
         .assert()
         .failure()
         .code(1)
+        .stderr(predicate::str::contains("Graph is unhealthy."))
         .stderr(predicate::str::contains(
             "Unknown frontmatter key: 'weird_key'",
         ));

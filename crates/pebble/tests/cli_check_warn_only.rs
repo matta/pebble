@@ -8,7 +8,7 @@ mod support;
 use support::setup_test_env;
 
 #[test]
-fn test_doctor_healthy_graph() {
+fn test_check_warn_only_healthy_graph() {
     let env = setup_test_env();
     let a = r#"+++
 id = "A"
@@ -31,7 +31,8 @@ needs = ["A"]
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
-        .arg("doctor")
+        .arg("check")
+        .arg("--warn-only")
         .assert()
         .success()
         .stdout("Graph is healthy. No issues found.\n")
@@ -39,7 +40,7 @@ needs = ["A"]
 }
 
 #[test]
-fn test_doctor_healthy_graph_json() {
+fn test_check_warn_only_healthy_graph_json() {
     let env = setup_test_env();
     let a = r#"+++
 id = "A"
@@ -63,7 +64,8 @@ needs = ["A"]
     let mut cmd = Command::new(cargo_bin!("pebble"));
     let assert = cmd
         .current_dir(&env.root)
-        .arg("doctor")
+        .arg("check")
+        .arg("--warn-only")
         .arg("--json")
         .assert()
         .success()
@@ -84,7 +86,7 @@ needs = ["A"]
 }
 
 #[test]
-fn test_doctor_finds_dangling_needs() {
+fn test_check_warn_only_finds_dangling_needs() {
     let env = setup_test_env();
     let a = r#"+++
 id = "A"
@@ -107,7 +109,8 @@ needs = ["A", "MISSING_TASK"]
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
-        .arg("doctor")
+        .arg("check")
+        .arg("--warn-only")
         .assert()
         .success()
         .stderr(predicate::str::contains(
@@ -116,7 +119,7 @@ needs = ["A", "MISSING_TASK"]
 }
 
 #[test]
-fn test_doctor_finds_unknown_keys() {
+fn test_check_warn_only_finds_unknown_keys() {
     let env = setup_test_env();
     let frontmatter = r#"+++
 id = "issue-X"
@@ -133,7 +136,8 @@ Body"#;
     let mut cmd = Command::new(cargo_bin!("pebble"));
     let assert = cmd
         .current_dir(&env.root)
-        .arg("doctor")
+        .arg("check")
+        .arg("--warn-only")
         .arg("--json")
         .assert()
         .success();
@@ -165,7 +169,7 @@ Body"#;
 }
 
 #[test]
-fn test_doctor_detects_cycle() {
+fn test_check_warn_only_detects_cycle() {
     let env = setup_test_env();
     let a = r#"+++
 id = "A"
@@ -188,8 +192,22 @@ needs = ["A"]
 
     let mut cmd = Command::new(cargo_bin!("pebble"));
     cmd.current_dir(&env.root)
-        .arg("doctor")
+        .arg("check")
+        .arg("--warn-only")
         .assert()
         .success()
         .stderr(predicate::str::contains("Dependency cycle detected: A, B"));
+}
+
+#[test]
+fn test_legacy_doctor_command_is_no_longer_available() {
+    let env = setup_test_env();
+
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(&env.root)
+        .arg("doctor")
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("unrecognized subcommand 'doctor'"));
 }
