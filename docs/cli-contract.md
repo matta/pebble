@@ -52,13 +52,14 @@ Pebble locates its configuration and task files using strict path resolution rul
 * The CLI **recursively** treats every `*.md` file under `tasks-dir` as a potential task file.
 * If a file contains unparseable TOML frontmatter, the CLI skips it with a warning to `stderr`.
 * If multiple files share the same `id`, read commands skip all files with that ID (logging a warning to `stderr`). Write commands targeting a duplicated ID fail with a clear error.
-* Unknown frontmatter keys are ignored by read commands (no warnings). `pebble check --warn-only` and `pebble fix` emit warnings. `pebble check` treats them as errors. `pebble fix` does not remove unknown fields.
+* Tasks missing required schema keys (for example `created_at`) may still be loaded for repair workflows; `pebble check` reports them as schema issues and `pebble fix` can backfill supported fields.
+* Unknown frontmatter keys are ignored by read commands (no warnings). `pebble check` and `pebble check --warn-only` report them as findings. `pebble fix` reports them as findings but does not remove unknown fields.
 * Renaming or moving a file within `tasks-dir` does not change the `id` and does not break references — the frontmatter `id` is canonical; filenames are advisory.
 * The CLI never rewrites the frontmatter `id` for an existing task file.
 
 ## Global Options
 
-* `--json`: Outputs a single JSON value to `stdout` per invocation. On failure, no JSON is emitted; `stdout` is empty, an error message is written to `stderr`, and the exit code is non-zero.
+* `--json`: Outputs a single JSON value to `stdout` per invocation for commands with structured output. For diagnostic commands (`pebble check`, `pebble fix`), JSON is still emitted when findings are present even if the command exits non-zero.
 * `--dir <PATH>`: Override the configured `tasks-dir`.
 
 ## JSON Mode
@@ -134,7 +135,8 @@ In addition to the general requirements above, each command's `--help` **MUST** 
     * Default strict behavior (non-zero exit on issues).
     * `--warn-only` behavior (same diagnostics, exit code `0`).
 * `pebble fix`
-    * What repairs are allowed, what is explicitly not rewritten, and warning behavior for unknown keys.
+    * What repairs are allowed, what is explicitly not rewritten, and that findings are reported to `stderr`.
+    * Exit behavior: non-zero if any findings remain after attempted repairs.
 
 If any command omits its command-specific semantics above, its `--help` output is incomplete.
 
@@ -183,6 +185,7 @@ Field shape, presence, ordering, and naming in `help-json` output **may change b
 ## Timestamp Rules
 
 * `created_at` is set to the current UTC time on `pebble add`.
+* Missing `created_at` is a schema issue reported by `pebble check` and `pebble check --warn-only`.
 * `modified_at` is automatically set to the current UTC time on every `pebble update` invocation.
 * `resolved_at` is automatically set to the current UTC time when `pebble update` transitions a task's status to `done` or `canceled` (if not already set).
 * `resolved_at` is automatically cleared when `pebble update` transitions a task's status away from `done` or `canceled`.
@@ -306,6 +309,7 @@ Read-only graph verification tool. Does not rewrite state.
     * `--warn-only`: report issues but always exit with status code `0`.
 * **Default behavior** (without `--warn-only`): exits with a non-zero status code if graph or schema errors exist.
 * **Checks Performed**:
+    * **Missing Required Keys**: reports tasks missing required schema keys such as `created_at`.
     * **Unknown Frontmatter Keys**: reports keys not recognized by the schema.
     * **Duplicate Task IDs**: reports when multiple files declare the same `id`.
     * **Dangling References**: reports when a task lists a `needs` ID that does not exist in the graph.
@@ -313,9 +317,12 @@ Read-only graph verification tool. Does not rewrite state.
 * **Output (`--json`)**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
 
 ### `pebble fix`
-Applies safe, deterministic repairs such as whitespace normalization or backfilling missing `created_at`. Does not rewrite dependency edges.
+Applies safe, deterministic repairs such as backfilling missing `created_at`. Does not rewrite dependency edges.
 * **Inputs**: None.
-* **Output (`--json`)**: Typically returns status of operations; follows the repair output format.
+* **Diagnostics**: findings are written to `stderr` in both human and `--json` modes.
+* **Human output**: repair summary is written to `stdout`.
+* **Exit behavior**: exits `0` only when no findings remain after repairs; exits non-zero if any findings remain.
+* **Output (`--json`)**: `{"ok": bool, "fixed_tasks": ["<id>", ...], "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
 
 ## Output Semantics
 

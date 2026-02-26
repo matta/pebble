@@ -164,3 +164,28 @@ fn test_help_json_replaces_doctor_with_check_warn_only() {
         .collect();
     assert!(check_option_names.contains(&"--warn-only"));
 }
+
+#[test]
+fn test_help_json_fix_output_includes_errors_array() {
+    let output = Command::new(cargo_bin!())
+        .args(["help-json"])
+        .output()
+        .expect("pebble command should execute successfully");
+
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout must be valid JSON");
+    let commands = value["commands"]
+        .as_array()
+        .expect("commands should be an array");
+
+    let fix_output = commands
+        .iter()
+        .find(|cmd| cmd["name"] == "fix")
+        .expect("'fix' command should exist")["output"]
+        .as_object()
+        .expect("'fix' output should be an object");
+
+    assert!(fix_output.contains_key("ok"));
+    assert!(fix_output.contains_key("fixed_tasks"));
+    assert!(fix_output.contains_key("errors"));
+}

@@ -136,7 +136,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         title: title.clone(),
         status,
         priority,
-        created_at,
+        created_at: Some(created_at),
         modified_at: None,
         resolved_at,
         needs,

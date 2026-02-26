@@ -65,7 +65,7 @@ fn report_diagnostics(ctx: &RunContext, errors: Vec<DiagnosticError>) -> Result<
     Ok(ok)
 }
 
-fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticError>> {
+pub(crate) fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticError>> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut errors = Vec::new();
 
@@ -89,6 +89,16 @@ fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticError>> {
             .unwrap_or(&node.path)
             .display()
             .to_string();
+
+        // Missing required keys
+        if node.frontmatter.created_at.is_none() {
+            errors.push(DiagnosticError {
+                file: rel_path.clone(),
+                line: None,
+                message: "Missing required frontmatter key: 'created_at'".to_string(),
+                code: Some("missing_created_at".to_string()),
+            });
+        }
 
         // Unknown keys
         for key in node.frontmatter.extra.keys() {

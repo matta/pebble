@@ -71,7 +71,11 @@ impl<'a> TaskObject<'a> {
             title: &node.frontmatter.title,
             status: node.frontmatter.status,
             priority: node.frontmatter.priority,
-            created_at: node.frontmatter.created_at.to_string(),
+            created_at: node
+                .frontmatter
+                .created_at
+                .map(|dt| dt.to_string())
+                .unwrap_or_default(),
             modified_at: node
                 .frontmatter
                 .modified_at
@@ -319,8 +323,10 @@ mod tests {
                 title: id.to_string(),
                 status,
                 priority: None,
-                created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-                    .expect("datetime should be valid ISO 8601"),
+                created_at: Some(
+                    toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
+                        .expect("datetime should be valid ISO 8601"),
+                ),
                 modified_at: None,
                 resolved_at: None,
                 needs: needs.into_iter().map(|s| s.to_string()).collect(),

@@ -57,8 +57,9 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - Phase task IDs:
 - [x] `P1`: `pebl-cdIZGN`
 - [x] `P2`: `pebl--yb8d4`
-- [-] `P3`: `pebl-hRuKk1`
+- [x] `P3`: `pebl-hRuKk1`
 - [x] `P3.1`: `pebl-cug7mpg7cz` Inject current_dir into RunContext to improve testability of diagnostics
+- [x] `P3.3`: `pebl-vnywlhmt3y` Implement pebble fix command
 - [ ] `P4`: `pebl-fFdi_z`
 - [ ] `P5`: `pebl-pCyebx`
 - Child task IDs:

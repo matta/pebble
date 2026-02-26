@@ -13,8 +13,10 @@ fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
             title: id.to_string(),
             status,
             priority: None,
-            created_at: toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-                .expect("Failed to parse datetime"),
+            created_at: Some(
+                toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
+                    .expect("Failed to parse datetime"),
+            ),
             modified_at: None,
             resolved_at: None,
             needs: needs.into_iter().map(|s| s.to_string()).collect(),
@@ -156,10 +158,14 @@ fn test_default_order_cycle_grouping_created_at() {
     let mut b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
     let c = make_test_node("C", TaskStatus::Todo, vec!["A"]);
 
-    a.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-02T00:00:00Z")
-        .expect("Failed to parse datetime");
-    b.frontmatter.created_at = toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-        .expect("Failed to parse datetime");
+    a.frontmatter.created_at = Some(
+        toml_datetime::Datetime::from_str("2026-01-02T00:00:00Z")
+            .expect("Failed to parse datetime"),
+    );
+    b.frontmatter.created_at = Some(
+        toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
+            .expect("Failed to parse datetime"),
+    );
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
