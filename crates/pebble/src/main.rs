@@ -7,6 +7,7 @@ pub mod commands;
 pub mod commands_add;
 pub mod commands_archive;
 pub mod commands_diagnostics;
+pub mod commands_fix;
 pub mod commands_write;
 
 #[cfg(test)]
@@ -21,8 +22,8 @@ mod task_io;
 use crate::cli::{Cli, Commands, ConfigCommands};
 use crate::help_json::help_json_schema;
 use crate::models::UsageError;
+use clap::Parser;
 use clap::error::ErrorKind;
-use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_add::{RunAddInput, run_add};
@@ -50,6 +51,7 @@ enum DispatchCommand {
     Update(RunUpdateInput),
     Archive,
     Check { warn_only: bool },
+    Fix,
     Show { id: String, path_only: bool },
 }
 
@@ -151,6 +153,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
         }),
         Commands::Archive => DispatchCommand::Archive,
         Commands::Check { warn_only } => DispatchCommand::Check { warn_only },
+        Commands::Fix => DispatchCommand::Fix,
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
@@ -187,28 +190,20 @@ fn run() -> Result<()> {
 
     let cli = Cli::try_parse()?;
 
-    if cli.help_json {
-        return run_help_json();
-    }
-
     if let Some(ref dir) = cli.directory {
         env::set_current_dir(dir)?;
     }
 
     let current_dir = env::current_dir()?;
 
-    if let Some(command) = cli.command {
-        if let Some(dispatch_cmd) =
-            prepare_dispatch_command(&current_dir, command, cli.dir.clone(), cli.json)?
-        {
-            let ctx = RunContext::load(current_dir, cli.dir.clone(), cli.config, cli.json)?;
-            dispatch_command(&ctx, dispatch_cmd)?;
-        }
+    if let Some(command) =
+        prepare_dispatch_command(&current_dir, cli.command, cli.dir.clone(), cli.json)?
+    {
+        let ctx = RunContext::load(current_dir, cli.dir.clone(), cli.config, cli.json)?;
+        dispatch_command(&ctx, command)
     } else {
-        let _ = Cli::command().print_help();
+        Ok(())
     }
-
-    Ok(())
 }
 
 fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
@@ -219,6 +214,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         | DispatchCommand::Search { .. }
         | DispatchCommand::Update(_)
         | DispatchCommand::Archive
+        | DispatchCommand::Fix
         | DispatchCommand::Show { .. }
         | DispatchCommand::Check { .. } => {
             ctx.ensure_project()?;
@@ -237,6 +233,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
         DispatchCommand::Check { warn_only } => commands_diagnostics::run_check(ctx, warn_only),
+        DispatchCommand::Fix => commands_fix::run_fix(ctx),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }

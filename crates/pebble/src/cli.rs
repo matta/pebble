@@ -28,16 +28,12 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
-    /// Output the CLI structure in a machine-readable JSON format.
-    #[arg(long, global = true)]
-    pub help_json: bool,
-
     /// Path to the tasks directory (overrides config)
     #[arg(long, global = true, value_name = "PATH")]
     pub dir: Option<PathBuf>,
 
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Commands,
 }
 
 /// Top-level Pebble subcommands accepted by the CLI.
@@ -188,6 +184,13 @@ pub enum Commands {
         #[arg(long)]
         warn_only: bool,
     },
+    #[command(
+        about = "Apply safe fixes to the task graph (e.g. backfill created_at).",
+        long_about = "Scan all task files and apply safe, deterministic repairs. This includes backfilling missing 'created_at' timestamps and normalizing TOML frontmatter formatting. It does not rewrite dependency edges or remove unknown keys.",
+        after_help = "Examples:\n  pebble fix"
+    )]
+    /// Apply safe fixes to the task graph.
+    Fix,
     #[command(
         about = "Show one task by ID.",
         long_about = "Show full task details or only the relative file path. Exit code 1 if task is not found.",

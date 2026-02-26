@@ -2,6 +2,52 @@ use crate::models::{TaskFrontmatter, TaskNode};
 use color_eyre::eyre::{Result, eyre};
 use std::path::Path;
 
+/// Extracts the raw TOML frontmatter string and the body content from a file.
+///
+/// # Errors
+///
+/// Returns an error if the file does not start with `+++` or if the closing `+++` is missing.
+pub fn split_frontmatter(content: &str) -> Result<(String, String)> {
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Frontmatter must start on the first line.
+    if lines.is_empty() || lines[0].trim() != "+++" {
+        return Err(eyre!(
+            "Missing or invalid TOML frontmatter: file must start with '+++'"
+        ));
+    }
+
+    // Find the end of the frontmatter.
+    let mut end_idx = None;
+    for (i, line) in lines.iter().enumerate().skip(1) {
+        if line.trim() == "+++" {
+            end_idx = Some(i);
+            break;
+        }
+    }
+
+    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
+
+    // Extract frontmatter string.
+    let toml_str = lines[1..end_idx].join("\n");
+
+    // Extract body, stripping leading newlines after the closing '+++'.
+    let body_lines = &lines[end_idx + 1..];
+
+    // We want to reconstruct the body. We can use `join("\n")`,
+    // but if the file ended with a newline we might want to be faithful.
+    // For now, joining lines is standard.
+    let mut body = body_lines.join("\n");
+    if !body.is_empty() && content.ends_with('\n') {
+        body.push('\n');
+    }
+
+    // Trim leading whitespace/newlines from the body to drop the immediate gap after ---
+    let body = body.trim_start().to_string();
+
+    Ok((toml_str, body))
+}
+
 /// Parses a Markdown file with TOML frontmatter into a [`TaskNode`].
 ///
 /// The file must start with a TOML frontmatter block delimited by `+++` on the first
@@ -37,44 +83,10 @@ use std::path::Path;
 /// # }
 /// ```
 pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
-    let lines: Vec<&str> = content.lines().collect();
+    let (toml_str, body) = split_frontmatter(content)?;
 
-    // Frontmatter must start on the first line.
-    if lines.is_empty() || lines[0].trim() != "+++" {
-        return Err(eyre!(
-            "Missing or invalid TOML frontmatter: file must start with '+++'"
-        ));
-    }
-
-    // Find the end of the frontmatter.
-    let mut end_idx = None;
-    for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim() == "+++" {
-            end_idx = Some(i);
-            break;
-        }
-    }
-
-    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
-
-    // Extract frontmatter string.
-    let toml_str = lines[1..end_idx].join("\n");
     let frontmatter: TaskFrontmatter =
         toml::from_str(&toml_str).map_err(|e| eyre!("Failed to parse TOML frontmatter: {}", e))?;
-
-    // Extract body, stripping leading newlines after the closing '+++'.
-    let body_lines = &lines[end_idx + 1..];
-
-    // We want to reconstruct the body. We can use `join("\n")`,
-    // but if the file ended with a newline we might want to be faithful.
-    // For now, joining lines is standard.
-    let mut body = body_lines.join("\n");
-    if !body.is_empty() && content.ends_with('\n') {
-        body.push('\n');
-    }
-
-    // Trim leading whitespace/newlines from the body to drop the immediate gap after ---
-    let body = body.trim_start().to_string();
 
     Ok(TaskNode {
         path: path.to_path_buf(),

@@ -117,6 +117,7 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
         ("check", None) => {
             json!({ "ok": "bool", "errors": [{ "file": "string", "line": "number|null", "message": "string", "code": "string|null" }] })
         }
+        ("fix", None) => json!("null"),
         ("help-json", None) => json!("HelpSchema"),
         // Intentional panic: Tests validate exhaustiveness before release.
         _ => panic!(

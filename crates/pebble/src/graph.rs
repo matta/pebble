@@ -34,24 +34,30 @@ pub struct TaskGraph {
     pub duplicate_ids: HashSet<String>,
 }
 
-impl TaskGraph {
-    /// Recursively collect all Markdown files under `dir` in deterministic order.
-    fn collect_markdown_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
-        let mut entries: Vec<_> = fs::read_dir(dir)?.collect::<result::Result<_, _>>()?;
-        entries.sort_by_key(|entry| entry.path());
+/// Recursively collect all Markdown files under `dir` in deterministic order.
+pub fn collect_markdown_files(dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut out = Vec::new();
+    collect_markdown_files_recursive(dir, &mut out)?;
+    Ok(out)
+}
 
-        for entry in entries {
-            let path = entry.path();
-            if path.is_dir() {
-                Self::collect_markdown_files(&path, out)?;
-            } else if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
-                out.push(path);
-            }
+fn collect_markdown_files_recursive(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
+    let mut entries: Vec<_> = fs::read_dir(dir)?.collect::<result::Result<_, _>>()?;
+    entries.sort_by_key(|entry| entry.path());
+
+    for entry in entries {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_markdown_files_recursive(&path, out)?;
+        } else if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
+            out.push(path);
         }
-
-        Ok(())
     }
 
+    Ok(())
+}
+
+impl TaskGraph {
     /// Builds a graph from a directory of task files.
     ///
     /// Scans the directory and all subdirectories for Markdown (`.md`) files, parsing each
@@ -72,8 +78,7 @@ impl TaskGraph {
         let mut parsed_nodes = Vec::new();
 
         if tasks_dir.exists() {
-            let mut markdown_files = Vec::new();
-            Self::collect_markdown_files(tasks_dir, &mut markdown_files)?;
+            let markdown_files = collect_markdown_files(tasks_dir)?;
 
             for path in markdown_files {
                 // Ignore AGENTS.md or other known non-task files if they live here.
