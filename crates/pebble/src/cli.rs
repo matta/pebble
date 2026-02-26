@@ -175,7 +175,7 @@ pub enum Commands {
     Archive,
     #[command(
         about = "Read-only diagnostics for the task graph.",
-        long_about = "Performs a read-only health check on the graph. Does not rewrite state. Exits with status code 0 and emits warnings for unknown frontmatter keys, duplicate IDs, and dangling dependencies.",
+        long_about = "Performs a read-only health check on the graph. Does not rewrite state. Exits with status code 0 and emits warnings for unknown frontmatter keys, duplicate IDs, dangling dependencies, and dependency cycles.",
         after_help = "Examples:\n  pebble doctor\n  pebble doctor --json"
     )]
     /// Perform a read-only health check on the graph.

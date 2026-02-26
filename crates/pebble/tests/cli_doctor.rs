@@ -191,7 +191,5 @@ needs = ["A"]
         .arg("doctor")
         .assert()
         .success()
-        .stderr(predicate::str::contains(
-            "Dependency cycle detected: A -> B",
-        ));
+        .stderr(predicate::str::contains("Dependency cycle detected: A, B"));
 }
