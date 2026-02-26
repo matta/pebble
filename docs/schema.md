@@ -40,7 +40,9 @@ pub struct TaskFrontmatter {
     pub status: TaskStatus,
     // Valid range: 0..99. Lower number = higher priority.
     pub priority: Option<Priority>,
-    pub created_at: Datetime,
+    // Parsed as optional so repair workflows can load malformed files.
+    // `pebble check` enforces requiredness.
+    pub created_at: Option<Datetime>,
     pub modified_at: Option<Datetime>,
     pub resolved_at: Option<Datetime>,
     #[serde(default)]
@@ -77,6 +79,7 @@ Pebble intentionally omits traditional issue tracker audit fields from the schem
 ## Strict Timestamp Management
 
 Instead of vague update markers, Pebble relies on specific timestamps for operations:
+* **`created_at`**: Required for a valid task. Missing values are reported by `pebble check` and can be backfilled by `pebble fix`.
 * **`modified_at`**: Used to indicate when the task was last modified. This provides a clear, deterministic indicator of stale or neglected tasks.
 * **`resolved_at`**: Used purely for archival purposes. Tasks in a terminal state (`done`, `canceled`) whose `resolved_at` passes a certain age threshold can be easily archived. Relying on an explicit frontmatter field rather than file system `mtime` makes archiving deterministic and independent of Git cloning behavior.
 
@@ -89,6 +92,6 @@ Valid values for `priority` are `0..99` (lower number = higher priority). Values
 Unknown frontmatter keys are **not** fatal for normal reads and are never removed by `pebble fix`:
 
 * **Read commands** ignore unknown keys without warning.
-* **`pebble check --warn-only`** reports unknown fields as warnings.
-* **`pebble fix`** emits warnings for unknown fields but does **not** remove them.
-* **`pebble check`** treats unknown fields as errors.
+* **`pebble check`** reports unknown fields as findings and exits non-zero.
+* **`pebble check --warn-only`** reports the same findings but exits `0`.
+* **`pebble fix`** reports unknown fields as findings, does **not** remove them, and exits non-zero while any findings remain.

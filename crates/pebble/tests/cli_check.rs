@@ -186,6 +186,17 @@ needs = ["A"]
     write_file(env, "B.md", b);
 }
 
+fn setup_missing_created_at_graph(env: &TestEnv) {
+    let a = r#"+++
+id = "A"
+title = "A"
+status = "todo"
+needs = []
++++
+"#;
+    write_file(env, "A.md", a);
+}
+
 #[test]
 fn test_check_modes_healthy_human_output() {
     for mode in CHECK_MODES {
@@ -280,6 +291,24 @@ fn test_check_modes_cycle_human_output() {
             &stderr_text(&output),
             &["Dependency cycle detected: A, B"],
             2,
+        );
+    }
+}
+
+#[test]
+fn test_check_modes_missing_created_at_human_output() {
+    for mode in CHECK_MODES {
+        let env = setup_test_env();
+        setup_missing_created_at_graph(&env);
+
+        let output = run_check(mode, &env.root, false);
+        assert_issue_exit(mode, &output);
+        assert_eq!(stdout_text(&output), "");
+        assert_issue_stderr(
+            mode,
+            &stderr_text(&output),
+            &["Missing required frontmatter key: 'created_at'"],
+            1,
         );
     }
 }

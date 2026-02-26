@@ -7,6 +7,7 @@ pub mod commands;
 pub mod commands_add;
 pub mod commands_archive;
 pub mod commands_diagnostics;
+pub mod commands_fix;
 pub mod commands_write;
 
 #[cfg(test)]
@@ -27,6 +28,7 @@ use color_eyre::eyre::Result;
 use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
 use commands_add::{RunAddInput, run_add};
 use commands_archive::run_archive;
+use commands_fix::run_fix;
 use commands_write::{RunUpdateInput, run_init, run_update};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -50,6 +52,7 @@ enum DispatchCommand {
     Update(RunUpdateInput),
     Archive,
     Check { warn_only: bool },
+    Fix,
     Show { id: String, path_only: bool },
 }
 
@@ -151,6 +154,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
         }),
         Commands::Archive => DispatchCommand::Archive,
         Commands::Check { warn_only } => DispatchCommand::Check { warn_only },
+        Commands::Fix => DispatchCommand::Fix,
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
@@ -212,7 +216,8 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         | DispatchCommand::Update(_)
         | DispatchCommand::Archive
         | DispatchCommand::Show { .. }
-        | DispatchCommand::Check { .. } => {
+        | DispatchCommand::Check { .. }
+        | DispatchCommand::Fix => {
             ctx.ensure_project()?;
         }
         DispatchCommand::ConfigGet { .. } => {
@@ -229,6 +234,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
         DispatchCommand::Check { warn_only } => commands_diagnostics::run_check(ctx, warn_only),
+        DispatchCommand::Fix => run_fix(ctx),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }

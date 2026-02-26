@@ -99,7 +99,7 @@ pub struct TaskFrontmatter {
     /// Optional priority for ordering (lower value = higher priority). Range 0–99.
     pub priority: Option<Priority>,
     /// Timestamp when the task was created.
-    pub created_at: Datetime,
+    pub created_at: Option<Datetime>,
     /// Timestamp of the last modification, if the task has been edited.
     pub modified_at: Option<Datetime>,
     /// Timestamp when the task reached a terminal status, if applicable.
@@ -168,6 +168,23 @@ impl TaskNode {
         }
         fs::write(&self.path, content)?;
         Ok(())
+    }
+}
+
+pub fn default_datetime() -> Datetime {
+    Datetime {
+        date: Some(toml_datetime::Date {
+            year: 1970,
+            month: 1,
+            day: 1,
+        }),
+        time: Some(toml_datetime::Time {
+            hour: 0,
+            minute: 0,
+            second: 0,
+            nanosecond: 0,
+        }),
+        offset: Some(toml_datetime::Offset::Z),
     }
 }
 

@@ -1,5 +1,5 @@
 use super::{NodeKey, TaskGraph};
-use crate::models::TaskNode;
+use crate::models::{TaskNode, default_datetime};
 use color_eyre::eyre::{Result, eyre};
 use std::cmp::{Ordering, Reverse};
 use std::collections::{HashMap, HashSet};
@@ -67,11 +67,12 @@ pub(super) fn default_order<'a>(
 fn node_key(node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKey {
     let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
     let priority = node.frontmatter.priority.map(u32::from).unwrap_or(u32::MAX);
+    let created_at = node.frontmatter.created_at.unwrap_or_else(default_datetime);
 
     NodeKey {
         blocking_count: Reverse(blocking_count),
         priority,
-        created_at: node.frontmatter.created_at,
+        created_at,
         id: node.frontmatter.id.clone(),
     }
 }
@@ -223,7 +224,9 @@ fn order_scc_nodes<'a>(
 
     if scc_data.is_cycle(scc) {
         scc_nodes.sort_by(|a, b| {
-            let cmp = a.frontmatter.created_at.cmp(&b.frontmatter.created_at);
+            let a_time = a.frontmatter.created_at.unwrap_or_else(default_datetime);
+            let b_time = b.frontmatter.created_at.unwrap_or_else(default_datetime);
+            let cmp = a_time.cmp(&b_time);
             if cmp != Ordering::Equal {
                 return cmp;
             }

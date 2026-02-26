@@ -1,4 +1,4 @@
-use crate::models::TaskNode;
+use crate::models::{TaskNode, default_datetime};
 use crate::parser::parse_task_file;
 use color_eyre::eyre::Result;
 use std::cmp::Reverse;
@@ -235,11 +235,12 @@ impl TaskGraph {
     fn next_task_key(&self, node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKey {
         let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
         let priority = node.frontmatter.priority.map(u32::from).unwrap_or(u32::MAX);
+        let created_at = node.frontmatter.created_at.unwrap_or_else(default_datetime);
 
         NodeKey {
             blocking_count: Reverse(blocking_count),
             priority,
-            created_at: node.frontmatter.created_at,
+            created_at,
             id: node.frontmatter.id.clone(),
         }
     }
