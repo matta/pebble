@@ -177,6 +177,25 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
             println!("{} {}", task.frontmatter.id, task.frontmatter.title);
         }
     } else {
+        let blocked_count = graph
+            .nodes
+            .values()
+            .filter(|n| n.frontmatter.status.is_actionable())
+            .count();
+
+        if blocked_count > 0 {
+            let suffix = if blocked_count == 1 {
+                "task is blocked"
+            } else {
+                "tasks are blocked"
+            };
+            return Err(eyre!(
+                "No ready tasks found. ({} {})",
+                blocked_count,
+                suffix
+            ));
+        }
+
         return Err(eyre!("No ready tasks found."));
     }
     Ok(())
