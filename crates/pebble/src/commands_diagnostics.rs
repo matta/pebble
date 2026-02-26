@@ -27,42 +27,23 @@ pub struct DoctorOutput {
 ///
 /// It emits warnings for duplicated files, dangling downstream dependencies,
 /// and unknown keys left in a file's frontend parser map (the `extra` property).
-/// Exits with Code 0 under all healthy and non-healthy valid execution runs.
+///
+/// This command always returns `Ok(())` if the diagnostics could be performed,
+/// even if the graph has issues. Operational failures (like IO errors) return `Err`.
 pub fn run_doctor(ctx: &RunContext) -> Result<()> {
     let errors = collect_diagnostics(ctx)?;
-    let ok = errors.is_empty();
-
-    if ctx.json {
-        let out = DoctorOutput { ok, errors };
-        println!("{}", serde_json::to_string(&out)?);
-    } else if ok {
-        println!("Graph is healthy. No issues found.");
-    } else {
-        for err in &errors {
-            eprintln!("{}: {}", err.file, err.message);
-        }
-    }
-
+    report_diagnostics(ctx, errors)?;
     Ok(())
 }
 
 /// Executes a strict graph check for `pebble check`.
 ///
 /// Similar to `doctor`, but exits with an error status if any issues are found.
+/// It elevates a "found issues" result from `report_diagnostics` into a `Result::Err`
+/// to ensure the CLI returns a non-zero exit code.
 pub fn run_check(ctx: &RunContext) -> Result<()> {
     let errors = collect_diagnostics(ctx)?;
-    let ok = errors.is_empty();
-
-    if ctx.json {
-        let out = DoctorOutput { ok, errors };
-        println!("{}", serde_json::to_string(&out)?);
-    } else if ok {
-        println!("Graph is healthy. No issues found.");
-    } else {
-        for err in &errors {
-            eprintln!("{}: {}", err.file, err.message);
-        }
-    }
+    let ok = report_diagnostics(ctx, errors)?;
 
     if !ok {
         // We use a generic Result error here which will be handled by main/color_eyre
@@ -71,6 +52,30 @@ pub fn run_check(ctx: &RunContext) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Reports diagnostic results to the user based on the requested output format.
+///
+/// Returns `Ok(true)` if the graph is healthy (no issues found).
+/// Returns `Ok(false)` if the graph has diagnostic issues (which are printed to stderr).
+/// Returns `Err` only if an operational failure occurred (e.g., IO error or serialization failure)
+/// that prevented the report from being generated.
+fn report_diagnostics(ctx: &RunContext, errors: Vec<DiagnosticError>) -> Result<bool> {
+    let ok = errors.is_empty();
+
+    if ctx.json {
+        let out = DoctorOutput { ok, errors };
+        println!("{}", serde_json::to_string(&out)?);
+    } else if ok {
+        println!("Graph is healthy. No issues found.");
+    } else {
+        for err in &errors {
+            eprintln!("{}: {}", err.file, err.message);
+        }
+        eprintln!("\nFound {} issue(s).", errors.len());
+    }
+
+    Ok(ok)
 }
 
 fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticError>> {
