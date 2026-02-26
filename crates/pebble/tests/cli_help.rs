@@ -25,3 +25,14 @@ fn test_show_help_output_contains_path_only_flag() {
             "Output only the file path relative to tasks-dir",
         ));
 }
+
+#[test]
+fn test_check_help_includes_warn_only_flag() {
+    let mut cmd = Command::new(cargo_bin!());
+    cmd.arg("check")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--warn-only"))
+        .stdout(predicate::str::contains("exit with status code 0"));
+}

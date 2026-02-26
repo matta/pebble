@@ -89,6 +89,6 @@ Valid values for `priority` are `0..99` (lower number = higher priority). Values
 Unknown frontmatter keys are **not** fatal for normal reads and are never removed by `pebble fix`:
 
 * **Read commands** ignore unknown keys without warning.
-* **`pebble doctor`** reports unknown fields as warnings.
+* **`pebble check --warn-only`** reports unknown fields as warnings.
 * **`pebble fix`** emits warnings for unknown fields but does **not** remove them.
 * **`pebble check`** treats unknown fields as errors.

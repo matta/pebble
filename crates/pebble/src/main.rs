@@ -49,8 +49,7 @@ enum DispatchCommand {
     Add(RunAddInput),
     Update(RunUpdateInput),
     Archive,
-    Doctor,
-    Check,
+    Check { warn_only: bool },
     Show { id: String, path_only: bool },
 }
 
@@ -151,8 +150,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
             remove_blocks,
         }),
         Commands::Archive => DispatchCommand::Archive,
-        Commands::Doctor => DispatchCommand::Doctor,
-        Commands::Check => DispatchCommand::Check,
+        Commands::Check { warn_only } => DispatchCommand::Check { warn_only },
         Commands::Show { id, path_only } => DispatchCommand::Show { id, path_only },
         Commands::HelpJson | Commands::Init { .. } => {
             unreachable!("handled before dispatch conversion")
@@ -214,8 +212,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         | DispatchCommand::Update(_)
         | DispatchCommand::Archive
         | DispatchCommand::Show { .. }
-        | DispatchCommand::Doctor
-        | DispatchCommand::Check => {
+        | DispatchCommand::Check { .. } => {
             ctx.ensure_project()?;
         }
         DispatchCommand::ConfigGet { .. } => {
@@ -231,8 +228,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
         DispatchCommand::Add(input) => run_add(ctx, input),
         DispatchCommand::Update(input) => run_update(ctx, input),
         DispatchCommand::Archive => run_archive(ctx),
-        DispatchCommand::Doctor => commands_diagnostics::run_doctor(ctx),
-        DispatchCommand::Check => commands_diagnostics::run_check(ctx),
+        DispatchCommand::Check { warn_only } => commands_diagnostics::run_check(ctx, warn_only),
         DispatchCommand::Show { id, path_only } => run_show(ctx, &id, path_only),
     }
 }

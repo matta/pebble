@@ -62,7 +62,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [ ] `P4`: `pebl-fFdi_z`
 - [ ] `P5`: `pebl-pCyebx`
 - Child task IDs:
-- [x] `pebl-kntw9t388a`: P3.1 doctor command: unknown frontmatter key warnings + schema/graph diagnostics
+- [x] `pebl-kntw9t388a`: P3.1 check --warn-only diagnostics: unknown frontmatter key warnings + schema/graph diagnostics
 - Standalone task IDs:
 - [x] `pebl-7Rnb6B`: ID generation uses nanoid SAFE alphabet instead of lowercase alphanumeric
 - [ ] `pebl-Vs0xNh`: Investigate TestEnv dead_code allowances and test helper cleanup
@@ -129,7 +129,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P2.6 `archive` behavior per contract: configurable threshold; collision suffixes; JSON output relative to `tasks-dir`.
 
 ## Phase 3: Diagnostics & Repairs
-- [x] P3.1 `doctor` command: warnings for unknown frontmatter keys; schema/graph diagnostics.
+- [x] P3.1 `check --warn-only` diagnostics: warnings for unknown frontmatter keys; schema/graph diagnostics.
 - [x] P3.2 `check` command: unknown frontmatter keys are errors; exit code non-zero on issues.
 - [ ] P3.3 `fix` command: backfill missing `created_at`, warn on unknown keys, do not remove or rewrite dependencies.
 
@@ -147,7 +147,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
   - [ ] P5.2.b `list`: default topological sort groups cycles.
   - [ ] P5.2.c `next`: tasks in cycles are never ready.
   - [ ] P5.2.d `show`: `blocking` and `transitive_blocking_count` are cycle-safe.
-  - [ ] P5.2.e `doctor`: reports dependency cycles.
+  - [ ] P5.2.e `check --warn-only`: reports dependency cycles.
   - [ ] P5.2.f `check`: reports dependency cycles and exits non-zero.
 - [ ] P5.3 Graph Behavior: Terminal Dependents
   - [ ] P5.3.a `list`: readiness requires terminal (`done`/`canceled`) status of all `needs`.
@@ -160,7 +160,7 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
   - [ ] P5.4.c `show`: `blocked_by` includes missing IDs.
   - [ ] P5.4.d `add`: `--blocks` fails if target ID is missing.
   - [ ] P5.4.e `update`: `--blocks` fails if target ID is missing.
-  - [ ] P5.4.f `doctor`: reports dangling `needs`.
+  - [ ] P5.4.f `check --warn-only`: reports dangling `needs`.
   - [ ] P5.4.g `check`: reports dangling `needs` and exits non-zero.
 - [ ] P5.5 Default list ordering and explicit `--sort` tie-breakers.
 - [ ] P5.4 Filters and limits for `list`.

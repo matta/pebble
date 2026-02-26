@@ -174,19 +174,16 @@ pub enum Commands {
     /// Archive terminal tasks older than the configured threshold.
     Archive,
     #[command(
-        about = "Read-only diagnostics for the task graph.",
-        long_about = "Performs a read-only health check on the graph. Does not rewrite state. Exits with status code 0 and emits warnings for unknown frontmatter keys, duplicate IDs, dangling dependencies, and dependency cycles.",
-        after_help = "Examples:\n  pebble doctor\n  pebble doctor --json"
-    )]
-    /// Perform a read-only health check on the graph.
-    Doctor,
-    #[command(
         about = "Perform a strict health check on the graph.",
-        long_about = "Performs a strict health check on the graph. Does not rewrite state. Exits with status code 1 if any issues are found, including unknown frontmatter keys, duplicate IDs, dangling dependencies, or dependency cycles.",
-        after_help = "Examples:\n  pebble check\n  pebble check --json"
+        long_about = "Performs a health check on the graph. Does not rewrite state. By default exits with status code 1 if any issues are found, including unknown frontmatter keys, duplicate IDs, dangling dependencies, or dependency cycles. Use --warn-only to report issues but exit with status code 0.",
+        after_help = "Examples:\n  pebble check\n  pebble check --warn-only\n  pebble check --json"
     )]
-    /// Perform a strict health check on the graph.
-    Check,
+    /// Perform a health check on the graph.
+    Check {
+        /// Report issues without failing; always exit with status code 0.
+        #[arg(long)]
+        warn_only: bool,
+    },
     #[command(
         about = "Show one task by ID.",
         long_about = "Show full task details or only the relative file path. Exit code 1 if task is not found.",
