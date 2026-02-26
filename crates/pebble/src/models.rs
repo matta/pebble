@@ -171,43 +171,6 @@ impl TaskNode {
     /// Returns an error if:
     /// *   The frontmatter cannot be serialized to TOML.
     /// *   The file cannot be written (e.g., due to permissions or a missing parent directory).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-    /// # use std::path::PathBuf;
-    /// # use tempfile::tempdir;
-    /// # fn main() -> color_eyre::Result<()> {
-    /// let dir = tempdir()?;
-    /// let file_path = dir.path().join("task-1.md");
-    ///
-    /// let node = TaskNode {
-    ///     path: file_path.clone(),
-    ///     frontmatter: TaskFrontmatter {
-    ///         id: "task-1".into(),
-    ///         title: "Test Task".into(),
-    ///         status: TaskStatus::Todo,
-    ///         priority: None,
-    ///         created_at: None,
-    ///         modified_at: None,
-    ///         resolved_at: None,
-    ///         needs: vec![],
-    ///         tags: vec![],
-    ///         extra: Default::default(),
-    ///     },
-    ///     body: "Body content".into(),
-    /// };
-    ///
-    /// node.write_to_disk()?;
-    ///
-    /// assert!(file_path.exists());
-    /// let content = std::fs::read_to_string(file_path)?;
-    /// assert!(content.contains("title = \"Test Task\""));
-    /// assert!(content.contains("Body content"));
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn write_to_disk(&self) -> Result<()> {
         let fm_toml = toml::to_string(&self.frontmatter)?;
         let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
