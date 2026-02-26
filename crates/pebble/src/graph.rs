@@ -197,80 +197,6 @@ impl TaskGraph {
         true
     }
 
-    /// Efficiently computes blocking counts for multiple tasks.
-    ///
-    /// This optimization avoids repeated string cloning and allocation by:
-    /// 1. Mapping all actionable nodes to integer indices.
-    /// 2. Building an integer-based adjacency list.
-    /// 3. Reusing a single `visited` buffer across all traversals.
-    pub fn batch_count_blocking(&self, task_ids: &[String]) -> HashMap<String, usize> {
-        // 1. Map actionable nodes to integers
-        let mut id_to_idx: HashMap<&str, usize> = HashMap::new();
-
-        for (id, node) in &self.nodes {
-            if node.frontmatter.status.is_actionable() {
-                id_to_idx.insert(id, id_to_idx.len());
-            }
-        }
-
-        let node_count = id_to_idx.len();
-
-        // 2. Build integer adjacency list (reverse graph: dependency -> dependents)
-        // We only include edges where both ends are actionable.
-        let mut adj: Vec<Vec<usize>> = vec![Vec::new(); node_count];
-
-        for (u_id, u_idx) in &id_to_idx {
-            if let Some(dependents) = self.blocking.get(*u_id) {
-                for v_id in dependents {
-                    if let Some(&v_idx) = id_to_idx.get(v_id.as_str()) {
-                        adj[*u_idx].push(v_idx);
-                    }
-                }
-            }
-        }
-
-        // 3. Compute counts
-        let mut results = HashMap::with_capacity(task_ids.len());
-        // Using generation-based visited array to avoid O(N) reset per task
-        let mut visited = vec![0usize; node_count];
-        let mut generation = 0;
-        let mut stack = Vec::new();
-
-        for root_id in task_ids {
-            let Some(&root_idx) = id_to_idx.get(root_id.as_str()) else {
-                // If root is not actionable, count is 0
-                results.insert(root_id.clone(), 0);
-                continue;
-            };
-
-            if generation == usize::MAX {
-                visited.fill(0);
-                generation = 0;
-            }
-            generation += 1;
-
-            stack.clear();
-            stack.push(root_idx);
-            visited[root_idx] = generation; // Mark self visited
-
-            let mut count = 0;
-
-            while let Some(u) = stack.pop() {
-                for &v in &adj[u] {
-                    if visited[v] != generation {
-                        visited[v] = generation;
-                        count += 1;
-                        stack.push(v);
-                    }
-                }
-            }
-
-            results.insert(root_id.clone(), count);
-        }
-
-        results
-    }
-
     /// Returns the number of downstream non-terminal tasks (transitively) blocked by the given task.
     /// Uses a DFS to count unique reachable tasks while excluding the task itself.
     pub fn count_blocking(&self, task_id: &str) -> usize {
@@ -340,12 +266,15 @@ impl TaskGraph {
             .collect();
 
         // Compute `blocking` counts ahead of sorting to avoid O(N^2) sorting overhead.
-        // We use batch_count_blocking to optimize the DFS traversal across all tasks.
-        let ready_ids: Vec<String> = ready_tasks
+        let blocking_counts: HashMap<String, usize> = ready_tasks
             .iter()
-            .map(|n| n.frontmatter.id.clone())
+            .map(|n| {
+                (
+                    n.frontmatter.id.clone(),
+                    self.count_blocking(&n.frontmatter.id),
+                )
+            })
             .collect();
-        let blocking_counts = self.batch_count_blocking(&ready_ids);
 
         let mut keys: HashMap<String, NodeKey> = HashMap::new();
         for node in &ready_tasks {
