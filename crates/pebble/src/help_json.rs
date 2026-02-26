@@ -115,10 +115,7 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
         ("update", None) => json!("TaskObject"),
         ("archive", None) => json!({ "archived": [{ "id": "string", "moved_to": "string" }] }),
         ("check", None) => {
-            json!({ "ok": "bool", "errors": [{ "file": "string", "line": "number|null", "message": "string", "code": "string|null" }] })
-        }
-        ("fix", None) => {
-            json!({ "ok": "bool", "fixed_tasks": ["string"], "errors": [{ "file": "string", "line": "number|null", "message": "string", "code": "string|null" }] })
+            json!({ "ok": "bool", "errors": [{ "file": "string", "line": "number|null", "message": "string", "code": "string|null" }], "fixed_tasks": ["string"] })
         }
         ("help-json", None) => json!("HelpSchema"),
         // Intentional panic: Tests validate exhaustiveness before release.

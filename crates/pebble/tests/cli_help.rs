@@ -34,5 +34,6 @@ fn test_check_help_includes_warn_only_flag() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--warn-only"))
+        .stdout(predicate::str::contains("--fix"))
         .stdout(predicate::str::contains("exit with status code 0"));
 }

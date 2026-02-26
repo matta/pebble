@@ -175,22 +175,18 @@ pub enum Commands {
     Archive,
     #[command(
         about = "Perform a strict health check on the graph.",
-        long_about = "Performs a health check on the graph. Does not rewrite state. By default exits with status code 1 if any issues are found, including missing required created_at, unknown frontmatter keys, duplicate IDs, dangling dependencies, or dependency cycles. Use --warn-only to report issues but exit with status code 0.",
-        after_help = "Examples:\n  pebble check\n  pebble check --warn-only\n  pebble check --json"
+        long_about = "Performs a health check on the graph. Does not rewrite state unless --fix is set. By default exits with status code 1 if any issues are found, including missing required created_at, unknown frontmatter keys, duplicate IDs, dangling dependencies, or dependency cycles. Use --warn-only to report issues but exit with status code 0. Use --fix to apply deterministic repairs (for example backfilling created_at) before reporting remaining findings.",
+        after_help = "Examples:\n  pebble check\n  pebble check --warn-only\n  pebble check --fix\n  pebble check --json"
     )]
     /// Perform a health check on the graph.
     Check {
         /// Report issues without failing; always exit with status code 0.
-        #[arg(long)]
+        #[arg(long, conflicts_with = "fix")]
         warn_only: bool,
+        /// Apply deterministic repairs before reporting remaining findings.
+        #[arg(long, conflicts_with = "warn_only")]
+        fix: bool,
     },
-    #[command(
-        about = "Apply safe, deterministic repairs to task files.",
-        long_about = "Applies safe, deterministic repairs such as backfilling missing created_at. Does not remove unknown keys or rewrite dependency edges. Findings are reported to stderr; repair summaries are printed to stdout. Exits with status code 1 if any findings remain after repairs.",
-        after_help = "Examples:\n  pebble fix\n  pebble fix --json"
-    )]
-    /// Repair task files and backfill missing fields.
-    Fix,
     #[command(
         about = "Show one task by ID.",
         long_about = "Show full task details or only the relative file path. Exit code 1 if task is not found.",

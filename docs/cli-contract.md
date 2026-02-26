@@ -52,14 +52,14 @@ Pebble locates its configuration and task files using strict path resolution rul
 * The CLI **recursively** treats every `*.md` file under `tasks-dir` as a potential task file.
 * If a file contains unparseable TOML frontmatter, the CLI skips it with a warning to `stderr`.
 * If multiple files share the same `id`, read commands skip all files with that ID (logging a warning to `stderr`). Write commands targeting a duplicated ID fail with a clear error.
-* Tasks missing required schema keys (for example `created_at`) may still be loaded for repair workflows; `pebble check` reports them as schema issues and `pebble fix` can backfill supported fields.
-* Unknown frontmatter keys are ignored by read commands (no warnings). `pebble check` and `pebble check --warn-only` report them as findings. `pebble fix` reports them as findings but does not remove unknown fields.
+* Tasks missing required schema keys (for example `created_at`) may still be loaded for repair workflows; `pebble check` reports them as schema issues and `pebble check --fix` can backfill supported fields.
+* Unknown frontmatter keys are ignored by read commands (no warnings). `pebble check` and `pebble check --warn-only` report them as findings. `pebble check --fix` reports them as findings but does not remove unknown fields.
 * Renaming or moving a file within `tasks-dir` does not change the `id` and does not break references — the frontmatter `id` is canonical; filenames are advisory.
 * The CLI never rewrites the frontmatter `id` for an existing task file.
 
 ## Global Options
 
-* `--json`: Outputs a single JSON value to `stdout` per invocation for commands with structured output. For diagnostic commands (`pebble check`, `pebble fix`), JSON is still emitted when findings are present even if the command exits non-zero.
+* `--json`: Outputs a single JSON value to `stdout` per invocation for commands with structured output. For diagnostic commands (`pebble check`, including `pebble check --fix`), JSON is still emitted when findings are present even if the command exits non-zero.
 * `--dir <PATH>`: Override the configured `tasks-dir`.
 
 ## JSON Mode
@@ -134,9 +134,8 @@ In addition to the general requirements above, each command's `--help` **MUST** 
     * Read-only diagnostics scope and non-mutating behavior.
     * Default strict behavior (non-zero exit on issues).
     * `--warn-only` behavior (same diagnostics, exit code `0`).
-* `pebble fix`
-    * What repairs are allowed, what is explicitly not rewritten, and that findings are reported to `stderr`.
-    * Exit behavior: non-zero if any findings remain after attempted repairs.
+    * `--fix` behavior: what repairs are allowed, what is explicitly not rewritten, and that findings are reported to `stderr`.
+    * `--fix` exit behavior: non-zero if any findings remain after attempted repairs.
 
 If any command omits its command-specific semantics above, its `--help` output is incomplete.
 
@@ -189,7 +188,7 @@ Field shape, presence, ordering, and naming in `help-json` output **may change b
 * `modified_at` is automatically set to the current UTC time on every `pebble update` invocation.
 * `resolved_at` is automatically set to the current UTC time when `pebble update` transitions a task's status to `done` or `canceled` (if not already set).
 * `resolved_at` is automatically cleared when `pebble update` transitions a task's status away from `done` or `canceled`.
-* `pebble fix` backfills a missing `created_at` with the current UTC time.
+* `pebble check --fix` backfills a missing `created_at` with the current UTC time.
 
 ## Repository Management
 
@@ -304,9 +303,11 @@ Automated lifecycle manager that sweeps completed (`done`, `canceled`) tasks who
 ## Validation & Diagnostics
 
 ### `pebble check`
-Read-only graph verification tool. Does not rewrite state.
+Read-only graph verification tool by default. With `--fix`, applies safe deterministic repairs before reporting remaining findings.
 * **Inputs**:
     * `--warn-only`: report issues but always exit with status code `0`.
+    * `--fix`: apply safe deterministic repairs (for example, backfilling `created_at`) before reporting remaining findings.
+    * `--warn-only` and `--fix` are mutually exclusive.
 * **Default behavior** (without `--warn-only`): exits with a non-zero status code if graph or schema errors exist.
 * **Checks Performed**:
     * **Missing Required Keys**: reports tasks missing required schema keys such as `created_at`.
@@ -314,15 +315,15 @@ Read-only graph verification tool. Does not rewrite state.
     * **Duplicate Task IDs**: reports when multiple files declare the same `id`.
     * **Dangling References**: reports when a task lists a `needs` ID that does not exist in the graph.
     * **Dependency Cycles**: reports circular dependencies (for example, A needs B, B needs A).
-* **Output (`--json`)**: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
-
-### `pebble fix`
-Applies safe, deterministic repairs such as backfilling missing `created_at`. Does not rewrite dependency edges.
-* **Inputs**: None.
-* **Diagnostics**: findings are written to `stderr` in both human and `--json` modes.
-* **Human output**: repair summary is written to `stdout`.
-* **Exit behavior**: exits `0` only when no findings remain after repairs; exits non-zero if any findings remain.
-* **Output (`--json`)**: `{"ok": bool, "fixed_tasks": ["<id>", ...], "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
+* **Output (`--json`)**:
+    * `pebble check` / `pebble check --warn-only`: `{"ok": bool, "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
+    * `pebble check --fix`: `{"ok": bool, "fixed_tasks": ["<id>", ...], "errors": [{"file": "...", "line": N|null, "message": "...", "code": "<string>"?}]}`
+* **`--fix` semantics**:
+    * Repairs currently include backfilling missing `created_at`.
+    * Unknown keys are reported as findings and preserved.
+    * Dependency edges are never rewritten.
+    * Human mode writes repair summary to `stdout` and findings to `stderr`.
+    * Exit code is `0` only if no findings remain after repairs.
 
 ## Output Semantics
 

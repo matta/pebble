@@ -32,7 +32,7 @@ The following fields are derived at read time and included in every `TaskObject`
 Pebble embraces a "Permissive Writes, Strict Evaluation" philosophy for authoring the graph, treating the CLI not as a strict compiler, but as a fluid evaluation engine.
 * **Dangling Pointers**: If a user references a dependency that does not exist, the task is strictly **NOT ready**. The read path simply views it as a missing prerequisite without panicking.
 * **Cyclic Dependencies**: If a user authors a dependency cycle (e.g., A depends on B, B depends on A), neither node will ever satisfy the readiness rule. Therefore, neither will ever surface in the "ready" queue. It naturally and perfectly models a deadlock.
-The write path allows these structures without failing. Preemptive validation and cycle breaking are intentionally omitted. `pebble check --warn-only` is available as a diagnostic tool for human intervention, but the core graph behaves perfectly regardless of anomalies.
+The write path allows these structures without failing. Preemptive validation and cycle breaking are intentionally omitted. `pebble check --warn-only` is available as a diagnostic tool for human intervention, and `pebble check --fix` can apply safe deterministic repairs (such as backfilling `created_at`) without rewriting dependency edges, but the core graph behaves perfectly regardless of anomalies.
 
 ## Dynamic Scoring for Starvation Prevention
 
