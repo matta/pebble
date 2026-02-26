@@ -2,6 +2,7 @@
 mod support;
 
 use assert_cmd::cargo_bin;
+use std::fs;
 use std::process::Command;
 use support::setup_test_env;
 
@@ -20,8 +21,7 @@ needs = ["MISSING-ID"]
 +++
 Body
 "#;
-    std::fs::write(env.tasks_dir.join("blocked.md"), task_content)
-        .expect("task file should be written");
+    fs::write(env.tasks_dir.join("blocked.md"), task_content).expect("task file should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
@@ -80,7 +80,7 @@ created_at = 2024-01-01T00:00:00Z
 needs = ["MISSING-ID"]
 +++
 "#;
-    std::fs::write(env.tasks_dir.join("blocked1.md"), task1).expect("task file should be written");
+    fs::write(env.tasks_dir.join("blocked1.md"), task1).expect("task file should be written");
 
     let task2 = r#"+++
 id = "BLOCKED-2"
@@ -90,7 +90,7 @@ created_at = 2024-01-01T00:00:00Z
 needs = ["MISSING-ID"]
 +++
 "#;
-    std::fs::write(env.tasks_dir.join("blocked2.md"), task2).expect("task file should be written");
+    fs::write(env.tasks_dir.join("blocked2.md"), task2).expect("task file should be written");
 
     let output = Command::new(cargo_bin!())
         .current_dir(&env.root)
