@@ -169,12 +169,14 @@ impl TaskGraph {
         self.duplicate_ids.contains(task_id)
     }
 
-    /// Determines if a task is "ready" to be worked on.
+    /// Determines if a task is ready to be worked on.
     ///
     /// A task is considered ready if it satisfies all of the following conditions:
-    /// 1. Its status is actionable (i.e., [`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`]).
-    /// 2. It has no missing dependencies (all tasks in `needs` exist in the graph).
-    /// 3. All its dependencies are in a terminal state (i.e., [`crate::models::TaskStatus::Done`] or [`crate::models::TaskStatus::Canceled`]).
+    ///
+    /// 1. **Existence**: The task ID exists in the graph.
+    /// 2. **Actionable**: The task's status is [`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`].
+    /// 3. **Dependencies Met**: All tasks listed in `needs` exist in the graph and are in a terminal state
+    ///    ([`crate::models::TaskStatus::Done`] or [`crate::models::TaskStatus::Canceled`]).
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
@@ -197,8 +199,20 @@ impl TaskGraph {
         true
     }
 
-    /// Returns the number of downstream non-terminal tasks (transitively) blocked by the given task.
-    /// Uses a DFS to count unique reachable tasks while excluding the task itself.
+    /// Counts the number of downstream actionable tasks blocked by this task.
+    ///
+    /// This method traverses the dependency graph to find all unique tasks that transitively
+    /// depend on the given `task_id`. The traversal considers only actionable tasks
+    /// ([`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`]),
+    /// stopping at any task that is not actionable (e.g., [`crate::models::TaskStatus::Done`]).
+    ///
+    /// # Algorithm
+    ///
+    /// Uses a Depth-First Search (DFS) with a visited set to avoid double-counting.
+    ///
+    /// # Returns
+    ///
+    /// The number of unique actionable tasks blocked by this task.
     pub fn count_blocking(&self, task_id: &str) -> usize {
         let mut visited = HashSet::new();
         let mut stack = vec![task_id.to_string()];
