@@ -8,6 +8,8 @@ use std::fs;
 use std::path::PathBuf;
 use toml_datetime::Datetime;
 
+pub const FRONTMATTER_DELIMITER: &str = "+++";
+
 /// Error representing an invalid user invocation or configuration value.
 /// Should results in exit code 2.
 #[derive(Debug)]
@@ -162,7 +164,10 @@ pub struct TaskNode {
 impl TaskNode {
     pub fn write_to_disk(&self) -> Result<()> {
         let fm_toml = toml::to_string(&self.frontmatter)?;
-        let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
+        let mut content = format!(
+            "{}\n{}{}\n{}",
+            FRONTMATTER_DELIMITER, fm_toml, FRONTMATTER_DELIMITER, self.body
+        );
         if !content.ends_with('\n') {
             content.push('\n');
         }

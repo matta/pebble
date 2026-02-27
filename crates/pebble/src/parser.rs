@@ -1,4 +1,4 @@
-use crate::models::{TaskFrontmatter, TaskNode};
+use crate::models::{FRONTMATTER_DELIMITER, TaskFrontmatter, TaskNode};
 use color_eyre::eyre::{Result, eyre};
 use std::path::Path;
 
@@ -40,22 +40,28 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let lines: Vec<&str> = content.lines().collect();
 
     // Frontmatter must start on the first line.
-    if lines.is_empty() || lines[0].trim() != "+++" {
+    if lines.is_empty() || lines[0].trim() != FRONTMATTER_DELIMITER {
         return Err(eyre!(
-            "Missing or invalid TOML frontmatter: file must start with '+++'"
+            "Missing or invalid TOML frontmatter: file must start with '{}'",
+            FRONTMATTER_DELIMITER
         ));
     }
 
     // Find the end of the frontmatter.
     let mut end_idx = None;
     for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim() == "+++" {
+        if line.trim() == FRONTMATTER_DELIMITER {
             end_idx = Some(i);
             break;
         }
     }
 
-    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
+    let end_idx = end_idx.ok_or_else(|| {
+        eyre!(
+            "Missing closing '{}' for TOML frontmatter",
+            FRONTMATTER_DELIMITER
+        )
+    })?;
 
     // Extract frontmatter string.
     let toml_str = lines[1..end_idx].join("\n");
