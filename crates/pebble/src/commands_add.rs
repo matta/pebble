@@ -1,7 +1,7 @@
 use crate::commands::{RunContext, TaskObject, validate_task_references};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
-use crate::task_io::current_toml_time;
+use crate::task_io::{current_toml_time, read_opt_stdin};
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashMap;
 use std::fs;
@@ -130,6 +130,8 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     } else {
         None
     };
+
+    let body = read_opt_stdin(body)?;
 
     let frontmatter = TaskFrontmatter {
         id: new_id.clone(),

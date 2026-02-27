@@ -2,7 +2,7 @@ use crate::commands::{RunContext, TaskObject, validate_task_references};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
-use crate::task_io::current_toml_time;
+use crate::task_io::{current_toml_time, read_opt_stdin};
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashSet;
 use std::fs;
@@ -254,6 +254,10 @@ pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
         validate_task_references(&graph, blocks, Some(id.as_str()), "--blocks")?;
     let remove_blocks_targets =
         validate_task_references(&graph, remove_blocks, Some(id.as_str()), "--remove-blocks")?;
+
+    let body = read_opt_stdin(body)?;
+    let append_body = read_opt_stdin(append_body)?;
+
     apply_update_mutations(
         &mut node,
         UpdateMutations {
