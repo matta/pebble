@@ -43,8 +43,30 @@ impl Default for Config {
     }
 }
 
-/// Resolves the project root by walking up from the given directory until
-/// it finds a `.pebble` directory. Returns None if it hits the filesystem root.
+/// Resolves the project root by walking up from the given directory.
+///
+/// It searches until it finds a `.pebble` directory and returns `None` if it hits the filesystem root.
+///
+/// # Examples
+///
+/// ```
+/// # use pebble::config::find_project_root;
+/// # use std::fs;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let temp = tempfile::tempdir()?;
+/// let root = temp.path();
+///
+/// let pebble_dir = root.join(".pebble");
+/// fs::create_dir(&pebble_dir)?;
+///
+/// let deeply_nested = root.join("some").join("deep").join("path");
+/// fs::create_dir_all(&deeply_nested)?;
+///
+/// let found = find_project_root(&deeply_nested).expect("Should find root");
+/// assert_eq!(found, root);
+/// # Ok(())
+/// # }
+/// ```
 pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
     for ancestor in start_dir.ancestors() {
         if ancestor.join(".pebble").is_dir() {
@@ -56,7 +78,26 @@ pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
 
 /// Validates that the tasks directory path is safe.
 ///
-/// Ensures the path is relative and does not contain `..` components.
+/// Ensures the `path` is relative and does not contain `..` components.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// * The `path` is an absolute path.
+/// * The `path` contains parent directory components (`..`).
+///
+/// # Examples
+///
+/// ```
+/// # use pebble::config::validate_tasks_dir;
+/// # use std::path::Path;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// assert!(validate_tasks_dir(Path::new("docs/tasks")).is_ok());
+/// assert!(validate_tasks_dir(Path::new("/absolute/path")).is_err());
+/// assert!(validate_tasks_dir(Path::new("nested/../path")).is_err());
+/// # Ok(())
+/// # }
+/// ```
 pub fn validate_tasks_dir(path: &Path) -> Result<()> {
     if path.is_absolute() {
         return Err(eyre!(

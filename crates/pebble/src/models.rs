@@ -160,6 +160,51 @@ pub struct TaskNode {
 }
 
 impl TaskNode {
+    /// Serializes the task and writes it to the markdown file on disk.
+    ///
+    /// This method converts the task's frontmatter into TOML, wraps it in the `FRONTMATTER_DELIMITER` (from `models.rs`),
+    /// and appends the raw markdown body. It ensures the file ends with a trailing newline.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * The `frontmatter` cannot be serialized to TOML.
+    /// * The file cannot be written to the `path` due to filesystem errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus, default_datetime};
+    /// # use std::path::PathBuf;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let temp = tempfile::tempdir()?;
+    /// let file_path = temp.path().join("task.md");
+    ///
+    /// let node = TaskNode {
+    ///     path: file_path.clone(),
+    ///     frontmatter: TaskFrontmatter {
+    ///         id: "test-1".into(),
+    ///         title: "Test Task".into(),
+    ///         status: TaskStatus::Todo,
+    ///         priority: None,
+    ///         created_at: Some(default_datetime()),
+    ///         modified_at: None,
+    ///         resolved_at: None,
+    ///         needs: vec![],
+    ///         tags: vec![],
+    ///         extra: Default::default(),
+    ///     },
+    ///     body: "Task content.".into(),
+    /// };
+    ///
+    /// node.write_to_disk()?;
+    ///
+    /// let written = std::fs::read_to_string(&file_path)?;
+    /// assert!(written.contains("title = \"Test Task\""));
+    /// assert!(written.contains("Task content."));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write_to_disk(&self) -> Result<()> {
         let fm_toml = toml::to_string(&self.frontmatter)?;
         let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
