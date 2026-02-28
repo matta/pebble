@@ -18,3 +18,10 @@
 **Prevention:**
 1. Centralize validation logic (e.g., `validate_tasks_dir`) and call it from both configuration parsing and CLI argument handling.
 2. Ensure CLI arguments that override configuration values undergo the exact same security checks as the configuration values themselves.
+
+## 2025-02-22 - Path Traversal via Missing Validation in Global CLI Override
+**Vulnerability:** A path traversal vulnerability was discovered in the CLI's processing of the global `--dir` flag. Although `pebble init` validated the `--dir` argument against parent components (`..`), the common command evaluation (`RunContext::load`) failed to perform this validation on `cli_dir_override`. A malicious user could bypass boundary checks completely (e.g., `pebble list --dir ../../etc`).
+**Learning:** Validation MUST be applied holistically at the data resolution layer (`RunContext::load`), not merely within specific command sub-handlers. This ensures all consumers of configuration paths benefit from sandboxing guarantees.
+**Prevention:**
+1. Centralize the enforcement of `validate_tasks_dir` wherever an override path is consumed (such as `RunContext::load`), establishing an airtight boundary constraint for directory traversal.
+2. Adopt a "validate at the edges" architecture where raw user inputs are aggressively sanitized prior to propagating through the system.
