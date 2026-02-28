@@ -1,18 +1,15 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-use assert_cmd::cargo_bin;
-use assert_cmd::prelude::*;
 use serde_json::Value;
-use std::process::Command;
 use support::setup_test_env;
 
 #[test]
 fn test_cli_add_need_renaming() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "add",
             "Child Task",
@@ -45,16 +42,16 @@ fn test_cli_update_add_need_renaming() {
     let env = setup_test_env();
 
     // Create a task to update
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Task", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
     let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let task_id = value["id"].as_str().expect("id should be a string");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update",
             task_id,
@@ -78,8 +75,8 @@ fn test_cli_update_remove_need_renaming() {
     let env = setup_test_env();
 
     // Create a task with a need
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "add", "Task", "--need", "parent", "--json", "--dir", "tasks",
         ])
@@ -88,8 +85,8 @@ fn test_cli_update_remove_need_renaming() {
     let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
     let task_id = value["id"].as_str().expect("id should be a string");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update",
             task_id,
@@ -113,8 +110,8 @@ fn test_cli_computed_blocking_fields() {
     let env = setup_test_env();
 
     // Create a child task
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Child Task", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -128,8 +125,8 @@ fn test_cli_computed_blocking_fields() {
         .to_string();
 
     // Create a parent task
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Parent Task", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -143,8 +140,7 @@ fn test_cli_computed_blocking_fields() {
         .to_string();
 
     // Now update 'child' to need this new parent
-    Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    env.pebble()
         .args([
             "update",
             &child_id,
@@ -158,8 +154,8 @@ fn test_cli_computed_blocking_fields() {
 
     // 'child' needs parent_id. parent_id is todo.
     // So 'child' should be blocked_by parent_id
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", &child_id, "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -173,8 +169,8 @@ fn test_cli_computed_blocking_fields() {
     assert!(blocked_by.iter().any(|v| v.as_str() == Some(&parent_id)));
 
     // parent_id should be blocking 'child'
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", &parent_id, "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -195,8 +191,8 @@ fn test_update_blocks_roundtrip() {
     let source_id = add_task(&env, "Source Task");
     let target_id = add_task(&env, "Target Task");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update", &source_id, "--blocks", &target_id, "--json", "--dir", "tasks",
         ])
@@ -204,8 +200,8 @@ fn test_update_blocks_roundtrip() {
         .expect("pebble command should execute successfully");
     assert!(output.status.success());
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", &target_id, "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -229,16 +225,15 @@ fn test_update_remove_blocks_roundtrip() {
     let target_id = add_task(&env, "Target Task");
 
     // Setup: source blocks target
-    Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    env.pebble()
         .args([
             "update", &source_id, "--blocks", &target_id, "--dir", "tasks",
         ])
         .assert()
         .success();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update",
             &source_id,
@@ -252,8 +247,8 @@ fn test_update_remove_blocks_roundtrip() {
         .expect("pebble command should execute successfully");
     assert!(output.status.success());
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", &target_id, "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -270,8 +265,8 @@ fn test_update_remove_blocks_roundtrip() {
 }
 
 fn add_task(env: &support::TestEnv, title: &str) -> String {
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", title, "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -287,8 +282,8 @@ fn add_task(env: &support::TestEnv, title: &str) -> String {
 fn test_update_blocks_fails_for_unknown_target_id() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Source Task", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -300,8 +295,8 @@ fn test_update_blocks_fails_for_unknown_target_id() {
         .expect("id should be a string")
         .to_string();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update",
             &source_id,

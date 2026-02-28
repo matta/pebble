@@ -10,8 +10,7 @@ use support::setup_test_env;
 fn test_next_stdout_is_clean_when_no_tasks() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(&env.root)
+    env.pebble()
         .arg("next")
         .assert()
         .failure()
@@ -23,8 +22,7 @@ fn test_next_stdout_is_clean_when_no_tasks() {
 fn test_add_stdout_is_clean_non_json() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(&env.root)
+    env.pebble()
         .arg("add")
         .arg("Clean Task")
         .assert()

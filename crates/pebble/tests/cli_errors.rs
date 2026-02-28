@@ -1,8 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-use assert_cmd::cargo_bin;
-use std::process::Command;
 use support::{setup_test_env, write_task_with_id};
 
 #[test]
@@ -11,8 +9,8 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
 
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", "PROJ-404", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -26,8 +24,8 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
 fn test_add_invalid_status_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "add",
             "Bad Status",
@@ -49,8 +47,8 @@ fn test_add_invalid_status_is_usage_error() {
 fn test_add_priority_above_99_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Bad Priority", "--priority", "100", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -65,8 +63,8 @@ fn test_update_priority_above_99_is_usage_error() {
     let env = setup_test_env();
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["update", "PROJ-1", "--priority", "100", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -81,8 +79,7 @@ fn test_list_fails_when_no_project_found() {
     let temp = tempfile::tempdir().expect("Failed to create temp dir");
     let root = temp.path();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(root)
+    let output = support::pebble(root)
         .args(["list"])
         .output()
         .expect("Failed to execute pebble list");
@@ -97,8 +94,7 @@ fn test_add_fails_when_no_project_found() {
     let temp = tempfile::tempdir().expect("Failed to create temp dir");
     let root = temp.path();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(root)
+    let output = support::pebble(root)
         .args(["add", "New Task"])
         .output()
         .expect("Failed to execute pebble add");
