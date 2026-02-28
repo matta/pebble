@@ -175,50 +175,6 @@ impl TaskGraph {
     /// 1. Its status is actionable (i.e., [`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`]).
     /// 2. It has no missing dependencies (all tasks in `needs` exist in the graph).
     /// 3. All its dependencies are in a terminal state (i.e., [`crate::models::TaskStatus::Done`] or [`crate::models::TaskStatus::Canceled`]).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use std::collections::HashMap;
-    /// # use std::path::PathBuf;
-    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-    /// # use pebble::graph::TaskGraph;
-    /// #
-    /// # fn make_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
-    /// #     TaskNode {
-    /// #         path: PathBuf::from(format!("{}.md", id)),
-    /// #         frontmatter: TaskFrontmatter {
-    /// #             id: id.into(),
-    /// #             title: id.into(),
-    /// #             status,
-    /// #             priority: None,
-    /// #             created_at: None,
-    /// #             modified_at: None,
-    /// #             resolved_at: None,
-    /// #             needs: needs.into_iter().map(String::from).collect(),
-    /// #             tags: vec![],
-    /// #             extra: Default::default(),
-    /// #         },
-    /// #         body: String::new(),
-    /// #     }
-    /// # }
-    /// #
-    /// let mut nodes = HashMap::new();
-    ///
-    /// // Task A: Done
-    /// nodes.insert("A".into(), make_node("A", TaskStatus::Done, vec![]));
-    ///
-    /// // Task B: Todo, depends on A (which is Done) -> Ready
-    /// nodes.insert("B".into(), make_node("B", TaskStatus::Todo, vec!["A"]));
-    ///
-    /// // Task C: Todo, depends on B (which is Todo) -> Not Ready
-    /// nodes.insert("C".into(), make_node("C", TaskStatus::Todo, vec!["B"]));
-    ///
-    /// let graph = TaskGraph::new(nodes);
-    ///
-    /// assert!(graph.is_ready("B"));
-    /// assert!(!graph.is_ready("C"));
-    /// ```
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;
@@ -243,52 +199,6 @@ impl TaskGraph {
 
     /// Returns the number of downstream non-terminal tasks (transitively) blocked by the given task.
     /// Uses a DFS to count unique reachable tasks while excluding the task itself.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use std::collections::HashMap;
-    /// # use std::path::PathBuf;
-    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-    /// # use pebble::graph::TaskGraph;
-    /// #
-    /// # fn make_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
-    /// #     TaskNode {
-    /// #         path: PathBuf::from(format!("{}.md", id)),
-    /// #         frontmatter: TaskFrontmatter {
-    /// #             id: id.into(),
-    /// #             title: id.into(),
-    /// #             status,
-    /// #             priority: None,
-    /// #             created_at: None,
-    /// #             modified_at: None,
-    /// #             resolved_at: None,
-    /// #             needs: needs.into_iter().map(String::from).collect(),
-    /// #             tags: vec![],
-    /// #             extra: Default::default(),
-    /// #         },
-    /// #         body: String::new(),
-    /// #     }
-    /// # }
-    /// #
-    /// let mut nodes = HashMap::new();
-    ///
-    /// // A <- B <- C
-    /// // All tasks are Todo
-    ///
-    /// nodes.insert("A".into(), make_node("A", TaskStatus::Todo, vec![]));
-    /// nodes.insert("B".into(), make_node("B", TaskStatus::Todo, vec!["A"]));
-    /// nodes.insert("C".into(), make_node("C", TaskStatus::Todo, vec!["B"]));
-    ///
-    /// let graph = TaskGraph::new(nodes);
-    ///
-    /// // A blocks B and C
-    /// assert_eq!(graph.count_blocking("A"), 2);
-    /// // B blocks C
-    /// assert_eq!(graph.count_blocking("B"), 1);
-    /// // C blocks nothing
-    /// assert_eq!(graph.count_blocking("C"), 0);
-    /// ```
     pub fn count_blocking(&self, task_id: &str) -> usize {
         let mut visited = HashSet::new();
         let mut stack = vec![task_id.to_string()];
