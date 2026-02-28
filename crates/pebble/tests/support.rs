@@ -17,6 +17,20 @@ pub struct TestEnv {
     pub tasks_dir: PathBuf,
 }
 
+impl TestEnv {
+    /// Create a new `Command` configured to invoke the CLI in the workspace root.
+    pub fn pebble(&self) -> assert_cmd::Command {
+        pebble(&self.root)
+    }
+}
+
+/// Create a new `Command` configured to invoke the CLI in the given directory.
+pub fn pebble(dir: &Path) -> assert_cmd::Command {
+    let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+    cmd.current_dir(dir);
+    cmd
+}
+
 /// Create a temp Pebble project with a config and empty tasks dir.
 pub fn setup_test_env() -> TestEnv {
     let dir = tempfile::tempdir().expect("temp directory should be created");

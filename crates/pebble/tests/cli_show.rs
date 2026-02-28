@@ -1,9 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-use assert_cmd::cargo_bin;
-use assert_cmd::prelude::*;
+mod support;
+
 use predicates::prelude::*;
 use std::fs;
-use std::process::Command;
 use tempfile::tempdir;
 
 #[test]
@@ -42,8 +41,7 @@ Body text
 
     let expected_rel_path = "PROJ-1.md\n";
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(root)
+    support::pebble(root)
         .arg("show")
         .arg("PROJ-1")
         .arg("--path-only")
@@ -89,8 +87,7 @@ Body text explaining the task.
     )
     .expect("config file should be written");
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(root)
+    support::pebble(root)
         .arg("show")
         .arg("PROJ-2")
         .arg("--dir")
