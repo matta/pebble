@@ -1,7 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-
 use serde_json::Value;
 use support::setup_test_env;
 

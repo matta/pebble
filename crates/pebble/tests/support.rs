@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// Temp Pebble workspace with an initialized config and tasks directory.
+#[allow(dead_code)]
 pub struct TestEnv {
     // TODO(pebl-Vs0xNh): Refactor TestEnv ownership/usage so this dead_code allowance is unnecessary.
     #[allow(dead_code)]
@@ -17,6 +18,7 @@ pub struct TestEnv {
     pub tasks_dir: PathBuf,
 }
 
+#[allow(dead_code)]
 impl TestEnv {
     /// Create a new `Command` configured to invoke the CLI in the workspace root.
     pub fn pebble(&self) -> assert_cmd::Command {
@@ -32,6 +34,7 @@ pub fn pebble(dir: &Path) -> assert_cmd::Command {
 }
 
 /// Create a temp Pebble project with a config and empty tasks dir.
+#[allow(dead_code)]
 pub fn setup_test_env() -> TestEnv {
     let dir = tempfile::tempdir().expect("temp directory should be created");
     let root = dir.path().to_path_buf();
@@ -58,6 +61,7 @@ pub fn setup_test_env() -> TestEnv {
 }
 
 /// Write a simple task file into the tasks directory.
+#[allow(dead_code)]
 pub fn write_task(tasks_dir: &Path, id: &str, title: &str, status: &str) {
     let content = format!(
         r#"+++
