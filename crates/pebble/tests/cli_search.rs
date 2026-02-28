@@ -35,7 +35,7 @@ fn test_search_matches_title_and_body_case_insensitive() {
     );
     write_task_with_body(&env.tasks_dir, "PROJ-NOPE", "Unrelated", "todo", "random");
 
-    let output = Command::new(cargo_bin!())
+    let output = Command::new(cargo_bin!("pebble"))
         .current_dir(&env.root)
         .args(["search", "search", "--json", "--dir", "tasks"])
         .output()
@@ -71,7 +71,7 @@ fn test_search_uses_default_list_ordering() {
             "created_at = 2024-01-01T00:00:00Z\nneeds = [\"PROJ-A\"]\n",
         );
     fs::write(&b_path, b_content).expect("task B file should be written");
-    let output = Command::new(cargo_bin!())
+    let output = Command::new(cargo_bin!("pebble"))
         .current_dir(&env.root)
         .args(["search", "task", "--json", "--dir", "tasks"])
         .output()
@@ -94,7 +94,7 @@ fn test_search_no_match() {
 
     write_task(&env.tasks_dir, "PROJ-A", "Task A", "todo");
 
-    let output = Command::new(cargo_bin!())
+    let output = Command::new(cargo_bin!("pebble"))
         .current_dir(&env.root)
         .args(["search", "nonexistent-query", "--dir", "tasks"])
         .output()
@@ -113,7 +113,7 @@ fn test_search_no_match_json() {
 
     write_task(&env.tasks_dir, "PROJ-A", "Task A", "todo");
 
-    let output = Command::new(cargo_bin!())
+    let output = Command::new(cargo_bin!("pebble"))
         .current_dir(&env.root)
         .args(["search", "nonexistent-query", "--json", "--dir", "tasks"])
         .output()
