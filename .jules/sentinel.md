@@ -18,3 +18,7 @@
 **Prevention:**
 1. Centralize validation logic (e.g., `validate_tasks_dir`) and call it from both configuration parsing and CLI argument handling.
 2. Ensure CLI arguments that override configuration values undergo the exact same security checks as the configuration values themselves.
+## 2025-03-01 - TOCTOU Race Condition in File Creation
+**Vulnerability:** A Time-of-Check to Time-of-Use (TOCTOU) vulnerability existed in `run_add` when creating new task files. The code checked if a file existed (`filepath.exists()`) and then later created/wrote to it, leaving a window where a malicious process could create the file or a symlink, leading to unintended overwrites.
+**Learning:** Using separate check and write operations for file creation is inherently unsafe in concurrent or multi-user environments.
+**Prevention:** Always use atomic operations for file creation when uniqueness is required. In Rust, this means using `std::fs::OpenOptions::new().write(true).create_new(true).open(...)` to atomically ensure the file is created only if it does not already exist, and handling the resulting `AlreadyExists` error appropriately (e.g., via a retry loop).
