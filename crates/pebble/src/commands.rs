@@ -1,6 +1,6 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
-use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
+use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus, UsageError};
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
@@ -177,7 +177,7 @@ pub fn run_next(ctx: &RunContext) -> Result<()> {
             println!("{} {}", task.frontmatter.id, task.frontmatter.title);
         }
     } else {
-        return Err(eyre!("No ready tasks found."));
+        return Err(NotFoundError("No ready tasks found.".to_string()).into());
     }
     Ok(())
 }
