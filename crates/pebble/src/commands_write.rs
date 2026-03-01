@@ -199,9 +199,8 @@ tasks-dir = "{tasks_dir_path}"
     );
     fs::write(pebble_dir.join("config.toml"), config_toml)?;
 
-    let agents_md = r#"# Project: Pebble
-See documentation for implementation details.
-"#;
+    let agents_md = "This project uses `pebble` for task tracking. \
+Use `pebble --help` to see available commands.\n";
     fs::write(pebble_dir.join("AGENTS.md"), agents_md)?;
 
     fs::create_dir_all(current_dir.join(&tasks_dir_path))?;

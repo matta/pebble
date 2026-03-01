@@ -1,6 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
+use assert_cmd::cargo_bin;
 use serde_json::Value;
 use support::{setup_test_env, write_task};
 
@@ -70,7 +71,7 @@ fn test_archive_json_stdout_only() {
 
 #[test]
 fn test_help_json_stdout_only() {
-    let output = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"))
+    let output = assert_cmd::Command::new(cargo_bin!())
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -81,10 +82,12 @@ fn test_help_json_stdout_only() {
     assert_eq!(value["name"].as_str(), Some("pebble"));
 }
 
+// Uses a bare tempdir (not `TestEnv`) because `init` requires an
+// un-initialized directory.
 #[test]
 fn test_init_json_stdout_only() {
     let dir = tempfile::tempdir().expect("temp directory should be created");
-    let output = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"))
+    let output = assert_cmd::Command::new(cargo_bin!())
         .current_dir(dir.path())
         .args(["init", "--json"])
         .output()

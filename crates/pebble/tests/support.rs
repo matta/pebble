@@ -1,6 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 //! Shared test helpers for CLI integration tests.
 
+use assert_cmd::{Command, cargo_bin};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -21,8 +22,8 @@ pub struct TestEnv {
 impl TestEnv {
     /// Returns a pre-configured `assert_cmd::Command` for the pebble CLI.
     #[allow(dead_code)]
-    pub fn pebble(&self) -> assert_cmd::Command {
-        let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+    pub fn pebble(&self) -> Command {
+        let mut cmd = Command::new(cargo_bin!());
         cmd.current_dir(&self.root);
         cmd
     }
