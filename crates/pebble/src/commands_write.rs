@@ -199,8 +199,26 @@ tasks-dir = "{tasks_dir_path}"
     );
     fs::write(pebble_dir.join("config.toml"), config_toml)?;
 
-    let agents_md = "This project uses `pebble` for task tracking. \
-Use `pebble --help` to see available commands.\n";
+    let agents_md = format!(
+        "# Pebble Task Tracker
+
+This project uses `pebble` for task tracking.
+Tasks are stored as Markdown files in `{}`.
+
+## Quick Reference
+
+All commands support `--json` for structured output. Prefer `--json` for agent workflows.
+
+- What should I work on next? `pebble next --json`
+- List ready tasks: `pebble list --is-ready --json`
+- View a task: `pebble show <id> --json`
+- Create a task: `pebble add \"title\" --json`
+- Update a task status: `pebble update <id> --status in_progress --json`
+- Full CLI schema: `pebble help-json`
+- Command help: `pebble <command> --help`
+",
+        tasks_dir_path.display()
+    );
     fs::write(pebble_dir.join("AGENTS.md"), agents_md)?;
 
     fs::create_dir_all(current_dir.join(&tasks_dir_path))?;
