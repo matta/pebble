@@ -11,8 +11,8 @@ fn test_search_json_stdout_only() {
     let env = setup_test_env();
     write_task(&env.tasks_dir, "PROJ-1", "Search Task", "todo");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["search", "search", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -27,8 +27,8 @@ fn test_search_json_stdout_only() {
 fn test_config_get_json_stdout_only() {
     let env = setup_test_env();
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["config", "get", "issue-prefix", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -43,8 +43,8 @@ fn test_config_get_json_stdout_only() {
 fn test_config_get_json_error_keeps_stdout_empty() {
     let env = setup_test_env();
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["config", "get", "invalid-key", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -58,8 +58,8 @@ fn test_config_get_json_error_keeps_stdout_empty() {
 fn test_archive_json_stdout_only() {
     let env = setup_test_env();
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["archive", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -86,7 +86,8 @@ fn test_help_json_stdout_only() {
 #[test]
 fn test_init_json_stdout_only() {
     let dir = tempfile::tempdir().expect("temp directory should be created");
-    let output = support::pebble(dir.path())
+    let output = Command::new(cargo_bin!())
+        .current_dir(dir.path())
         .args(["init", "--json"])
         .output()
         .expect("pebble command should execute successfully");

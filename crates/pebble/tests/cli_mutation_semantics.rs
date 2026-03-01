@@ -1,16 +1,18 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
+use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
+use std::process::Command;
 use support::{setup_test_env, write_task};
 
 #[test]
 fn test_add_terminal_status_sets_resolved_at() {
     let env = setup_test_env();
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["add", "Done Task", "--status", "done", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -30,8 +32,8 @@ fn test_update_status_to_closed_sets_resolved_at() {
     let env = setup_test_env();
     write_task(&env.tasks_dir, "PROJ-1", "Task 1", "todo");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["update", "PROJ-1", "--status", "done", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -61,8 +63,8 @@ resolved_at = 2024-01-01T12:00:00Z
 "#;
     fs::write(env.tasks_dir.join("PROJ-1.md"), content).expect("task file should be written");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["update", "PROJ-1", "--status", "in_progress", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -82,8 +84,8 @@ fn test_update_always_sets_modified_at() {
     let env = setup_test_env();
     write_task(&env.tasks_dir, "PROJ-1", "Task 1", "todo");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args([
             "update",
             "PROJ-1",
@@ -142,8 +144,8 @@ resolved_at = {now}
     fs::write(archive_dir.join("PROJ-old.md"), "already here")
         .expect("archive file should be written");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["archive", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -169,16 +171,16 @@ fn test_priority_validation_enforces_range() {
     let env = setup_test_env();
 
     // Valid priority
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["add", "Valid Priority", "--priority", "42"])
         .output()
         .expect("pebble command should execute successfully");
     assert!(output.status.success());
 
     // Invalid priority (too high)
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["add", "Invalid Priority", "--priority", "100"])
         .output()
         .expect("pebble command should execute successfully");
@@ -186,8 +188,8 @@ fn test_priority_validation_enforces_range() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("invalid value"));
 
     // Invalid priority (negative)
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["add", "Invalid Priority", "--priority", "-1"])
         .output()
         .expect("pebble command should execute successfully");
@@ -198,8 +200,8 @@ fn test_priority_validation_enforces_range() {
 fn test_add_new_task_ends_with_trailing_newline() {
     let env = setup_test_env();
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args([
             "add",
             "New Task",

@@ -1,4 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
+use assert_cmd::Command;
+use assert_cmd::cargo_bin;
 use std::fs;
 use std::path::Path;
 use std::process::Output;
@@ -7,8 +9,8 @@ mod support;
 use support::{TestEnv, setup_test_env};
 
 fn run_fix(root: &Path, json: bool) -> Output {
-    let mut cmd = support::pebble(root);
-    cmd.arg("check").arg("--fix");
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(root).arg("check").arg("--fix");
     if json {
         cmd.arg("--json");
     }

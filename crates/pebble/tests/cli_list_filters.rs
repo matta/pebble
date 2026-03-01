@@ -1,9 +1,11 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
+use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use support::{setup_test_env, write_task};
 
 struct CustomTask<'a> {
@@ -57,8 +59,8 @@ fn test_list_status_filter_includes_done_without_all() {
     write_task(&env.tasks_dir, "PROJ-TODO", "Todo Task", "todo");
     write_task(&env.tasks_dir, "PROJ-DONE", "Done Task", "done");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--status", "done"])
         .output()
         .expect("pebble command should execute successfully");
@@ -110,8 +112,8 @@ fn test_list_tag_filter_requires_all_tags() {
         },
     );
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args([
             "list", "--json", "--dir", "tasks", "--tag", "backend", "--tag", "urgent",
         ])
@@ -163,8 +165,8 @@ fn test_list_need_filter_matches_any_selected_need() {
         },
     );
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args([
             "list", "--json", "--dir", "tasks", "--need", "DEP-A", "--need", "DEP-B",
         ])
@@ -221,8 +223,8 @@ fn test_list_priority_filter_matches_any_selected_priority() {
         },
     );
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args([
             "list",
             "--json",
@@ -256,8 +258,8 @@ fn test_list_all_includes_closed_tasks() {
     write_task(&env.tasks_dir, "PROJ-DONE", "Done Task", "done");
     write_task(&env.tasks_dir, "PROJ-CANCELED", "Canceled Task", "canceled");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--all"])
         .output()
         .expect("pebble command should execute successfully");
@@ -314,8 +316,8 @@ fn test_list_is_ready_filters_only_ready_tasks() {
         },
     );
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--is-ready"])
         .output()
         .expect("pebble command should execute successfully");
@@ -335,8 +337,8 @@ fn test_list_limit_restricts_number_of_rows() {
     write_task(&env.tasks_dir, "PROJ-B", "Task B", "todo");
     write_task(&env.tasks_dir, "PROJ-C", "Task C", "todo");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks", "--limit", "2"])
         .output()
         .expect("pebble command should execute successfully");
@@ -355,8 +357,8 @@ fn test_list_status_filter_uses_or_semantics() {
     write_task(&env.tasks_dir, "PROJ-DONE", "Done Task", "done");
     write_task(&env.tasks_dir, "PROJ-CANCELED", "Canceled Task", "canceled");
 
-    let output = env
-        .pebble()
+    let output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args([
             "list", "--json", "--dir", "tasks", "--status", "todo", "--status", "done",
         ])
@@ -383,15 +385,15 @@ fn test_ls_alias_matches_list_output() {
     write_task(&env.tasks_dir, "PROJ-A", "Task A", "todo");
     write_task(&env.tasks_dir, "PROJ-B", "Task B", "todo");
 
-    let list_output = env
-        .pebble()
+    let list_output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["list", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
     assert!(list_output.status.success());
 
-    let ls_output = env
-        .pebble()
+    let ls_output = Command::new(cargo_bin!())
+        .current_dir(&env.root)
         .args(["ls", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
