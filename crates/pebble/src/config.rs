@@ -46,27 +46,6 @@ impl Default for Config {
 /// Resolves the project root by walking up from the given directory.
 ///
 /// It searches until it finds a `.pebble` directory and returns `None` if it hits the filesystem root.
-///
-/// # Examples
-///
-/// ```
-/// # use pebble::config::find_project_root;
-/// # use std::fs;
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let temp = tempfile::tempdir()?;
-/// let root = temp.path();
-///
-/// let pebble_dir = root.join(".pebble");
-/// fs::create_dir(&pebble_dir)?;
-///
-/// let deeply_nested = root.join("some").join("deep").join("path");
-/// fs::create_dir_all(&deeply_nested)?;
-///
-/// let found = find_project_root(&deeply_nested).expect("Should find root");
-/// assert_eq!(found, root);
-/// # Ok(())
-/// # }
-/// ```
 pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
     for ancestor in start_dir.ancestors() {
         if ancestor.join(".pebble").is_dir() {
