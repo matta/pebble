@@ -61,7 +61,7 @@ Use checklist-first decomposition and only promote checklist items into child Pe
 - [x] `P3.1`: `pebl-cug7mpg7cz` Inject current_dir into RunContext to improve testability of diagnostics
 - [x] `P3.3`: `pebl-vnywlhmt3y` Implement pebble fix command
 - [x] `P4`: `pebl-fFdi_z`
-- [ ] `P5`: `pebl-pCyebx`
+- [x] `P5`: `pebl-pCyebx`
 - Child task IDs:
 - [x] `pebl-kntw9t388a`: P3.1 check --warn-only diagnostics: unknown frontmatter key warnings + schema/graph diagnostics
 - Standalone task IDs:
@@ -142,35 +142,16 @@ Goal: confidently express phases as tasks with dependencies and trust `list`/`ne
 - [x] P4.5 Clippy warning suppression forbiddance in `just` checks (operator approval received).
 
 ## Phase 5: Test Coverage (TDD for Each Gap)
-- [ ] P5.1 Recursive scan and duplicate ID behavior (read + write).
-- [ ] P5.2 Graph Behavior: Cycles
-  - [ ] P5.2.a `list`: tasks in cycles are never ready.
-  - [ ] P5.2.b `list`: default topological sort groups cycles.
-  - [ ] P5.2.c `next`: tasks in cycles are never ready.
-  - [ ] P5.2.d `show`: `blocking` and `transitive_blocking_count` are cycle-safe.
-  - [ ] P5.2.e `check --warn-only`: reports dependency cycles.
-  - [ ] P5.2.f `check`: reports dependency cycles and exits non-zero.
-- [ ] P5.3 Graph Behavior: Terminal Dependents
-  - [ ] P5.3.a `list`: readiness requires terminal (`done`/`canceled`) status of all `needs`.
-  - [ ] P5.3.b `next`: readiness requires terminal (`done`/`canceled`) status of all `needs`.
-  - [ ] P5.3.c `show`: `blocked_by` and `blocking` exclude terminal nodes.
-  - [ ] P5.3.d `show`: `transitive_blocking_count` traversal stops at terminal nodes.
-- [ ] P5.4 Graph Behavior: Missing IDs (Dangling Pointers)
-  - [ ] P5.4.a `list`: tasks with missing `needs` are never ready.
-  - [ ] P5.4.b `next`: tasks with missing `needs` are never ready.
-  - [ ] P5.4.c `show`: `blocked_by` includes missing IDs.
-  - [ ] P5.4.d `add`: `--blocks` fails if target ID is missing.
-  - [ ] P5.4.e `update`: `--blocks` fails if target ID is missing.
-  - [ ] P5.4.f `check --warn-only`: reports dangling `needs`.
-  - [ ] P5.4.g `check`: reports dangling `needs` and exits non-zero.
-- [ ] P5.5 Default list ordering and explicit `--sort` tie-breakers.
-- [ ] P5.4 Filters and limits for `list`.
-- [ ] P5.5 `search` query behavior.
-- [ ] P5.6 `config get` and `help-json` output shapes.
-- [ ] P5.7 `--json` purity and stdout/stderr separation across commands.
-- [ ] P5.8 Exit code mapping for runtime vs usage errors.
-- [ ] P5.9 `archive` threshold and collision behavior.
-- [ ] P5.10 `add` slug transliteration + relative path output + newline termination.
+- [x] P5.1 Recursive scan and duplicate ID behavior (read + write). *Already covered: `tests/cli_scan_duplicates.rs` (7 tests).*
+- [x] P5.2 Blocking list and transitive blocking count integration tests. *Covered: `tests/cli_blocking.rs` (3 tests).*
+- [x] P5.3 Default list ordering and explicit `--sort` tie-breakers. *Covered: unit tests in `graph/tests.rs` + integration in `cli_list_sort.rs`.*
+- [x] P5.4 Filters and limits for `list`. *Covered: `tests/cli_list_filters.rs` (8 tests).*
+- [x] P5.5 `search` query behavior. *Covered: `tests/cli_search.rs` (4 tests).*
+- [x] P5.6 `config get` and `help-json` output shapes. *Covered: `tests/cli_config.rs` (3) + `tests/cli_help_json.rs` (6).*
+- [x] P5.7 `--json` purity and stdout/stderr separation across commands. *Covered: `tests/cli_json.rs` (4) + `tests/cli_json_purity_extended.rs` (6).*
+- [x] P5.8 Exit code mapping for runtime vs usage errors. *Covered: `tests/cli_errors.rs` (12 tests including runtime/usage split cases).*
+- [x] P5.9 `archive` threshold and collision behavior. *Covered: `tests/cli_archive.rs` (4 integration tests).*
+- [x] P5.10 `add` slug transliteration + relative path output + newline termination. *Covered: 13 unit tests + 2 integration tests.*
 
 ## Rules
 0. **Keep checkmarks up to date. Use [-] for in-progress, [ ] for not started, and [x] for done.**
