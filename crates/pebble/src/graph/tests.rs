@@ -2,7 +2,9 @@
 use super::*;
 use crate::models::{Priority, TaskFrontmatter, TaskStatus};
 use std::collections::HashMap;
+use std::fs;
 use std::str::FromStr;
+use tempfile::tempdir;
 
 fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
     TaskNode {
@@ -224,4 +226,49 @@ fn test_cycle_readiness() {
     assert!(!graph.is_ready("X"));
     assert!(!graph.is_ready("Y"));
     assert_eq!(graph.get_next_tasks().len(), 0);
+}
+
+#[test]
+fn test_load_from_dir_prefers_yaml_frontmatter_and_ignores_non_yaml() {
+    let temp = tempdir().expect("tempdir should be created");
+
+    let yaml_task = r#"---
+id: YAML-1
+title: YAML task
+status: todo
+created_at: 2026-02-21T17:00:00Z
+---
+Body
+"#;
+    fs::write(temp.path().join("yaml.md"), yaml_task).expect("yaml task should be written");
+
+    let legacy_toml_task = r#"+++
+id = "TOML-1"
+title = "Legacy TOML task"
+status = "todo"
+created_at = 2026-02-21T17:00:00Z
++++
+Body
+"#;
+    fs::write(temp.path().join("legacy.md"), legacy_toml_task)
+        .expect("legacy task should be written");
+
+    fs::write(temp.path().join("notes.md"), "# Plain markdown\n")
+        .expect("plain markdown file should be written");
+
+    let graph = TaskGraph::load_from_dir(temp.path()).expect("graph should load");
+
+    assert!(
+        graph.nodes.contains_key("YAML-1"),
+        "valid YAML frontmatter should be loaded"
+    );
+    assert!(
+        !graph.nodes.contains_key("TOML-1"),
+        "legacy TOML frontmatter should be treated as missing YAML frontmatter"
+    );
+    assert_eq!(
+        graph.nodes.len(),
+        1,
+        "non-YAML files should be skipped as missing metadata"
+    );
 }

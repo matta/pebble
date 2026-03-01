@@ -90,13 +90,13 @@ mod tests {
     use crate::models::TaskStatus;
 
     #[test]
-    fn test_parse_valid_task() {
-        let content = r#"+++
-id = "issue-1"
-title = "Test"
-status = "todo"
-created_at = 2026-02-21T17:00:00Z
-+++
+    fn test_parse_valid_yaml_task() {
+        let content = r#"---
+id: issue-1
+title: Test
+status: todo
+created_at: 2026-02-21T17:00:00Z
+---
 
 # Body
 This is the body.
@@ -114,32 +114,45 @@ This is the body.
         let content = "# Just a markdown file";
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is missing");
-        assert!(err.to_string().contains("must start with '+++'"));
+        assert!(err.to_string().contains("must start with '---'"));
     }
 
     #[test]
-    fn test_parse_unclosed_frontmatter() {
+    fn test_parse_unclosed_yaml_frontmatter() {
+        let content = r#"---
+id: issue-1
+title: Test
+status: todo
+created_at: 2026-02-21T17:00:00Z
+"#;
+        let err = parse_task_file(Path::new("file.md"), content)
+            .expect_err("Should fail when frontmatter is unclosed");
+        assert!(err.to_string().contains("Missing closing '---'"));
+    }
+
+    #[test]
+    fn test_parse_invalid_yaml_frontmatter() {
+        let content = r#"---
+id: issue-1
+title: Test
+status: invalid_status
+created_at: 2026-02-21T17:00:00Z
+---"#;
+        let err = parse_task_file(Path::new("file.md"), content)
+            .expect_err("Should fail when frontmatter is invalid YAML");
+        assert!(err.to_string().contains("Failed to parse YAML frontmatter"));
+    }
+
+    #[test]
+    fn test_parse_legacy_toml_frontmatter_treated_as_missing_yaml() {
         let content = r#"+++
 id = "issue-1"
 title = "Test"
 status = "todo"
 created_at = 2026-02-21T17:00:00Z
-"#;
-        let err = parse_task_file(Path::new("file.md"), content)
-            .expect_err("Should fail when frontmatter is unclosed");
-        assert!(err.to_string().contains("Missing closing '+++'"));
-    }
-
-    #[test]
-    fn test_parse_invalid_toml() {
-        let content = r#"+++
-id = "issue-1"
-title = "Test"
-status = "invalid_status"
-created_at = 2026-02-21T17:00:00Z
 +++"#;
         let err = parse_task_file(Path::new("file.md"), content)
-            .expect_err("Should fail when frontmatter is invalid TOML");
-        assert!(err.to_string().contains("Failed to parse TOML frontmatter"));
+            .expect_err("Legacy TOML frontmatter should be treated as missing YAML frontmatter");
+        assert!(err.to_string().contains("must start with '---'"));
     }
 }

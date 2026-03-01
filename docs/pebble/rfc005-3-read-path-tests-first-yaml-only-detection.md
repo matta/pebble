@@ -1,9 +1,11 @@
 +++
 id = "pebl-rm0kn1fvli"
 title = "RFC005-3 Read-path tests first (YAML-only detection)"
-status = "todo"
+status = "done"
 priority = 0
 created_at = 2026-03-01T16:41:06.656429171+00:00
+modified_at = 2026-03-01T16:55:54.908955326+00:00
+resolved_at = 2026-03-01T16:55:54.908944206+00:00
 needs = ["pebl-zjpn6fbfmp"]
 tags = ["planning", "rfc005"]
 +++
@@ -22,3 +24,11 @@ Do exactly this:
 Acceptance Criteria:
 - Tests fail before implementation.
 - No explicit TOML-rejection behavior is introduced in tests or expectations.
+
+Failing Tests (recorded before implementation):
+- `parser::tests::test_parse_valid_yaml_task`
+- `parser::tests::test_parse_missing_frontmatter`
+- `parser::tests::test_parse_unclosed_yaml_frontmatter`
+- `parser::tests::test_parse_invalid_yaml_frontmatter`
+- `parser::tests::test_parse_legacy_toml_frontmatter_treated_as_missing_yaml`
+- `graph::tests::test_load_from_dir_prefers_yaml_frontmatter_and_ignores_non_yaml`
