@@ -169,6 +169,23 @@ impl TaskNode {
         fs::write(&self.path, content)?;
         Ok(())
     }
+
+    pub fn create_new_to_disk(&self) -> Result<()> {
+        let fm_toml = toml::to_string(&self.frontmatter)?;
+        let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
+        if !content.ends_with('\n') {
+            content.push('\n');
+        }
+
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&self.path)?;
+        file.write_all(content.as_bytes())?;
+        Ok(())
+    }
 }
 
 pub fn default_datetime() -> Datetime {

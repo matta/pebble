@@ -5,7 +5,6 @@ use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
 
 const ID_ALPHABET: &[char] = &[
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
@@ -22,21 +21,6 @@ fn required_random_id_length(n: usize) -> usize {
     let alphabet_size: f64 = 36.0;
     let l: f64 = ((n_f * n_f) / (2.0 * target_prob)).ln() / alphabet_size.ln();
     l.ceil().max(8.0) as usize
-}
-
-fn unique_task_path(tasks_dir: &Path, title: &str) -> PathBuf {
-    let base_slug = slugify(title);
-    let mut filename = format!("{}.md", base_slug);
-    let mut filepath = tasks_dir.join(&filename);
-    let mut counter = 2;
-
-    // TODO(pebble: docs/pebble/toctou-race-in-slug-collision-loop.md): Use create_new + retry to make filename selection atomic.
-    while filepath.exists() {
-        filename = format!("{}-{}.md", base_slug, counter);
-        filepath = tasks_dir.join(&filename);
-        counter += 1;
-    }
-    filepath
 }
 
 fn apply_reverse_blocks(
@@ -145,12 +129,35 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     };
 
     fs::create_dir_all(&ctx.tasks_dir)?;
-    let node = TaskNode {
-        path: unique_task_path(&ctx.tasks_dir, &title),
+
+    let base_slug = slugify(&title);
+    let mut filename = format!("{}.md", base_slug);
+    let mut filepath = ctx.tasks_dir.join(&filename);
+    let mut counter = 2;
+
+    let mut node = TaskNode {
+        path: filepath.clone(),
         frontmatter,
         body: body.unwrap_or_default(),
     };
-    node.write_to_disk()?;
+
+    use std::io::{Error, ErrorKind};
+    loop {
+        match node.create_new_to_disk() {
+            Ok(_) => break,
+            Err(e)
+                if e.downcast_ref::<Error>()
+                    .map(|io| io.kind() == ErrorKind::AlreadyExists)
+                    .unwrap_or(false) =>
+            {
+                filename = format!("{}-{}.md", base_slug, counter);
+                filepath = ctx.tasks_dir.join(&filename);
+                node.path = filepath.clone();
+                counter += 1;
+            }
+            Err(e) => return Err(e),
+        }
+    }
 
     apply_reverse_blocks(&mut graph, deduped_blocks, &new_id)?;
     graph
