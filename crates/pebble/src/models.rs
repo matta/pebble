@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use toml_datetime::Datetime;
 
@@ -160,26 +161,25 @@ pub struct TaskNode {
 }
 
 impl TaskNode {
-    pub fn write_to_disk(&self) -> Result<()> {
+    fn get_content_for_disk(&self) -> Result<String> {
         let fm_toml = toml::to_string(&self.frontmatter)?;
         let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
         if !content.ends_with('\n') {
             content.push('\n');
         }
+        Ok(content)
+    }
+
+    pub fn write_to_disk(&self) -> Result<()> {
+        let content = self.get_content_for_disk()?;
         fs::write(&self.path, content)?;
         Ok(())
     }
 
     pub fn create_new_to_disk(&self) -> Result<()> {
-        let fm_toml = toml::to_string(&self.frontmatter)?;
-        let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
-        if !content.ends_with('\n') {
-            content.push('\n');
-        }
+        let content = self.get_content_for_disk()?;
 
-        use std::fs::OpenOptions;
-        use std::io::Write;
-        let mut file = OpenOptions::new()
+        let mut file = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&self.path)?;

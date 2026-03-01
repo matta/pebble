@@ -5,6 +5,8 @@ use crate::task_io::current_toml_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashMap;
 use std::fs;
+use std::io::{Error, ErrorKind};
+use std::path::Path;
 
 const ID_ALPHABET: &[char] = &[
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
@@ -91,6 +93,50 @@ pub struct RunAddInput {
     pub blocks: Vec<String>,
 }
 
+fn create_node_with_unique_filename(
+    tasks_dir: &Path,
+    title: &str,
+    frontmatter: TaskFrontmatter,
+    body: Option<String>,
+) -> Result<TaskNode> {
+    let base_slug = slugify(title);
+    let mut filename = format!("{}.md", base_slug);
+    let mut filepath = tasks_dir.join(&filename);
+    let mut counter = 2;
+
+    let mut node = TaskNode {
+        path: filepath.clone(),
+        frontmatter,
+        body: body.unwrap_or_default(),
+    };
+
+    loop {
+        if counter > 1000 {
+            return Err(eyre!(
+                "Failed to find a unique filename for task after 1000 attempts: {}",
+                title
+            ));
+        }
+
+        match node.create_new_to_disk() {
+            Ok(_) => break,
+            Err(e)
+                if e.downcast_ref::<Error>()
+                    .map(|io| io.kind() == ErrorKind::AlreadyExists)
+                    .unwrap_or(false) =>
+            {
+                filename = format!("{}-{}.md", base_slug, counter);
+                filepath = tasks_dir.join(&filename);
+                node.path = filepath.clone();
+                counter += 1;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(node)
+}
+
 pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     let RunAddInput {
         title,
@@ -130,34 +176,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
 
     fs::create_dir_all(&ctx.tasks_dir)?;
 
-    let base_slug = slugify(&title);
-    let mut filename = format!("{}.md", base_slug);
-    let mut filepath = ctx.tasks_dir.join(&filename);
-    let mut counter = 2;
-
-    let mut node = TaskNode {
-        path: filepath.clone(),
-        frontmatter,
-        body: body.unwrap_or_default(),
-    };
-
-    use std::io::{Error, ErrorKind};
-    loop {
-        match node.create_new_to_disk() {
-            Ok(_) => break,
-            Err(e)
-                if e.downcast_ref::<Error>()
-                    .map(|io| io.kind() == ErrorKind::AlreadyExists)
-                    .unwrap_or(false) =>
-            {
-                filename = format!("{}-{}.md", base_slug, counter);
-                filepath = ctx.tasks_dir.join(&filename);
-                node.path = filepath.clone();
-                counter += 1;
-            }
-            Err(e) => return Err(e),
-        }
-    }
+    let node = create_node_with_unique_filename(&ctx.tasks_dir, &title, frontmatter, body)?;
 
     apply_reverse_blocks(&mut graph, deduped_blocks, &new_id)?;
     graph
