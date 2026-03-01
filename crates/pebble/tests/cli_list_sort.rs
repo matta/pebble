@@ -1,11 +1,9 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 use support::setup_test_env;
 
 struct SortTask<'a> {
@@ -54,8 +52,8 @@ fn test_list_sort_title_descending() {
         },
     );
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["list", "--json", "--dir", "tasks", "--sort", "-title"])
         .output()
         .expect("list command should execute successfully");
@@ -106,8 +104,8 @@ fn test_list_sort_priority_uses_created_at_then_id_tiebreakers() {
         },
     );
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["list", "--json", "--dir", "tasks", "--sort", "priority"])
         .output()
         .expect("list command should execute successfully");

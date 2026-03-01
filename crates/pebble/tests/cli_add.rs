@@ -1,17 +1,15 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-use assert_cmd::cargo_bin;
 use serde_json::Value;
-use std::process::Command;
 use support::{setup_test_env, write_task};
 
 #[test]
 fn test_add_generates_id_with_lowercase_alphanumeric_suffix() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "New Task", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -42,8 +40,8 @@ fn test_add_generates_id_with_lowercase_alphanumeric_suffix() {
 fn test_add_id_suffix_length_is_at_least_8() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "New Task", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -72,15 +70,14 @@ fn test_add_id_suffix_length_scales_with_task_count() {
     // Generate 10 tasks to push n to 10
     // log36(10^2 * 1e12 / 2) = log36(5e13) \approx 8.8 -> length 9
     for i in 0..10 {
-        Command::new(cargo_bin!())
-            .current_dir(&env.root)
+        env.pebble()
             .args(["add", &format!("Task {}", i), "--dir", "tasks"])
             .output()
             .expect("pebble command should execute successfully");
     }
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "New Task", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -104,8 +101,8 @@ fn test_add_blocks_updates_target_needs_with_new_task_id() {
     let env = setup_test_env();
     write_task(&env.tasks_dir, "PROJ-target", "Target Task", "todo");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "add",
             "Precondition Task",
@@ -127,8 +124,8 @@ fn test_add_blocks_updates_target_needs_with_new_task_id() {
         serde_json::from_str(&created_stdout).expect("stdout should be valid JSON");
     let created_id = created_json["id"].as_str().expect("id should be present");
 
-    let show_output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let show_output = env
+        .pebble()
         .args(["show", "PROJ-target", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -162,8 +159,8 @@ fn test_add_json_includes_blocking_when_blocks_is_used() {
     let env = setup_test_env();
     write_task(&env.tasks_dir, "PROJ-target", "Target Task", "todo");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "add",
             "Precondition Task",
@@ -201,8 +198,8 @@ fn test_add_json_includes_blocking_when_blocks_is_used() {
 fn test_add_blocks_fails_for_unknown_target_id() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Precondition Task", "--blocks", "PROJ-missing"])
         .output()
         .expect("pebble command should execute successfully");
@@ -222,8 +219,8 @@ fn test_add_blocks_fails_for_unknown_target_id() {
 fn test_add_json_path_is_relative_to_current_working_directory() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Path Visibility Task", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -243,8 +240,8 @@ fn test_add_json_path_is_relative_to_current_working_directory() {
 fn test_add_human_output_uses_path_relative_to_current_working_directory() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Human Path Task"])
         .output()
         .expect("pebble command should execute successfully");
