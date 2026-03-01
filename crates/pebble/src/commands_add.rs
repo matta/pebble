@@ -55,10 +55,11 @@ fn apply_reverse_blocks(
 }
 
 pub fn slugify(s: &str) -> String {
-    let mut slug = String::with_capacity(s.len());
+    let transliterated = deunicode::deunicode(s);
+    let mut slug = String::with_capacity(transliterated.len());
     let mut last_was_dash = false;
 
-    for c in s.chars() {
+    for c in transliterated.chars() {
         if c.is_ascii_alphanumeric() {
             slug.push(c.to_ascii_lowercase());
             last_was_dash = false;
@@ -236,5 +237,85 @@ mod tests {
         assert_eq!(slugify("Windows: < > : \" / \\ | ? *"), "windows");
         assert_eq!(slugify("macOS: / and :"), "macos-and");
         assert_eq!(slugify("Linux/Unix: \0 and /"), "linux-unix-and");
+    }
+
+    #[test]
+    fn test_slugify_transliterates_non_ascii() {
+        assert_eq!(slugify("café"), "cafe");
+        assert_eq!(slugify("über cool"), "uber-cool");
+        assert_eq!(slugify("naïve approach"), "naive-approach");
+        assert_eq!(slugify("résumé"), "resume");
+        assert_eq!(slugify("Æneid"), "aeneid");
+        assert_eq!(slugify("日本語テスト"), "ri-ben-yu-tesuto");
+    }
+
+    #[test]
+    fn test_slugify_strips_newlines_from_transliteration() {
+        // U+2028 LINE SEPARATOR transliterates to "\n"
+        assert_eq!(slugify("before\u{2028}after"), "before-after");
+        // U+2029 PARAGRAPH SEPARATOR transliterates to "\n\n"
+        assert_eq!(slugify("before\u{2029}after"), "before-after");
+        // Multiple separators should not produce consecutive dashes
+        assert_eq!(slugify("a\u{2028}\u{2029}b"), "a-b");
+    }
+
+    #[test]
+    fn test_slugify_handles_unknown_characters() {
+        // U+0378 is unknown to deunicode, producing "[?]"
+        assert_eq!(slugify("test\u{0378}value"), "test-value");
+        // Only unknown characters should fall back to "task"
+        assert_eq!(slugify("\u{0378}\u{0379}"), "task");
+    }
+
+    #[test]
+    fn test_slugify_handles_empty_transliterations() {
+        // Control characters pass through deunicode as-is; slugify treats
+        // them as non-alphanumeric separators.
+        assert_eq!(slugify("\u{0001}hello"), "hello");
+        assert_eq!(slugify("hello\u{0002}world"), "hello-world");
+        // BOM (U+FEFF) and soft hyphen (U+00AD) transliterate to empty
+        assert_eq!(slugify("\u{FEFF}hello"), "hello");
+        assert_eq!(slugify("soft\u{00AD}hyphen"), "softhyphen");
+    }
+
+    #[test]
+    fn test_slugify_handles_multi_char_transliterations() {
+        // "北" transliterates to "Bei " (with trailing space)
+        assert_eq!(slugify("北"), "bei");
+        // "Ж" transliterates to "Zh"
+        assert_eq!(slugify("Ж"), "zh");
+        // Mixed multi-char transliterations
+        assert_eq!(slugify("Жизнь"), "zhizn");
+    }
+
+    #[test]
+    fn test_slugify_never_produces_unsafe_filenames() {
+        let edge_cases = [
+            "\u{2028}\u{2029}", // only newline producers
+            "\u{0378}\u{0379}", // only unknowns
+            "\u{0001}\u{0002}", // only empty transliterations
+            "\u{200B}\u{FEFF}", // zero-width space + BOM
+        ];
+        for input in &edge_cases {
+            let slug = slugify(input);
+            assert!(!slug.is_empty(), "slug must never be empty for {input:?}");
+            assert!(
+                !slug.contains('\n'),
+                "slug must never contain newline for {input:?}"
+            );
+            assert!(
+                !slug.contains('/'),
+                "slug must never contain slash for {input:?}"
+            );
+            assert!(
+                !slug.contains('\0'),
+                "slug must never contain null for {input:?}"
+            );
+            assert!(
+                slug.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+                "slug contains unexpected char for {input:?}: {slug:?}"
+            );
+        }
     }
 }
