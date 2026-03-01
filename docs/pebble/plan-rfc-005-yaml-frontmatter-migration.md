@@ -4,7 +4,7 @@ title: "Plan RFC 005 YAML frontmatter migration"
 status: "todo"
 priority: 0
 created_at: "2026-03-01T16:36:23.238794357+00:00"
-modified_at: "2026-03-01T17:18:05.401965115+00:00"
+modified_at: "2026-03-01T17:20:40.643521868+00:00"
 needs: ["pebl-urd2fpbmfk", "pebl-zjpn6fbfmp", "pebl-rm0kn1fvli", "pebl-gr537c9can", "pebl-ombr9kv475", "pebl-jfi8jsyoai", "pebl-41j62swwnm", "pebl-1cq47q454u", "pebl-i0eszfcxas", "pebl-53ae3r5qrk"]
 tags: ["planning", "rfc"]
 ---
@@ -30,7 +30,7 @@ Child Tasks (Execution Order):
 - [x] RFC005-6 Implement YAML write path -> `pebl-jfi8jsyoai`
 - [x] RFC005-7 Migration script (dry run + backup plan) -> `pebl-41j62swwnm`
 - [x] RFC005-8 Execute task-file conversion -> `pebl-1cq47q454u`
-- [ ] RFC005-9 Docs and contract sync -> `pebl-i0eszfcxas`
+- [x] RFC005-9 Docs and contract sync -> `pebl-i0eszfcxas`
 - [ ] RFC005-10 Parity verification and gauntlet -> `pebl-53ae3r5qrk`
 
 Exit Criteria:
