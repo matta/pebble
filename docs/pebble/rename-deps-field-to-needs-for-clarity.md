@@ -1,14 +1,14 @@
-+++
-id = "pebl-rWaJHG"
-title = "Rename deps field to needs for clarity"
-status = "done"
-priority = 0
-created_at = 2026-02-23T05:41:07.031257+00:00
-modified_at = 2026-02-23T17:11:11.810272+00:00
-resolved_at = 2026-02-23T17:11:11.810267+00:00
-needs = []
-tags = ["rename", "breaking"]
-+++
+---
+id: "pebl-rWaJHG"
+title: "Rename deps field to needs for clarity"
+status: "done"
+priority: 0
+created_at: "2026-02-23T05:41:07.031257+00:00"
+modified_at: "2026-02-23T17:11:11.810272+00:00"
+resolved_at: "2026-02-23T17:11:11.810267+00:00"
+needs: []
+tags: ["rename", "breaking"]
+---
 The word "dependency" is a relational noun with no inherent direction. "A depends on
 B" is clear, but "A's dependencies" is ambiguous — it could mean "things A needs" or
 "things that need A." This causes persistent confusion in documentation and

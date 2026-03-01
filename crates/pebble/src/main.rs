@@ -1,6 +1,6 @@
 //! `pebble` — a CLI task tracker built on Markdown-native, graph-based storage.
 //!
-//! Tasks are stored as individual Markdown files with TOML frontmatter. The files
+//! Tasks are stored as individual Markdown files with YAML frontmatter. The files
 //! themselves form a directed dependency graph; no external database is required.
 pub mod cli;
 pub mod commands;

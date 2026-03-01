@@ -1,11 +1,11 @@
-+++
-id = "pebl-GoOi96"
-title = "TOCTOU race in slug collision loop"
-status = "todo"
-created_at = 2026-02-22T22:32:50.259702+00:00
-needs = []
-tags = ["defect"]
-+++
+---
+id: "pebl-GoOi96"
+title: "TOCTOU race in slug collision loop"
+status: "todo"
+created_at: "2026-02-22T22:32:50.259702+00:00"
+needs: []
+tags: ["defect"]
+---
 There is a TOCTOU race condition in run_add: between checking filepath.exists() and calling fs::write(), another process could create the same file. Acceptable for single-user CLI but worth noting.
 
 Common strategies:

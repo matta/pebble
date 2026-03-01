@@ -1,11 +1,11 @@
-+++
-id = "pebl-c1wp5f4hlc"
-title = "Centralize config keys for help text"
-status = "todo"
-created_at = 2026-02-24T05:41:50.195555+00:00
-needs = []
-tags = []
-+++
+---
+id: "pebl-c1wp5f4hlc"
+title: "Centralize config keys for help text"
+status: "todo"
+created_at: "2026-02-24T05:41:50.195555+00:00"
+needs: []
+tags: []
+---
 
 Hardcoding the list of configuration keys in the help text can lead to outdated documentation as new keys are added. To improve maintainability, consider defining the keys in a central `pub const` array. You could then use a build script (`build.rs`) or similar mechanism to dynamically generate this help string from the constant, ensuring it's always synchronized with the implementation.
 

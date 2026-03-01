@@ -1,11 +1,11 @@
-+++
-id = "pebl-vtz46af5jv"
-title = "Mitigate CLI body string escaping pitfalls"
-status = "todo"
-created_at = 2026-02-24T05:37:28.694274+00:00
-needs = []
-tags = []
-+++
+---
+id: "pebl-vtz46af5jv"
+title: "Mitigate CLI body string escaping pitfalls"
+status: "todo"
+created_at: "2026-02-24T05:37:28.694274+00:00"
+needs: []
+tags: []
+---
 
 ### Problem Statement
 When dealing with multiline strings in a CLI environment (particularly via shell scripts or automated agents), standard shell quoting rules can cause unintended escape sequence outcomes. For example, `pebble update --append-body "\n\nText"` often results in literal `\` and `n` characters being appended to a markdown task instead of true newline characters.

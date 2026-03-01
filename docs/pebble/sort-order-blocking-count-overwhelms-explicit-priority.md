@@ -1,11 +1,11 @@
-+++
-id = "pebl-buDx2q"
-title = "Sort order: blocking count overwhelms explicit priority"
-status = "todo"
-created_at = 2026-02-23T05:46:42.77611+00:00
-needs = []
-tags = ["design", "sort"]
-+++
+---
+id: "pebl-buDx2q"
+title: "Sort order: blocking count overwhelms explicit priority"
+status: "todo"
+created_at: "2026-02-23T05:46:42.77611+00:00"
+needs: []
+tags: ["design", "sort"]
+---
 
 ## Problem
 

@@ -3,7 +3,7 @@
 Pebble uses a Markdown-native storage model. Each task is represented as a single Markdown file located within the configured tasks directory. 
 
 The file consists of two parts:
-1. **TOML Frontmatter**: Contains all structured metadata and graph edges. Delimited by `+++`.
+1. **YAML Frontmatter**: Contains all structured metadata and graph edges. Delimited by `---`.
 2. **Markdown Body**: Contains free-form description, notes, conversational elements, and checklists, separated from the frontmatter.
 
 ## Rust Schema Definitions
@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use toml_datetime::Datetime;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "snake_case")] // Ensures TOML matches exactly "todo", "in_progress", "done", "canceled".
+#[serde(rename_all = "snake_case")] // Ensures YAML values match exactly "todo", "in_progress", "done", "canceled".
 pub enum TaskStatus {
     Todo,
     InProgress,
@@ -31,7 +31,7 @@ bounded_integer::bounded_integer! {
     pub struct Priority(0, 99);
 }
 
-/// Represents the exact structure of the TOML front matter.
+/// Represents the exact structure of the YAML front matter.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaskFrontmatter {
     pub id: String,

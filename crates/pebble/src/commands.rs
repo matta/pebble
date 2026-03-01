@@ -74,18 +74,18 @@ impl<'a> TaskObject<'a> {
             created_at: node
                 .frontmatter
                 .created_at
-                .map(|dt| dt.to_string())
+                .map(|dt| dt.to_rfc3339())
                 .unwrap_or_default(),
             modified_at: node
                 .frontmatter
                 .modified_at
                 .as_ref()
-                .map(|dt| dt.to_string()),
+                .map(|dt| dt.to_rfc3339()),
             resolved_at: node
                 .frontmatter
                 .resolved_at
                 .as_ref()
-                .map(|dt| dt.to_string()),
+                .map(|dt| dt.to_rfc3339()),
             needs: &node.frontmatter.needs,
             tags: &node.frontmatter.tags,
             is_ready,
@@ -310,9 +310,9 @@ fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
 mod tests {
     use super::*;
     use crate::models::{TaskFrontmatter, TaskStatus};
+    use chrono::{DateTime, Utc};
     use std::collections::{BTreeSet, HashMap};
     use std::path::PathBuf;
-    use std::str::FromStr;
 
     fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
         TaskNode {
@@ -324,8 +324,9 @@ mod tests {
                 status,
                 priority: None,
                 created_at: Some(
-                    toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-                        .expect("datetime should be valid ISO 8601"),
+                    DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+                        .expect("datetime should be valid ISO 8601")
+                        .with_timezone(&Utc),
                 ),
                 modified_at: None,
                 resolved_at: None,

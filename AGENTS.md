@@ -9,7 +9,7 @@ Read @.pebble/AGENTS.md to understand tool usage.
 ## Project Goals & Immutable Invariants
 
 1. **Markdown-Native Storage**: 
-    - Task data is stored entirely in Markdown files with TOML frontmatter.
+    - Task data is stored entirely in Markdown files with YAML frontmatter.
     - There is no JSONL database, no SQLite database, and no hidden Git worktrees.
     - The files themselves act as the directed graph.
 

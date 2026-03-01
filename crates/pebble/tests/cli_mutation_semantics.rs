@@ -51,13 +51,13 @@ fn test_update_status_to_closed_sets_resolved_at() {
 fn test_update_status_away_from_closed_clears_resolved_at() {
     let env = setup_test_env();
     // Start with a done task (we mock it with resolved_at)
-    let content = r#"+++
-id = "PROJ-1"
-title = "Task 1"
-status = "done"
-created_at = 2024-01-01T00:00:00Z
-resolved_at = 2024-01-01T12:00:00Z
-+++
+    let content = r#"---
+id: "PROJ-1"
+title: "Task 1"
+status: "done"
+created_at: "2024-01-01T00:00:00Z"
+resolved_at: "2024-01-01T12:00:00Z"
+---
 "#;
     fs::write(env.tasks_dir.join("PROJ-1.md"), content).expect("task file should be written");
 
@@ -109,13 +109,13 @@ fn test_archive_respects_threshold_and_handles_collisions() {
     let env = setup_test_env();
 
     // Create a task that is old enough to archive
-    let old_content = r#"+++
-id = "PROJ-old"
-title = "Old Task"
-status = "done"
-created_at = 2024-01-01T00:00:00Z
-resolved_at = 2024-01-01T12:00:00Z
-+++
+    let old_content = r#"---
+id: "PROJ-old"
+title: "Old Task"
+status: "done"
+created_at: "2024-01-01T00:00:00Z"
+resolved_at: "2024-01-01T12:00:00Z"
+---
 "#;
     fs::write(env.tasks_dir.join("PROJ-old.md"), old_content)
         .expect("old task file should be written");
@@ -123,13 +123,13 @@ resolved_at = 2024-01-01T12:00:00Z
     // Create a task that is NOT old enough
     let now_toml = chrono::Utc::now().to_rfc3339();
     let new_content = format!(
-        r#"+++
-id = "PROJ-new"
-title = "New Task"
-status = "done"
-created_at = {now}
-resolved_at = {now}
-+++
+        r#"---
+id: "PROJ-new"
+title: "New Task"
+status: "done"
+created_at: "{now}"
+resolved_at: "{now}"
+---
 "#,
         now = now_toml
     );

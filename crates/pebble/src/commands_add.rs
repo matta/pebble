@@ -1,7 +1,7 @@
 use crate::commands::{RunContext, TaskObject, validate_task_references};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
-use crate::task_io::current_toml_time;
+use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashMap;
 use std::fs;
@@ -47,7 +47,7 @@ fn apply_reverse_blocks(
         }
 
         target_node.frontmatter.needs.push(new_id.to_string());
-        target_node.frontmatter.modified_at = Some(current_toml_time()?);
+        target_node.frontmatter.modified_at = Some(current_task_time());
         target_node.write_to_disk()?;
         graph.nodes.insert(target_id, target_node);
     }
@@ -154,7 +154,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
     let status = status.unwrap_or(TaskStatus::Todo);
-    let created_at = current_toml_time()?;
+    let created_at = current_task_time();
     let resolved_at = if status.is_closed() {
         Some(created_at)
     } else {

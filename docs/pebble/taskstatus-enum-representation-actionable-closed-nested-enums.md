@@ -1,11 +1,11 @@
-+++
-id = "pebl-MqmhmZ"
-title = "TaskStatus enum representation: actionable/closed + nested enums"
-status = "todo"
-created_at = 2026-02-22T23:43:31.512707+00:00
-needs = []
-tags = ["design"]
-+++
+---
+id: "pebl-MqmhmZ"
+title: "TaskStatus enum representation: actionable/closed + nested enums"
+status: "todo"
+created_at: "2026-02-22T23:43:31.512707+00:00"
+needs: []
+tags: ["design"]
+---
 ## Context
 While implementing blocking/readiness logic we found “terminal/non-terminal” wording confusing. The match expressions also felt scattered. We introduced helper methods (`is_actionable`, `is_closed`) but the model could go further to make invalid states unrepresentable.
 

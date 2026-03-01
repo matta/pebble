@@ -8,7 +8,7 @@ use support::{setup_test_env, write_task};
 
 fn write_task_with_body(tasks_dir: &Path, id: &str, title: &str, status: &str, body: &str) {
     let content = format!(
-        "+++\nid = \"{id}\"\ntitle = \"{title}\"\nstatus = \"{status}\"\ncreated_at = 2024-01-01T00:00:00Z\n+++\n{body}\n"
+        "---\nid: \"{id}\"\ntitle: \"{title}\"\nstatus: \"{status}\"\ncreated_at: \"2024-01-01T00:00:00Z\"\n---\n{body}\n"
     );
     fs::write(tasks_dir.join(format!("{id}.md")), content).expect("task file should be written");
 }
@@ -65,8 +65,8 @@ fn test_search_uses_default_list_ordering() {
     let b_content = fs::read_to_string(&b_path)
         .expect("PROJ-B task file should be readable")
         .replace(
-            "created_at = 2024-01-01T00:00:00Z\n",
-            "created_at = 2024-01-01T00:00:00Z\nneeds = [\"PROJ-A\"]\n",
+            "created_at: \"2024-01-01T00:00:00Z\"\n",
+            "created_at: \"2024-01-01T00:00:00Z\"\nneeds: [\"PROJ-A\"]\n",
         );
     fs::write(&b_path, b_content).expect("task B file should be written");
     let output = env

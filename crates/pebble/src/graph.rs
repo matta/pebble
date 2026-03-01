@@ -1,5 +1,6 @@
 use crate::models::{TaskNode, default_datetime};
 use crate::parser::parse_task_file;
+use chrono::{DateTime, Utc};
 use color_eyre::eyre::Result;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -20,7 +21,7 @@ struct NodeKey {
     /// Raw priority value; `u32::MAX` is used when priority is unset (sorts last).
     priority: u32,
     /// Creation timestamp, used as a tiebreaker after priority.
-    created_at: toml_datetime::Datetime,
+    created_at: DateTime<Utc>,
     /// Task ID, used as the final deterministic tiebreaker.
     id: String,
 }
@@ -58,11 +59,11 @@ impl TaskGraph {
     /// as a [`TaskNode`].
     ///
     /// The loading process handles the following cases:
-    /// * Valid Tasks: Files starting with `+++` and containing valid TOML frontmatter are loaded.
+    /// * Valid Tasks: Files starting with `---` and containing valid YAML frontmatter are loaded.
     /// * Duplicates: If multiple files declare the same task ID, a warning is printed to stderr,
     ///   and all occurrences of that ID are excluded from the graph to prevent ambiguity.
-    /// * Ignored Files: Files named `AGENTS.md` or those not starting with `+++` are silently skipped.
-    /// * Parse Errors: Files starting with `+++` but containing invalid frontmatter result in a
+    /// * Ignored Files: Files named `AGENTS.md` or those not starting with `---` are silently skipped.
+    /// * Parse Errors: Files starting with `---` but containing invalid frontmatter result in a
     ///   warning to stderr but do not halt the loading process.
     ///
     /// # Errors
@@ -82,8 +83,8 @@ impl TaskGraph {
                 }
 
                 let content = fs::read_to_string(&path)?;
-                // Skip files that don't start with +++
-                if content.starts_with("+++") {
+                // Skip files that don't start with YAML frontmatter.
+                if content.starts_with("---") {
                     match parse_task_file(&path, &content) {
                         Ok(node) => {
                             parsed_nodes.push(node);

@@ -1,11 +1,11 @@
-+++
-id = "pebl-pCyebx"
-title = "Phase 5 Test Coverage for Gaps"
-status = "todo"
-created_at = 2026-02-23T01:36:06.795969+00:00
-needs = ["pebl-fFdi_z"]
-tags = ["bootstrap", "self_hosted"]
-+++
+---
+id: "pebl-pCyebx"
+title: "Phase 5 Test Coverage for Gaps"
+status: "todo"
+created_at: "2026-02-23T01:36:06.795969+00:00"
+needs: ["pebl-fFdi_z"]
+tags: ["bootstrap", "self_hosted"]
+---
 Checklist:
 - [ ] P5.1 Recursive scan and duplicate ID behavior tests (read + write)
 - [ ] P5.2 Blocking list and transitive blocking count tests
