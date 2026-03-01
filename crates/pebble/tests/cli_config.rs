@@ -1,17 +1,15 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-use assert_cmd::cargo_bin;
 use serde_json::Value;
-use std::process::Command;
 use support::setup_test_env;
 
 #[test]
 fn test_config_get_issue_prefix_human_output() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["config", "get", "issue-prefix"])
         .output()
         .expect("pebble command should execute successfully");
@@ -25,8 +23,8 @@ fn test_config_get_issue_prefix_human_output() {
 fn test_config_get_tasks_dir_json_shape() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["config", "get", "tasks-dir", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -43,8 +41,8 @@ fn test_config_get_tasks_dir_json_shape() {
 fn test_config_get_unknown_key_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["config", "get", "not-a-key", "--json"])
         .output()
         .expect("pebble command should execute successfully");

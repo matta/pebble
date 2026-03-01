@@ -1,6 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use assert_cmd::Command;
-use assert_cmd::cargo_bin;
+
 use predicates::prelude::*;
 use serde_json::Value;
 use std::fs;
@@ -39,8 +39,7 @@ impl CheckMode {
 const CHECK_MODES: [CheckMode; 2] = [CheckMode::Strict, CheckMode::WarnOnly];
 
 fn run_check(mode: CheckMode, root: &Path, json: bool) -> Output {
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(root);
+    let mut cmd = support::pebble(root);
     mode.apply_args(&mut cmd);
     if json {
         cmd.arg("--json");
@@ -347,8 +346,7 @@ fn test_check_modes_issue_json_payload_is_identical() {
 fn test_legacy_doctor_command_is_no_longer_available() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(&env.root)
+    env.pebble()
         .arg("doctor")
         .assert()
         .failure()
@@ -360,8 +358,7 @@ fn test_legacy_doctor_command_is_no_longer_available() {
 fn test_legacy_fix_command_is_no_longer_available() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(&env.root)
+    env.pebble()
         .arg("fix")
         .assert()
         .failure()
@@ -373,8 +370,7 @@ fn test_legacy_fix_command_is_no_longer_available() {
 fn test_check_warn_only_and_fix_are_mutually_exclusive() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(&env.root)
+    env.pebble()
         .args(["check", "--warn-only", "--fix"])
         .assert()
         .failure()

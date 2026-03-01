@@ -1,10 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod support;
 
-use assert_cmd::cargo_bin;
 use serde_json::Value;
 use std::fs;
-use std::process::Command;
 use support::setup_test_env;
 
 #[test]
@@ -23,8 +21,8 @@ Body
 "#;
     fs::write(nested.join("nested-task.md"), content).expect("nested-task.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["list", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -57,8 +55,8 @@ Body
 "#;
     fs::write(nested.join("show-task.md"), content).expect("show-task.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", "PROJ-SHOW-NESTED", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -104,8 +102,8 @@ Body
     fs::write(nested.join("dup-b.md"), dup_b).expect("dup-b.md should be written");
     fs::write(env.tasks_dir.join("unique.md"), unique).expect("unique.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["list", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -144,8 +142,8 @@ Body
     fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
     fs::write(nested.join("dup-b.md"), dup).expect("dup-b.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", "PROJ-DUP-SHOW", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -175,8 +173,8 @@ Body
     fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
     fs::write(nested.join("dup-b.md"), dup).expect("dup-b.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update",
             "PROJ-DUP-UPDATE",
@@ -223,8 +221,8 @@ Body
     fs::write(nested.join("dup-b.md"), dup).expect("dup-b.md should be written");
     fs::write(env.tasks_dir.join("unique.md"), unique).expect("unique.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", "PROJ-UNIQUE-SHOW", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -269,8 +267,8 @@ Body
     fs::write(&dup_two_a_path, dup_two).expect("dup_two_a.md should be written");
     fs::write(&dup_two_b_path, dup_two).expect("dup_two_b.md should be written");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["list", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
