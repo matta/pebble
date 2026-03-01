@@ -50,7 +50,9 @@ pub enum TaskStatus {
 }
 
 impl TaskStatus {
-    /// Returns `true` if the status represents an open, workable state (`todo` or `in_progress`).
+    /// Checks if the status represents an open, workable state.
+    ///
+    /// Returns `true` if the status is [`TaskStatus::Todo`] or [`TaskStatus::InProgress`].
     pub fn is_actionable(&self) -> bool {
         matches!(self, Self::Todo | Self::InProgress)
     }
