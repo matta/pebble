@@ -230,6 +230,13 @@ pub fn run_search(ctx: &RunContext, query: &str) -> Result<()> {
         })
         .collect();
 
+    if tasks.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "No tasks found matching query '{}'",
+            query
+        ));
+    }
+
     let tasks = graph.default_order(tasks)?;
     emit_task_list(ctx, &graph, tasks)
 }

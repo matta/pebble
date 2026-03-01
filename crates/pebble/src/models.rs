@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use toml_datetime::Datetime;
 
@@ -50,7 +51,9 @@ pub enum TaskStatus {
 }
 
 impl TaskStatus {
-    /// Returns `true` if the status represents an open, workable state (`todo` or `in_progress`).
+    /// Checks if the status represents an open, workable state.
+    ///
+    /// Returns `true` if the status is [`TaskStatus::Todo`] or [`TaskStatus::InProgress`].
     pub fn is_actionable(&self) -> bool {
         matches!(self, Self::Todo | Self::InProgress)
     }
@@ -160,23 +163,29 @@ pub struct TaskNode {
 }
 
 impl TaskNode {
-    /// Serializes the task and writes it to the markdown file on disk.
-    ///
-    /// This method converts the task's frontmatter into TOML, wraps it in the `FRONTMATTER_DELIMITER` (from `models.rs`),
-    /// and appends the raw markdown body. It ensures the file ends with a trailing newline.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// * The `frontmatter` cannot be serialized to TOML.
-    /// * The file cannot be written to the `path` due to filesystem errors.
-    pub fn write_to_disk(&self) -> Result<()> {
+    fn get_content_for_disk(&self) -> Result<String> {
         let fm_toml = toml::to_string(&self.frontmatter)?;
         let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
         if !content.ends_with('\n') {
             content.push('\n');
         }
+        Ok(content)
+    }
+
+    pub fn write_to_disk(&self) -> Result<()> {
+        let content = self.get_content_for_disk()?;
         fs::write(&self.path, content)?;
+        Ok(())
+    }
+
+    pub fn create_new_to_disk(&self) -> Result<()> {
+        let content = self.get_content_for_disk()?;
+
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&self.path)?;
+        file.write_all(content.as_bytes())?;
         Ok(())
     }
 }

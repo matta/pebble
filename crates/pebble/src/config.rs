@@ -57,23 +57,23 @@ pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
 
 /// Validates that the tasks directory path is safe.
 ///
-/// Ensures the `path` is relative and does not contain `..` components.
+/// Ensures the path is relative and does not contain `..` components.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// * The `path` is an absolute path.
-/// * The `path` contains parent directory components (`..`).
+/// * `path` is absolute.
+/// * `path` contains parent directory components (`..`).
 ///
 /// # Examples
 ///
 /// ```
-/// # use pebble::config::validate_tasks_dir;
 /// # use std::path::Path;
+/// # use pebble::config::validate_tasks_dir;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// assert!(validate_tasks_dir(Path::new("docs/tasks")).is_ok());
 /// assert!(validate_tasks_dir(Path::new("/absolute/path")).is_err());
-/// assert!(validate_tasks_dir(Path::new("nested/../path")).is_err());
+/// assert!(validate_tasks_dir(Path::new("docs/../tasks")).is_err());
 /// # Ok(())
 /// # }
 /// ```
