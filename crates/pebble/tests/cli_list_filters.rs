@@ -17,12 +17,12 @@ struct CustomTask<'a> {
 
 fn write_task_custom(tasks_dir: &Path, task: CustomTask<'_>) {
     let mut frontmatter = format!(
-        "id = \"{}\"\ntitle = \"{}\"\nstatus = \"{}\"\ncreated_at = 2024-01-01T00:00:00Z\n",
+        "id: \"{}\"\ntitle: \"{}\"\nstatus: \"{}\"\ncreated_at: \"2024-01-01T00:00:00Z\"\n",
         task.id, task.title, task.status
     );
 
     if let Some(value) = task.priority {
-        frontmatter.push_str(&format!("priority = {value}\n"));
+        frontmatter.push_str(&format!("priority: {value}\n"));
     }
 
     if !task.needs.is_empty() {
@@ -32,7 +32,7 @@ fn write_task_custom(tasks_dir: &Path, task: CustomTask<'_>) {
             .map(|v| format!("\"{v}\""))
             .collect::<Vec<_>>()
             .join(", ");
-        frontmatter.push_str(&format!("needs = [{values}]\n"));
+        frontmatter.push_str(&format!("needs: [{values}]\n"));
     }
 
     if !task.tags.is_empty() {
@@ -42,10 +42,10 @@ fn write_task_custom(tasks_dir: &Path, task: CustomTask<'_>) {
             .map(|v| format!("\"{v}\""))
             .collect::<Vec<_>>()
             .join(", ");
-        frontmatter.push_str(&format!("tags = [{values}]\n"));
+        frontmatter.push_str(&format!("tags: [{values}]\n"));
     }
 
-    let content = format!("+++\n{frontmatter}+++\nBody\n");
+    let content = format!("---\n{frontmatter}---\nBody\n");
     fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
         .expect("custom task file should be written");
 }

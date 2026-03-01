@@ -1,10 +1,9 @@
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
+use chrono::{DateTime, Utc};
 use color_eyre::eyre::{Result, eyre};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
-use std::str::FromStr;
-use toml_datetime::Datetime;
 
 #[derive(Debug, Deserialize)]
 struct YamlTaskFrontmatter {
@@ -23,48 +22,17 @@ struct YamlTaskFrontmatter {
     extra: HashMap<String, serde_json::Value>,
 }
 
-fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<Datetime>> {
+fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>> {
     value
         .map(|raw| {
-            Datetime::from_str(&raw)
+            DateTime::parse_from_rfc3339(&raw)
+                .map(|dt| dt.with_timezone(&Utc))
                 .map_err(|err| eyre!("Invalid '{}' datetime '{}': {}", field, raw, err))
         })
         .transpose()
 }
 
-fn json_to_toml_value(value: serde_json::Value) -> Result<toml::Value> {
-    match value {
-        serde_json::Value::Null => {
-            Err(eyre!("Unsupported null in YAML frontmatter extra fields"))
-        }
-        serde_json::Value::Bool(v) => Ok(toml::Value::Boolean(v)),
-        serde_json::Value::Number(v) => {
-            if let Some(i) = v.as_i64() {
-                Ok(toml::Value::Integer(i))
-            } else if let Some(f) = v.as_f64() {
-                Ok(toml::Value::Float(f))
-            } else {
-                Err(eyre!("Unsupported numeric value in YAML frontmatter"))
-            }
-        }
-        serde_json::Value::String(v) => Ok(toml::Value::String(v)),
-        serde_json::Value::Array(values) => Ok(toml::Value::Array(
-            values
-                .into_iter()
-                .map(json_to_toml_value)
-                .collect::<Result<Vec<_>>>()?,
-        )),
-        serde_json::Value::Object(map) => {
-            let mut table = toml::map::Map::new();
-            for (key, entry) in map {
-                table.insert(key, json_to_toml_value(entry)?);
-            }
-            Ok(toml::Value::Table(table))
-        }
-    }
-}
-
-/// Parses a Markdown file with TOML frontmatter into a [`TaskNode`].
+/// Parses a Markdown file with YAML frontmatter into a [`TaskNode`].
 ///
 /// The file must start with a YAML frontmatter block delimited by `---` on the first
 /// line and another `---` on a subsequent line. The content after the second delimiter
@@ -124,11 +92,6 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let raw_frontmatter: YamlTaskFrontmatter = serde_saphyr::from_str(&yaml_str)
         .map_err(|e| eyre!("Failed to parse YAML frontmatter: {}", e))?;
 
-    let mut extra = HashMap::new();
-    for (key, value) in raw_frontmatter.extra {
-        extra.insert(key, json_to_toml_value(value)?);
-    }
-
     let frontmatter = TaskFrontmatter {
         id: raw_frontmatter.id,
         title: raw_frontmatter.title,
@@ -139,7 +102,7 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
         resolved_at: parse_optional_datetime(raw_frontmatter.resolved_at, "resolved_at")?,
         needs: raw_frontmatter.needs,
         tags: raw_frontmatter.tags,
-        extra,
+        extra: raw_frontmatter.extra,
     };
 
     // Extract body, stripping leading newlines after the closing '---'.

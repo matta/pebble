@@ -1,5 +1,6 @@
 use crate::models::{TaskNode, default_datetime};
 use crate::parser::parse_task_file;
+use chrono::{DateTime, Utc};
 use color_eyre::eyre::Result;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -20,7 +21,7 @@ struct NodeKey {
     /// Raw priority value; `u32::MAX` is used when priority is unset (sorts last).
     priority: u32,
     /// Creation timestamp, used as a tiebreaker after priority.
-    created_at: toml_datetime::Datetime,
+    created_at: DateTime<Utc>,
     /// Task ID, used as the final deterministic tiebreaker.
     id: String,
 }

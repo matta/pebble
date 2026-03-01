@@ -58,12 +58,12 @@ pub fn setup_test_env() -> TestEnv {
 /// Write a simple task file into the tasks directory.
 pub fn write_task(tasks_dir: &Path, id: &str, title: &str, status: &str) {
     let content = format!(
-        r#"+++
-id = "{id}"
-title = "{title}"
-status = "{status}"
-created_at = 2024-01-01T00:00:00Z
-+++
+        r#"---
+id: "{id}"
+title: "{title}"
+status: "{status}"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#,
         id = id,

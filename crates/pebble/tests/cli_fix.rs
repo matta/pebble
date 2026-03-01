@@ -31,11 +31,11 @@ fn write_file(env: &TestEnv, name: &str, body: &str) {
 fn test_fix_backfills_created_at() {
     let env = setup_test_env();
     // Task missing created_at
-    let content = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-+++
+    let content = r#"---
+id: "A"
+title: "A"
+status: "todo"
+---
 Body"#;
     write_file(&env, "A.md", content);
 
@@ -49,7 +49,7 @@ Body"#;
     let updated_content =
         fs::read_to_string(env.tasks_dir.join("A.md")).expect("file should be readable");
     assert!(
-        updated_content.contains("created_at = "),
+        updated_content.contains("created_at:"),
         "created_at should be backfilled"
     );
 }
@@ -57,13 +57,13 @@ Body"#;
 #[test]
 fn test_fix_warns_on_unknown_keys_but_preserves_them() {
     let env = setup_test_env();
-    let content = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-weird_key = "abc"
-+++
+    let content = r#"---
+id: "A"
+title: "A"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+weird_key: "abc"
+---
 Body"#;
     write_file(&env, "A.md", content);
 
@@ -76,7 +76,7 @@ Body"#;
     let updated_content =
         fs::read_to_string(env.tasks_dir.join("A.md")).expect("file should be readable");
     assert!(
-        updated_content.contains("weird_key = \"abc\""),
+        updated_content.contains("weird_key: \"abc\""),
         "unknown keys should be preserved"
     );
 }
@@ -84,11 +84,11 @@ Body"#;
 #[test]
 fn test_fix_json_output() {
     let env = setup_test_env();
-    let content = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-+++
+    let content = r#"---
+id: "A"
+title: "A"
+status: "todo"
+---
 Body"#;
     write_file(&env, "A.md", content);
 
@@ -108,13 +108,13 @@ Body"#;
 #[test]
 fn test_fix_json_still_warns_on_unknown_keys_to_stderr() {
     let env = setup_test_env();
-    let content = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-weird_key = "abc"
-+++
+    let content = r#"---
+id: "A"
+title: "A"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+weird_key: "abc"
+---
 Body"#;
     write_file(&env, "A.md", content);
 
@@ -137,13 +137,13 @@ Body"#;
 #[test]
 fn test_fix_fails_when_non_repairable_findings_remain() {
     let env = setup_test_env();
-    let content = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = ["MISSING_TASK"]
-+++
+    let content = r#"---
+id: "A"
+title: "A"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: ["MISSING_TASK"]
+---
 Body"#;
     write_file(&env, "A.md", content);
 

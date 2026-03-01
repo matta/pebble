@@ -16,13 +16,13 @@ struct SortTask<'a> {
 
 fn write_task_with_created_at(tasks_dir: &Path, task: SortTask<'_>) {
     let mut frontmatter = format!(
-        "id = \"{}\"\ntitle = \"{}\"\nstatus = \"{}\"\ncreated_at = {}\n",
+        "id: \"{}\"\ntitle: \"{}\"\nstatus: \"{}\"\ncreated_at: \"{}\"\n",
         task.id, task.title, task.status, task.created_at
     );
     if let Some(value) = task.priority {
-        frontmatter.push_str(&format!("priority = {value}\n"));
+        frontmatter.push_str(&format!("priority: {value}\n"));
     }
-    let content = format!("+++\n{frontmatter}+++\nBody\n");
+    let content = format!("---\n{frontmatter}---\nBody\n");
     fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
         .expect("task file should be written");
 }

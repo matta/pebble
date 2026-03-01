@@ -21,24 +21,19 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 
     for node in graph.nodes.values() {
         if node.frontmatter.status.is_closed()
-            && let Some(resolved_at_toml) = node.frontmatter.resolved_at
+            && let Some(resolved_at) = node.frontmatter.resolved_at
+            && now.signed_duration_since(resolved_at) >= threshold_days
         {
-            let resolved_at = chrono::DateTime::parse_from_rfc3339(&resolved_at_toml.to_string())
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .map_err(|e| eyre!("Failed to parse resolved_at from TOML: {}", e))?;
+            let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
+            fs::rename(&node.path, &new_path)?;
 
-            if now.signed_duration_since(resolved_at) >= threshold_days {
-                let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
-                fs::rename(&node.path, &new_path)?;
-
-                if ctx.json {
-                    archived.push(serde_json::json!({
-                        "id": node.frontmatter.id,
-                        "moved_to": new_path.strip_prefix(&ctx.tasks_dir).unwrap_or(&new_path).display().to_string()
-                    }));
-                } else {
-                    eprintln!("Archived {}", node.frontmatter.id);
-                }
+            if ctx.json {
+                archived.push(serde_json::json!({
+                    "id": node.frontmatter.id,
+                    "moved_to": new_path.strip_prefix(&ctx.tasks_dir).unwrap_or(&new_path).display().to_string()
+                }));
+            } else {
+                eprintln!("Archived {}", node.frontmatter.id);
             }
         }
     }

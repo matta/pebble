@@ -1,9 +1,9 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use super::*;
 use crate::models::{Priority, TaskFrontmatter, TaskStatus};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::fs;
-use std::str::FromStr;
 use tempfile::tempdir;
 
 fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
@@ -16,8 +16,9 @@ fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
             status,
             priority: None,
             created_at: Some(
-                toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-                    .expect("Failed to parse datetime"),
+                DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+                    .expect("Failed to parse datetime")
+                    .with_timezone(&Utc),
             ),
             modified_at: None,
             resolved_at: None,
@@ -161,12 +162,14 @@ fn test_default_order_cycle_grouping_created_at() {
     let c = make_test_node("C", TaskStatus::Todo, vec!["A"]);
 
     a.frontmatter.created_at = Some(
-        toml_datetime::Datetime::from_str("2026-01-02T00:00:00Z")
-            .expect("Failed to parse datetime"),
+        DateTime::parse_from_rfc3339("2026-01-02T00:00:00Z")
+            .expect("Failed to parse datetime")
+            .with_timezone(&Utc),
     );
     b.frontmatter.created_at = Some(
-        toml_datetime::Datetime::from_str("2026-01-01T00:00:00Z")
-            .expect("Failed to parse datetime"),
+        DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .expect("Failed to parse datetime")
+            .with_timezone(&Utc),
     );
 
     nodes.insert("A".to_string(), a);

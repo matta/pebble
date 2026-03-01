@@ -2,7 +2,7 @@ use crate::commands::{RunContext, TaskObject, validate_task_references};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
-use crate::task_io::current_toml_time;
+use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashSet;
 use std::fs;
@@ -46,7 +46,7 @@ fn apply_reverse_update(
             continue;
         }
         target_node.frontmatter.needs.push(source_id.clone());
-        target_node.frontmatter.modified_at = Some(current_toml_time()?);
+        target_node.frontmatter.modified_at = Some(current_task_time());
         target_node.write_to_disk()?;
         graph.nodes.insert(target_id, target_node);
     }
@@ -72,7 +72,7 @@ fn apply_reverse_update(
         if target_node.frontmatter.needs.len() == before_len {
             continue;
         }
-        target_node.frontmatter.modified_at = Some(current_toml_time()?);
+        target_node.frontmatter.modified_at = Some(current_task_time());
         target_node.write_to_disk()?;
         graph.nodes.insert(target_id, target_node);
     }
@@ -115,7 +115,7 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
     }
     if let Some(new_status) = mutations.status {
         if !node.frontmatter.status.is_closed() && new_status.is_closed() {
-            node.frontmatter.resolved_at = Some(current_toml_time()?);
+            node.frontmatter.resolved_at = Some(current_task_time());
         } else if node.frontmatter.status.is_closed() && !new_status.is_closed() {
             node.frontmatter.resolved_at = None;
         }
@@ -127,7 +127,7 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
     if mutations.clear_priority {
         node.frontmatter.priority = None;
     }
-    node.frontmatter.modified_at = Some(current_toml_time()?);
+    node.frontmatter.modified_at = Some(current_task_time());
 
     let mut existing_tags: HashSet<_> = node.frontmatter.tags.iter().cloned().collect();
     for t in mutations.add_tags {

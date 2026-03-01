@@ -116,80 +116,80 @@ fn parse_json_stdout(output: &Output) -> Value {
 }
 
 fn setup_healthy_graph(env: &TestEnv) {
-    let a = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = []
-+++
+    let a = r#"---
+id: "A"
+title: "A"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: []
+---
 "#;
-    let b = r#"+++
-id = "B"
-title = "B"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = ["A"]
-+++
+    let b = r#"---
+id: "B"
+title: "B"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: ["A"]
+---
 "#;
     write_file(env, "A.md", a);
     write_file(env, "B.md", b);
 }
 
 fn setup_unknown_keys_graph(env: &TestEnv) {
-    let x = r#"+++
-id = "issue-X"
-title = "X"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = []
-weird_key = "abc"
-other_key = 123
-+++
+    let x = r#"---
+id: "issue-X"
+title: "X"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: []
+weird_key: "abc"
+other_key: 123
+---
 Body"#;
     write_file(env, "X.md", x);
 }
 
 fn setup_dangling_need_graph(env: &TestEnv) {
-    let b = r#"+++
-id = "B"
-title = "B"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = ["MISSING_TASK"]
-+++
+    let b = r#"---
+id: "B"
+title: "B"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: ["MISSING_TASK"]
+---
 "#;
     write_file(env, "B.md", b);
 }
 
 fn setup_cycle_graph(env: &TestEnv) {
-    let a = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = ["B"]
-+++
+    let a = r#"---
+id: "A"
+title: "A"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: ["B"]
+---
 "#;
-    let b = r#"+++
-id = "B"
-title = "B"
-status = "todo"
-created_at = 2026-03-01T00:00:00Z
-needs = ["A"]
-+++
+    let b = r#"---
+id: "B"
+title: "B"
+status: "todo"
+created_at: "2026-03-01T00:00:00Z"
+needs: ["A"]
+---
 "#;
     write_file(env, "A.md", a);
     write_file(env, "B.md", b);
 }
 
 fn setup_missing_created_at_graph(env: &TestEnv) {
-    let a = r#"+++
-id = "A"
-title = "A"
-status = "todo"
-needs = []
-+++
+    let a = r#"---
+id: "A"
+title: "A"
+status: "todo"
+needs: []
+---
 "#;
     write_file(env, "A.md", a);
 }

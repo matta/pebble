@@ -1,14 +1,14 @@
 use crate::commands::RunContext;
 use crate::commands_diagnostics::collect_diagnostics;
 use crate::graph::TaskGraph;
-use crate::task_io::current_toml_time;
+use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
 
 /// Executes repair behavior for `pebble check --fix`.
 pub fn run_fix(ctx: &RunContext) -> Result<()> {
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut modified_ids = Vec::new();
-    let current_time = current_toml_time()?;
+    let current_time = current_task_time();
 
     for node in graph.nodes.values_mut() {
         let mut modified = false;

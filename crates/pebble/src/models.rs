@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clap::ValueEnum;
 use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,6 @@ use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use toml_datetime::Datetime;
 
 /// Error representing an invalid user invocation or configuration value.
 /// Should results in exit code 2.
@@ -34,7 +34,7 @@ impl error::Error for NotFoundError {}
 /// Represents the lifecycle state of a task.
 ///
 /// This enum defines the possible states a task can be in.
-/// The variants are serialized to snake_case strings in the TOML frontmatter.
+/// The variants are serialized to snake_case strings in task frontmatter.
 ///
 /// # Examples
 ///
@@ -43,7 +43,7 @@ impl error::Error for NotFoundError {}
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let status = TaskStatus::Todo;
 /// // Serializes to "todo"
-/// assert_eq!(toml::to_string(&status)?.trim(), "\"todo\"");
+/// assert_eq!(serde_json::to_string(&status)?, "\"todo\"");
 /// # Ok(())
 /// # }
 /// ```
@@ -84,7 +84,7 @@ bounded_integer::bounded_integer! {
     pub struct Priority(0, 99);
 }
 
-/// Represents the exact structure of the TOML front matter.
+/// Represents the exact structure of task frontmatter.
 ///
 /// This struct corresponds to the metadata block at the top of a task file.
 /// It includes the task's unique ID, title, status, and other metadata.
@@ -94,8 +94,8 @@ bounded_integer::bounded_integer! {
 /// ```
 /// # use pebble::models::{TaskFrontmatter, TaskStatus};
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let toml_str = "id = \"issue-123\"\ntitle = \"Test\"\nstatus = \"todo\"\ncreated_at = 2023-01-01T00:00:00Z";
-/// let fm: TaskFrontmatter = toml::from_str(toml_str)?;
+/// let yaml_str = "id: issue-123\ntitle: Test\nstatus: todo\ncreated_at: \"2023-01-01T00:00:00Z\"";
+/// let fm: TaskFrontmatter = serde_saphyr::from_str(yaml_str)?;
 /// assert_eq!(fm.title, "Test");
 /// assert_eq!(fm.status, TaskStatus::Todo);
 /// # Ok(())
@@ -113,11 +113,11 @@ pub struct TaskFrontmatter {
     /// Optional priority for ordering (lower value = higher priority). Range 0–99.
     pub priority: Option<Priority>,
     /// Timestamp when the task was created.
-    pub created_at: Option<Datetime>,
+    pub created_at: Option<DateTime<Utc>>,
     /// Timestamp of the last modification, if the task has been edited.
-    pub modified_at: Option<Datetime>,
+    pub modified_at: Option<DateTime<Utc>>,
     /// Timestamp when the task reached a terminal status, if applicable.
-    pub resolved_at: Option<Datetime>,
+    pub resolved_at: Option<DateTime<Utc>>,
     /// IDs of tasks that must reach a terminal status before this task is ready.
     #[serde(default)]
     pub needs: Vec<String>,
@@ -127,7 +127,7 @@ pub struct TaskFrontmatter {
     /// Unknown keys preserved from parsing.
     #[serde(flatten)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub extra: HashMap<String, toml::Value>,
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 /// The in-memory representation of a task.
@@ -141,7 +141,7 @@ pub struct TaskFrontmatter {
 /// # use std::path::PathBuf;
 /// # use std::str::FromStr;
 /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
-/// # use toml_datetime::Datetime;
+/// # use chrono::{DateTime, Utc};
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let node = TaskNode {
 ///     path: PathBuf::from("tasks/issue-123.md"),
@@ -150,7 +150,7 @@ pub struct TaskFrontmatter {
 ///         title: "My Task".into(),
 ///         status: TaskStatus::Todo,
 ///         priority: None,
-///         created_at: Datetime::from_str("2023-01-01T00:00:00Z")?,
+///         created_at: DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")?.with_timezone(&Utc),
 ///         modified_at: None,
 ///         resolved_at: None,
 ///         needs: vec![],
@@ -167,7 +167,7 @@ pub struct TaskFrontmatter {
 pub struct TaskNode {
     /// Absolute path to the Markdown file on disk.
     pub path: PathBuf,
-    /// Parsed TOML frontmatter for this task.
+    /// Parsed task frontmatter for this task.
     pub frontmatter: TaskFrontmatter,
     /// Raw Markdown content after the frontmatter delimiter. Free-form; no structural requirements.
     pub body: String,
@@ -194,26 +194,6 @@ struct YamlTaskFrontmatter {
     extra: HashMap<String, serde_json::Value>,
 }
 
-fn toml_to_json_value(value: &toml::Value) -> serde_json::Value {
-    match value {
-        toml::Value::String(v) => serde_json::Value::String(v.clone()),
-        toml::Value::Integer(v) => serde_json::Value::Number((*v).into()),
-        toml::Value::Float(v) => serde_json::Number::from_f64(*v)
-            .map_or(serde_json::Value::Null, serde_json::Value::Number),
-        toml::Value::Boolean(v) => serde_json::Value::Bool(*v),
-        toml::Value::Datetime(v) => serde_json::Value::String(v.to_string()),
-        toml::Value::Array(values) => {
-            serde_json::Value::Array(values.iter().map(toml_to_json_value).collect())
-        }
-        toml::Value::Table(entries) => serde_json::Value::Object(
-            entries
-                .iter()
-                .map(|(k, v)| (k.clone(), toml_to_json_value(v)))
-                .collect(),
-        ),
-    }
-}
-
 impl TaskNode {
     fn get_content_for_disk(&self) -> Result<String> {
         let yaml_frontmatter = YamlTaskFrontmatter {
@@ -221,16 +201,16 @@ impl TaskNode {
             title: self.frontmatter.title.clone(),
             status: self.frontmatter.status,
             priority: self.frontmatter.priority,
-            created_at: self.frontmatter.created_at.map(|dt| dt.to_string()),
-            modified_at: self.frontmatter.modified_at.map(|dt| dt.to_string()),
-            resolved_at: self.frontmatter.resolved_at.map(|dt| dt.to_string()),
+            created_at: self.frontmatter.created_at.map(|dt| dt.to_rfc3339()),
+            modified_at: self.frontmatter.modified_at.map(|dt| dt.to_rfc3339()),
+            resolved_at: self.frontmatter.resolved_at.map(|dt| dt.to_rfc3339()),
             needs: self.frontmatter.needs.clone(),
             tags: self.frontmatter.tags.clone(),
             extra: self
                 .frontmatter
                 .extra
                 .iter()
-                .map(|(k, v)| (k.clone(), toml_to_json_value(v)))
+                .map(|(k, v)| (k.clone(), v.clone()))
                 .collect(),
         };
 
@@ -270,30 +250,17 @@ impl TaskNode {
     }
 }
 
-pub fn default_datetime() -> Datetime {
-    Datetime {
-        date: Some(toml_datetime::Date {
-            year: 1970,
-            month: 1,
-            day: 1,
-        }),
-        time: Some(toml_datetime::Time {
-            hour: 0,
-            minute: 0,
-            second: 0,
-            nanosecond: 0,
-        }),
-        offset: Some(toml_datetime::Offset::Z),
-    }
+pub fn default_datetime() -> DateTime<Utc> {
+    DateTime::<Utc>::UNIX_EPOCH
 }
 
 #[cfg(test)]
 #[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
+    use chrono::{DateTime, Utc};
     use std::convert::TryFrom;
     use std::mem;
-    use std::str::FromStr;
 
     #[test]
     fn test_task_status_deserialization() {
@@ -336,15 +303,15 @@ mod tests {
 
     #[test]
     fn test_task_frontmatter_deserialization() {
-        let toml_str = r#"
-id = "issue-123"
-title = "Implement Task Node"
-status = "todo"
-priority = 1
-created_at = 2026-02-21T17:00:00Z
-needs = ["issue-122"]
+        let yaml_str = r#"
+id: issue-123
+title: Implement Task Node
+status: todo
+priority: 1
+created_at: "2026-02-21T17:00:00Z"
+needs: ["issue-122"]
 "#;
-        let fm: TaskFrontmatter = toml::from_str(toml_str).expect("Valid task frontmatter");
+        let fm: TaskFrontmatter = serde_saphyr::from_str(yaml_str).expect("Valid task frontmatter");
         assert_eq!(fm.id, "issue-123");
         assert_eq!(fm.title, "Implement Task Node");
         assert_eq!(fm.status, TaskStatus::Todo);
@@ -376,15 +343,15 @@ needs = ["issue-122"]
 
     #[test]
     fn test_task_frontmatter_rejects_out_of_range_priority() {
-        let toml_str = r#"
-id = "issue-123"
-title = "Implement Task Node"
-status = "todo"
-priority = 100
-created_at = 2026-02-21T17:00:00Z
+        let yaml_str = r#"
+id: issue-123
+title: Implement Task Node
+status: todo
+priority: 100
+created_at: "2026-02-21T17:00:00Z"
 "#;
 
-        let err = toml::from_str::<TaskFrontmatter>(toml_str)
+        let err = serde_saphyr::from_str::<TaskFrontmatter>(yaml_str)
             .expect_err("Should reject out-of-range priority");
         assert!(
             err.to_string().contains("priority"),
@@ -393,7 +360,7 @@ created_at = 2026-02-21T17:00:00Z
     }
 
     #[test]
-    fn test_priority_toml_serializes_as_integer() {
+    fn test_priority_json_serializes_as_integer() {
         #[derive(Serialize)]
         struct Wrapper {
             priority: Priority,
@@ -402,8 +369,8 @@ created_at = 2026-02-21T17:00:00Z
         let wrapper = Wrapper {
             priority: Priority::try_from(5).expect("Priority 5 is valid"),
         };
-        let toml = toml::to_string(&wrapper).expect("Should serialize Wrapper");
-        assert_eq!(toml.trim(), "priority = 5");
+        let json = serde_json::to_value(&wrapper).expect("Should serialize Wrapper");
+        assert_eq!(json["priority"].as_u64(), Some(5));
     }
 
     #[test]
@@ -432,8 +399,9 @@ created_at = 2026-02-21T17:00:00Z
                 status: TaskStatus::Todo,
                 priority: None,
                 created_at: Some(
-                    Datetime::from_str("2026-03-01T00:00:00Z")
-                        .expect("created_at should parse"),
+                    DateTime::parse_from_rfc3339("2026-03-01T00:00:00Z")
+                        .expect("created_at should parse")
+                        .with_timezone(&Utc),
                 ),
                 modified_at: None,
                 resolved_at: None,

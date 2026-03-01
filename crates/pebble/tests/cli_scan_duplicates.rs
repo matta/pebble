@@ -11,12 +11,12 @@ fn test_list_json_includes_nested_markdown_tasks() {
     let nested = env.tasks_dir.join("a").join("b");
     fs::create_dir_all(&nested).expect("nested directory should be created");
 
-    let content = r#"+++
-id = "PROJ-NESTED"
-title = "Nested Task"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let content = r#"---
+id: "PROJ-NESTED"
+title: "Nested Task"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
     fs::write(nested.join("nested-task.md"), content).expect("nested-task.md should be written");
@@ -45,12 +45,12 @@ fn test_show_json_finds_nested_markdown_task() {
     let nested = env.tasks_dir.join("a").join("b");
     fs::create_dir_all(&nested).expect("nested directory should be created");
 
-    let content = r#"+++
-id = "PROJ-SHOW-NESTED"
-title = "Nested Show Task"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let content = r#"---
+id: "PROJ-SHOW-NESTED"
+title: "Nested Show Task"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
     fs::write(nested.join("show-task.md"), content).expect("show-task.md should be written");
@@ -73,28 +73,28 @@ fn test_list_json_skips_all_duplicate_ids_and_warns() {
     let nested = env.tasks_dir.join("nested");
     fs::create_dir_all(&nested).expect("nested directory should be created");
 
-    let dup_a = r#"+++
-id = "PROJ-DUP"
-title = "Duplicate A"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup_a = r#"---
+id: "PROJ-DUP"
+title: "Duplicate A"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
-    let dup_b = r#"+++
-id = "PROJ-DUP"
-title = "Duplicate B"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup_b = r#"---
+id: "PROJ-DUP"
+title: "Duplicate B"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
-    let unique = r#"+++
-id = "PROJ-UNIQUE"
-title = "Unique"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let unique = r#"---
+id: "PROJ-UNIQUE"
+title: "Unique"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
 
@@ -131,12 +131,12 @@ fn test_show_duplicate_id_is_treated_as_not_found() {
     let nested = env.tasks_dir.join("nested");
     fs::create_dir_all(&nested).expect("nested directory should be created");
 
-    let dup = r#"+++
-id = "PROJ-DUP-SHOW"
-title = "Duplicate"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup = r#"---
+id: "PROJ-DUP-SHOW"
+title: "Duplicate"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
     fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
@@ -162,12 +162,12 @@ fn test_update_duplicate_id_fails_with_runtime_error_and_empty_stdout() {
     let nested = env.tasks_dir.join("nested");
     fs::create_dir_all(&nested).expect("nested directory should be created");
 
-    let dup = r#"+++
-id = "PROJ-DUP-UPDATE"
-title = "Duplicate"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup = r#"---
+id: "PROJ-DUP-UPDATE"
+title: "Duplicate"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
     fs::write(env.tasks_dir.join("dup-a.md"), dup).expect("dup-a.md should be written");
@@ -200,20 +200,20 @@ fn test_show_unique_id_still_succeeds_when_other_duplicate_exists() {
     let nested = env.tasks_dir.join("nested");
     fs::create_dir_all(&nested).expect("nested directory should be created");
 
-    let dup = r#"+++
-id = "PROJ-DUP-OTHER"
-title = "Duplicate"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup = r#"---
+id: "PROJ-DUP-OTHER"
+title: "Duplicate"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
-    let unique = r#"+++
-id = "PROJ-UNIQUE-SHOW"
-title = "Unique"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let unique = r#"---
+id: "PROJ-UNIQUE-SHOW"
+title: "Unique"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
 
@@ -240,20 +240,20 @@ fn test_duplicate_warning_mentions_every_file_for_each_duplicate_id() {
     fs::create_dir_all(&nested_a).expect("nested-a directory should be created");
     fs::create_dir_all(&nested_b).expect("nested-b directory should be created");
 
-    let dup_one = r#"+++
-id = "PROJ-DUP-ONE"
-title = "Duplicate One"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup_one = r#"---
+id: "PROJ-DUP-ONE"
+title: "Duplicate One"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
-    let dup_two = r#"+++
-id = "PROJ-DUP-TWO"
-title = "Duplicate Two"
-status = "todo"
-created_at = 2024-01-01T00:00:00Z
-+++
+    let dup_two = r#"---
+id: "PROJ-DUP-TWO"
+title: "Duplicate Two"
+status: "todo"
+created_at: "2024-01-01T00:00:00Z"
+---
 Body
 "#;
 
