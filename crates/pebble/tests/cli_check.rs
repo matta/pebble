@@ -1,10 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use assert_cmd::Command;
-use assert_cmd::cargo_bin;
 use predicates::prelude::*;
 use serde_json::Value;
 use std::fs;
-use std::path::Path;
 use std::process::Output;
 
 mod support;
@@ -38,9 +36,8 @@ impl CheckMode {
 
 const CHECK_MODES: [CheckMode; 2] = [CheckMode::Strict, CheckMode::WarnOnly];
 
-fn run_check(mode: CheckMode, root: &Path, json: bool) -> Output {
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(root);
+fn run_check(mode: CheckMode, env: &TestEnv, json: bool) -> Output {
+    let mut cmd = env.pebble();
     mode.apply_args(&mut cmd);
     if json {
         cmd.arg("--json");
@@ -203,7 +200,7 @@ fn test_check_modes_healthy_human_output() {
         let env = setup_test_env();
         setup_healthy_graph(&env);
 
-        let output = run_check(mode, &env.root, false);
+        let output = run_check(mode, &env, false);
         assert!(output.status.success(), "mode {}", mode.label());
         assert_eq!(stdout_text(&output), "Graph is healthy. No issues found.\n");
         assert_eq!(stderr_text(&output), "");
@@ -214,11 +211,11 @@ fn test_check_modes_healthy_human_output() {
 fn test_check_modes_healthy_json_output_is_identical() {
     let env_warn = setup_test_env();
     setup_healthy_graph(&env_warn);
-    let warn_output = run_check(CheckMode::WarnOnly, &env_warn.root, true);
+    let warn_output = run_check(CheckMode::WarnOnly, &env_warn, true);
 
     let env_strict = setup_test_env();
     setup_healthy_graph(&env_strict);
-    let strict_output = run_check(CheckMode::Strict, &env_strict.root, true);
+    let strict_output = run_check(CheckMode::Strict, &env_strict, true);
 
     assert!(warn_output.status.success());
     assert!(strict_output.status.success());
@@ -244,7 +241,7 @@ fn test_check_modes_unknown_keys_human_output() {
         let env = setup_test_env();
         setup_unknown_keys_graph(&env);
 
-        let output = run_check(mode, &env.root, false);
+        let output = run_check(mode, &env, false);
         assert_issue_exit(mode, &output);
         assert_eq!(stdout_text(&output), "");
         assert_issue_stderr(
@@ -265,7 +262,7 @@ fn test_check_modes_dangling_need_human_output() {
         let env = setup_test_env();
         setup_dangling_need_graph(&env);
 
-        let output = run_check(mode, &env.root, false);
+        let output = run_check(mode, &env, false);
         assert_issue_exit(mode, &output);
         assert_eq!(stdout_text(&output), "");
         assert_issue_stderr(
@@ -283,7 +280,7 @@ fn test_check_modes_cycle_human_output() {
         let env = setup_test_env();
         setup_cycle_graph(&env);
 
-        let output = run_check(mode, &env.root, false);
+        let output = run_check(mode, &env, false);
         assert_issue_exit(mode, &output);
         assert_eq!(stdout_text(&output), "");
         assert_issue_stderr(
@@ -301,7 +298,7 @@ fn test_check_modes_missing_created_at_human_output() {
         let env = setup_test_env();
         setup_missing_created_at_graph(&env);
 
-        let output = run_check(mode, &env.root, false);
+        let output = run_check(mode, &env, false);
         assert_issue_exit(mode, &output);
         assert_eq!(stdout_text(&output), "");
         assert_issue_stderr(
@@ -317,11 +314,11 @@ fn test_check_modes_missing_created_at_human_output() {
 fn test_check_modes_issue_json_payload_is_identical() {
     let env_warn = setup_test_env();
     setup_unknown_keys_graph(&env_warn);
-    let warn_output = run_check(CheckMode::WarnOnly, &env_warn.root, true);
+    let warn_output = run_check(CheckMode::WarnOnly, &env_warn, true);
 
     let env_strict = setup_test_env();
     setup_unknown_keys_graph(&env_strict);
-    let strict_output = run_check(CheckMode::Strict, &env_strict.root, true);
+    let strict_output = run_check(CheckMode::Strict, &env_strict, true);
 
     assert!(warn_output.status.success());
     assert_eq!(strict_output.status.code(), Some(1));
@@ -347,9 +344,8 @@ fn test_check_modes_issue_json_payload_is_identical() {
 fn test_legacy_doctor_command_is_no_longer_available() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(&env.root)
-        .arg("doctor")
+    let mut cmd = env.pebble();
+    cmd.arg("doctor")
         .assert()
         .failure()
         .code(2)
@@ -360,9 +356,8 @@ fn test_legacy_doctor_command_is_no_longer_available() {
 fn test_legacy_fix_command_is_no_longer_available() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(&env.root)
-        .arg("fix")
+    let mut cmd = env.pebble();
+    cmd.arg("fix")
         .assert()
         .failure()
         .code(2)
@@ -373,9 +368,8 @@ fn test_legacy_fix_command_is_no_longer_available() {
 fn test_check_warn_only_and_fix_are_mutually_exclusive() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(&env.root)
-        .args(["check", "--warn-only", "--fix"])
+    let mut cmd = env.pebble();
+    cmd.args(["check", "--warn-only", "--fix"])
         .assert()
         .failure()
         .code(2)

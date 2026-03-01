@@ -11,13 +11,25 @@ pub struct TestEnv {
     #[allow(dead_code)]
     dir: TempDir,
     /// Root directory of the temporary test workspace.
+    #[allow(dead_code)]
     pub root: PathBuf,
     /// Tasks directory within the temporary workspace.
     #[allow(dead_code)]
     pub tasks_dir: PathBuf,
 }
 
+impl TestEnv {
+    /// Returns a pre-configured `assert_cmd::Command` for the pebble CLI.
+    #[allow(dead_code)]
+    pub fn pebble(&self) -> assert_cmd::Command {
+        let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+        cmd.current_dir(&self.root);
+        cmd
+    }
+}
+
 /// Create a temp Pebble project with a config and empty tasks dir.
+#[allow(dead_code)]
 pub fn setup_test_env() -> TestEnv {
     let dir = tempfile::tempdir().expect("temp directory should be created");
     let root = dir.path().to_path_buf();
