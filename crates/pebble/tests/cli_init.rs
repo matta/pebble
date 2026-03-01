@@ -25,12 +25,16 @@ fn test_init_generates_useful_agents_md() {
         "AGENTS.md should mention pebble. Got: {agents_content}"
     );
     assert!(
-        agents_content.contains("--help"),
-        "AGENTS.md should point agents to --help. Got: {agents_content}"
+        agents_content.contains("--json"),
+        "AGENTS.md should recommend --json output for agent workflows. Got: {agents_content}"
     );
     assert!(
-        agents_content.contains("task"),
-        "AGENTS.md should mention task tracking. Got: {agents_content}"
+        agents_content.contains("pebble next --json"),
+        "AGENTS.md should include next-task workflow guidance. Got: {agents_content}"
+    );
+    assert!(
+        agents_content.contains("docs/pebble/"),
+        "AGENTS.md should mention configured task storage path. Got: {agents_content}"
     );
 }
 
