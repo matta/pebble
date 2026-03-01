@@ -3,6 +3,8 @@ mod support;
 
 use serde_json::Value;
 use std::fs;
+use std::thread;
+use std::time::Duration;
 use support::{setup_test_env, write_task};
 
 #[test]
@@ -233,11 +235,17 @@ fn test_update_no_changes_does_not_modify_disk() {
 
     let path_x = env.tasks_dir.join("X.md");
     let path_y = env.tasks_dir.join("Y.md");
-    let initial_mtime_x = fs::metadata(&path_x).expect("mtime x").modified().expect("mtime x mod");
-    let initial_mtime_y = fs::metadata(&path_y).expect("mtime y").modified().expect("mtime y mod");
+    let initial_mtime_x = fs::metadata(&path_x)
+        .expect("mtime x")
+        .modified()
+        .expect("mtime x mod");
+    let initial_mtime_y = fs::metadata(&path_y)
+        .expect("mtime y")
+        .modified()
+        .expect("mtime y mod");
 
     // Wait for mtime resolution
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    thread::sleep(Duration::from_millis(100));
 
     // Update X with no changes (except --blocks Y, which only affects Y)
     let output = env
@@ -251,7 +259,10 @@ fn test_update_no_changes_does_not_modify_disk() {
     let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
 
     // X should NOT have changed on disk
-    let final_mtime_x = fs::metadata(&path_x).expect("mtime x").modified().expect("mtime x mod");
+    let final_mtime_x = fs::metadata(&path_x)
+        .expect("mtime x")
+        .modified()
+        .expect("mtime x mod");
     assert_eq!(
         initial_mtime_x, final_mtime_x,
         "Task X should not be modified on disk if no fields changed"
@@ -260,10 +271,16 @@ fn test_update_no_changes_does_not_modify_disk() {
     // X's JSON output should NOT have modified_at (since it wasn't modified)
     // Wait, let's check if the JSON output includes modified_at from the original file.
     // write_task doesn't set modified_at.
-    assert!(json["modified_at"].is_null(), "modified_at should not be set if no change occurred");
+    assert!(
+        json["modified_at"].is_null(),
+        "modified_at should not be set if no change occurred"
+    );
 
     // Y SHOULD have changed on disk
-    let final_mtime_y = fs::metadata(&path_y).expect("mtime y").modified().expect("mtime y mod");
+    let final_mtime_y = fs::metadata(&path_y)
+        .expect("mtime y")
+        .modified()
+        .expect("mtime y mod");
     assert!(
         final_mtime_y > initial_mtime_y,
         "Task Y SHOULD be modified on disk because it now 'needs' X"
@@ -271,5 +288,9 @@ fn test_update_no_changes_does_not_modify_disk() {
 
     // Verify Y actually needs X
     let content_y = fs::read_to_string(&path_y).expect("read y");
-    assert!(content_y.contains("needs:\n  - X") || content_y.contains("needs: [X]") || content_y.contains("needs: [\"X\"]"));
+    assert!(
+        content_y.contains("needs:\n  - X")
+            || content_y.contains("needs: [X]")
+            || content_y.contains("needs: [\"X\"]")
+    );
 }

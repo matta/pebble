@@ -150,15 +150,15 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
 
     if let Some(b) = mutations.body {
         node.body = b;
-    } else if let Some(a) = mutations.append_body {
-        if !a.is_empty() {
-            if node.body.trim().is_empty() {
-                node.body = a;
-            } else {
-                node.body = node.body.trim_end().to_string();
-                node.body.push_str("\n\n");
-                node.body.push_str(&a);
-            }
+    } else if let Some(a) = mutations.append_body
+        && !a.is_empty()
+    {
+        if node.body.trim().is_empty() {
+            node.body = a;
+        } else {
+            node.body = node.body.trim_end().to_string();
+            node.body.push_str("\n\n");
+            node.body.push_str(&a);
         }
     }
 
