@@ -173,10 +173,79 @@ pub struct TaskNode {
     pub body: String,
 }
 
+#[derive(Serialize)]
+struct YamlTaskFrontmatter {
+    id: String,
+    title: String,
+    status: TaskStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority: Option<Priority>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    created_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    modified_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    resolved_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    needs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    tags: Vec<String>,
+    #[serde(flatten)]
+    extra: HashMap<String, serde_json::Value>,
+}
+
+fn toml_to_json_value(value: &toml::Value) -> serde_json::Value {
+    match value {
+        toml::Value::String(v) => serde_json::Value::String(v.clone()),
+        toml::Value::Integer(v) => serde_json::Value::Number((*v).into()),
+        toml::Value::Float(v) => serde_json::Number::from_f64(*v)
+            .map_or(serde_json::Value::Null, serde_json::Value::Number),
+        toml::Value::Boolean(v) => serde_json::Value::Bool(*v),
+        toml::Value::Datetime(v) => serde_json::Value::String(v.to_string()),
+        toml::Value::Array(values) => {
+            serde_json::Value::Array(values.iter().map(toml_to_json_value).collect())
+        }
+        toml::Value::Table(entries) => serde_json::Value::Object(
+            entries
+                .iter()
+                .map(|(k, v)| (k.clone(), toml_to_json_value(v)))
+                .collect(),
+        ),
+    }
+}
+
 impl TaskNode {
     fn get_content_for_disk(&self) -> Result<String> {
-        let fm_toml = toml::to_string(&self.frontmatter)?;
-        let mut content = format!("+++\n{}+++\n{}", fm_toml, self.body);
+        let yaml_frontmatter = YamlTaskFrontmatter {
+            id: self.frontmatter.id.clone(),
+            title: self.frontmatter.title.clone(),
+            status: self.frontmatter.status,
+            priority: self.frontmatter.priority,
+            created_at: self.frontmatter.created_at.map(|dt| dt.to_string()),
+            modified_at: self.frontmatter.modified_at.map(|dt| dt.to_string()),
+            resolved_at: self.frontmatter.resolved_at.map(|dt| dt.to_string()),
+            needs: self.frontmatter.needs.clone(),
+            tags: self.frontmatter.tags.clone(),
+            extra: self
+                .frontmatter
+                .extra
+                .iter()
+                .map(|(k, v)| (k.clone(), toml_to_json_value(v)))
+                .collect(),
+        };
+
+        let mut yaml_payload = serde_saphyr::to_string(&yaml_frontmatter)?;
+        if let Some(stripped) = yaml_payload.strip_prefix("---\n") {
+            yaml_payload = stripped.to_string();
+        }
+        if let Some(stripped) = yaml_payload.strip_suffix("...\n") {
+            yaml_payload = stripped.to_string();
+        }
+        if !yaml_payload.ends_with('\n') {
+            yaml_payload.push('\n');
+        }
+
+        let mut content = format!("---\n{}---\n{}", yaml_payload, self.body);
         if !content.ends_with('\n') {
             content.push('\n');
         }
