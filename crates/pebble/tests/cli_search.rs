@@ -88,17 +88,20 @@ fn test_search_uses_default_list_ordering() {
     assert_eq!(ids, vec!["PROJ-A", "PROJ-B"]);
 }
 
-#[test]
-fn test_search_no_match() {
+fn assert_search_no_match(json: bool) {
     let env = setup_test_env();
 
     write_task(&env.tasks_dir, "PROJ-A", "Task A", "todo");
 
-    let output = Command::new(cargo_bin!("pebble"))
-        .current_dir(&env.root)
-        .args(["search", "nonexistent-query", "--dir", "tasks"])
-        .output()
-        .expect("pebble command should execute");
+    let mut cmd = Command::new(cargo_bin!("pebble"));
+    cmd.current_dir(&env.root)
+        .args(["search", "nonexistent-query", "--dir", "tasks"]);
+
+    if json {
+        cmd.arg("--json");
+    }
+
+    let output = cmd.output().expect("pebble command should execute");
 
     assert!(!output.status.success());
     assert_eq!(output.status.code(), Some(1));
@@ -108,20 +111,11 @@ fn test_search_no_match() {
 }
 
 #[test]
+fn test_search_no_match() {
+    assert_search_no_match(false);
+}
+
+#[test]
 fn test_search_no_match_json() {
-    let env = setup_test_env();
-
-    write_task(&env.tasks_dir, "PROJ-A", "Task A", "todo");
-
-    let output = Command::new(cargo_bin!("pebble"))
-        .current_dir(&env.root)
-        .args(["search", "nonexistent-query", "--json", "--dir", "tasks"])
-        .output()
-        .expect("pebble command should execute");
-
-    assert!(!output.status.success());
-    assert_eq!(output.status.code(), Some(1));
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("No tasks found matching query 'nonexistent-query'"));
-    assert!(output.stdout.is_empty());
+    assert_search_no_match(true);
 }
