@@ -1,12 +1,12 @@
-+++
-id = "pebl-i0eszfcxas"
-title = "RFC005-9 Docs and contract sync"
-status = "todo"
-priority = 0
-created_at = 2026-03-01T16:43:09.597888821+00:00
-needs = ["pebl-1cq47q454u"]
-tags = ["planning", "rfc005"]
-+++
+---
+id: "pebl-i0eszfcxas"
+title: "RFC005-9 Docs and contract sync"
+status: "todo"
+priority: 0
+created_at: "2026-03-01T16:43:09.597888821+00:00"
+needs: ["pebl-1cq47q454u"]
+tags: ["planning", "rfc005"]
+---
 Execution Note (Manual Tracking During YAML Migration):
 - If this task is started before RFC005-8 completion, continue manual frontmatter state edits (`status`, `modified_at`, `resolved_at`) in task files.
 - Once RFC005-8 completes successfully, switch back to normal `cargo pebble` task updates.

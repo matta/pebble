@@ -1,12 +1,14 @@
-+++
-id = "pebl-41j62swwnm"
-title = "RFC005-7 Migration script (dry run + backup plan)"
-status = "todo"
-priority = 0
-created_at = 2026-03-01T16:42:26.492454988+00:00
-needs = ["pebl-jfi8jsyoai"]
-tags = ["planning", "rfc005"]
-+++
+---
+id: "pebl-41j62swwnm"
+title: "RFC005-7 Migration script (dry run + backup plan)"
+status: "done"
+priority: 0
+created_at: "2026-03-01T16:42:26.492454988+00:00"
+modified_at: "2026-03-01T17:17:10.797943292+00:00"
+resolved_at: "2026-03-01T17:17:10.797943292+00:00"
+needs: ["pebl-jfi8jsyoai"]
+tags: ["planning", "rfc005"]
+---
 Execution Note (Manual Tracking During YAML Migration):
 - `cargo pebble` task reads are temporarily non-functional until RFC005-8 converts all `docs/pebble/*.md` files to YAML frontmatter.
 - During this window, mark task state changes by directly editing frontmatter fields in task files (`status`, `modified_at`, `resolved_at`) instead of using `cargo pebble update`.
@@ -25,3 +27,15 @@ Acceptance Criteria:
 - Script exists in-repo and can run in dry-run mode.
 - Dry-run output clearly lists files that would change.
 - No task files are modified in this step.
+
+Script:
+- `scripts/rfc005_convert_frontmatter.py`
+
+Invocation commands:
+1. Dry run (report only): `scripts/rfc005_convert_frontmatter.py --glob 'docs/pebble/*.md'`
+2. Write conversion (RFC005-8 step): `scripts/rfc005_convert_frontmatter.py --glob 'docs/pebble/*.md' --write`
+
+Dry-run evidence:
+- Ran: `scripts/rfc005_convert_frontmatter.py --glob 'docs/pebble/*.md'`
+- Summary: `mode=dry-run matched=54 changed=54 skipped=0`
+- Output listed each file as `WOULD_CONVERT ...`; no files were written.

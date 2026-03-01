@@ -1,14 +1,14 @@
-+++
-id = "pebl-zjpn6fbfmp"
-title = "RFC005-2 Spec-to-code inventory"
-status = "done"
-priority = 0
-created_at = 2026-03-01T16:39:17.452093522+00:00
-modified_at = 2026-03-01T16:53:15.4062932+00:00
-resolved_at = 2026-03-01T16:53:15.406282202+00:00
-needs = ["pebl-urd2fpbmfk"]
-tags = ["planning", "rfc005"]
-+++
+---
+id: "pebl-zjpn6fbfmp"
+title: "RFC005-2 Spec-to-code inventory"
+status: "done"
+priority: 0
+created_at: "2026-03-01T16:39:17.452093522+00:00"
+modified_at: "2026-03-01T16:53:15.4062932+00:00"
+resolved_at: "2026-03-01T16:53:15.406282202+00:00"
+needs: ["pebl-urd2fpbmfk"]
+tags: ["planning", "rfc005"]
+---
 Goal:
 Create an explicit file-level inventory so implementation work is mechanical.
 

@@ -1,11 +1,11 @@
-+++
-id = "pebl-549tht8znx"
-title = "datetime fields in JSON output leak TOML implementation detail"
-status = "todo"
-created_at = 2026-02-25T03:43:10.719708+00:00
-needs = []
-tags = []
-+++
+---
+id: "pebl-549tht8znx"
+title: "datetime fields in JSON output leak TOML implementation detail"
+status: "todo"
+created_at: "2026-02-25T03:43:10.719708+00:00"
+needs: []
+tags: []
+---
 Currently, `pebl` emits datetime fields in JSON output as TOML internal wrapper objects:
 
 ```json
