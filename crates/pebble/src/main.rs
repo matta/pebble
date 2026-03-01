@@ -180,10 +180,9 @@ fn main() -> ExitCode {
 
         if err.is::<NotFoundError>() {
             eprintln!("{}", err);
-            return ExitCode::from(1);
+        } else {
+            eprintln!("Runtime error: {:?}", err);
         }
-
-        eprintln!("Runtime error: {:?}", err);
         return ExitCode::from(1);
     }
     ExitCode::SUCCESS
