@@ -62,6 +62,27 @@ Pebble task tracking is the execution mechanism for Pebble's own development, wi
 4. **Policy vs graph**:
     - Process requirements (TDD, gauntlets, push gates) are policy gates and must be followed even when not represented as `needs`.
 
+### Temporary RFC005 Migration Override (Highest Priority)
+This override is active during the YAML frontmatter migration window.
+
+1. **Why override exists**:
+    - Read-path behavior is now YAML-only while many repository task files are still TOML frontmatter.
+    - As a result, `cargo pebble next` and the `next-pebble` skill are not authoritative for prioritization until migration conversion is complete.
+2. **What is highest priority**:
+    - Treat the RFC005 chain as the most important work in the repository.
+    - Source of truth: `docs/pebble/plan-rfc-005-yaml-frontmatter-migration.md`.
+    - Execute remaining RFC005 tasks strictly in listed order unless the operator explicitly reprioritizes.
+3. **How to pick the next task while override is active**:
+    - Read RFC005 task files directly in `docs/pebble/`.
+    - Determine readiness from frontmatter `status` + `needs` manually.
+    - Do not rely on `cargo pebble next` output during this window.
+4. **How to mark progress while override is active**:
+    - Update task state by editing task-file frontmatter directly (`status`, `modified_at`, `resolved_at`).
+    - Keep `implementation_plan.md` and RFC005 parent-task checklist synced to match manual state changes.
+5. **When override ends**:
+    - End this override immediately after RFC005-8 completes and all `docs/pebble/*.md` files are converted to YAML frontmatter.
+    - After that point, resume normal `cargo pebble` and `next-pebble` driven task selection.
+
 ### Adaptive Task Decomposition Policy
 Agents must avoid unnecessary task explosion while still exposing meaningful graph structure.
 

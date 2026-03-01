@@ -7,6 +7,11 @@ created_at = 2026-03-01T16:42:50.803369062+00:00
 needs = ["pebl-41j62swwnm"]
 tags = ["planning", "rfc005"]
 +++
+Execution Note (Manual Tracking During YAML Migration):
+- This task is the re-enable point for normal Pebble operations.
+- Until this task completes, task status updates must be done by editing frontmatter directly in `docs/pebble/*.md`.
+- After this task completes and all task files are YAML-frontmatter, resume normal `cargo pebble` command-based task tracking.
+
 Goal:
 Run the one-off conversion on all existing task files and validate the result set.
 

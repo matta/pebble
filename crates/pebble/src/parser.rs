@@ -1,19 +1,81 @@
-use crate::models::{TaskFrontmatter, TaskNode};
+use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
+use std::str::FromStr;
+use toml_datetime::Datetime;
+
+#[derive(Debug, Deserialize)]
+struct YamlTaskFrontmatter {
+    id: String,
+    title: String,
+    status: TaskStatus,
+    priority: Option<Priority>,
+    created_at: Option<String>,
+    modified_at: Option<String>,
+    resolved_at: Option<String>,
+    #[serde(default)]
+    needs: Vec<String>,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(flatten)]
+    extra: HashMap<String, serde_json::Value>,
+}
+
+fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<Datetime>> {
+    value
+        .map(|raw| {
+            Datetime::from_str(&raw)
+                .map_err(|err| eyre!("Invalid '{}' datetime '{}': {}", field, raw, err))
+        })
+        .transpose()
+}
+
+fn json_to_toml_value(value: serde_json::Value) -> Result<toml::Value> {
+    match value {
+        serde_json::Value::Null => {
+            Err(eyre!("Unsupported null in YAML frontmatter extra fields"))
+        }
+        serde_json::Value::Bool(v) => Ok(toml::Value::Boolean(v)),
+        serde_json::Value::Number(v) => {
+            if let Some(i) = v.as_i64() {
+                Ok(toml::Value::Integer(i))
+            } else if let Some(f) = v.as_f64() {
+                Ok(toml::Value::Float(f))
+            } else {
+                Err(eyre!("Unsupported numeric value in YAML frontmatter"))
+            }
+        }
+        serde_json::Value::String(v) => Ok(toml::Value::String(v)),
+        serde_json::Value::Array(values) => Ok(toml::Value::Array(
+            values
+                .into_iter()
+                .map(json_to_toml_value)
+                .collect::<Result<Vec<_>>>()?,
+        )),
+        serde_json::Value::Object(map) => {
+            let mut table = toml::map::Map::new();
+            for (key, entry) in map {
+                table.insert(key, json_to_toml_value(entry)?);
+            }
+            Ok(toml::Value::Table(table))
+        }
+    }
+}
 
 /// Parses a Markdown file with TOML frontmatter into a [`TaskNode`].
 ///
-/// The file must start with a TOML frontmatter block delimited by `+++` on the first
-/// line and another `+++` on a subsequent line. The content after the second delimiter
+/// The file must start with a YAML frontmatter block delimited by `---` on the first
+/// line and another `---` on a subsequent line. The content after the second delimiter
 /// is treated as the task body.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// * The file does not start with `+++`.
-/// * The closing `+++` delimiter is missing.
-/// * The TOML content cannot be parsed into [`TaskFrontmatter`].
+/// * The file does not start with `---`.
+/// * The closing `---` delimiter is missing.
+/// * The YAML content cannot be parsed into [`TaskFrontmatter`].
 ///
 /// # Examples
 ///
@@ -21,12 +83,12 @@ use std::path::Path;
 /// # use std::path::Path;
 /// # use pebble::parser::parse_task_file;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let content = r#"+++
-/// id = "issue-1"
-/// title = "Fix bug"
-/// status = "todo"
-/// created_at = 2023-01-01T00:00:00Z
-/// +++
+/// let content = r#"---
+/// id: issue-1
+/// title: Fix bug
+/// status: todo
+/// created_at: 2023-01-01T00:00:00Z
+/// ---
 ///
 /// Description of the bug."#;
 ///
@@ -40,29 +102,47 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let lines: Vec<&str> = content.lines().collect();
 
     // Frontmatter must start on the first line.
-    if lines.is_empty() || lines[0].trim() != "+++" {
+    if lines.is_empty() || lines[0].trim() != "---" {
         return Err(eyre!(
-            "Missing or invalid TOML frontmatter: file must start with '+++'"
+            "Missing or invalid YAML frontmatter: file must start with '---'"
         ));
     }
 
     // Find the end of the frontmatter.
     let mut end_idx = None;
     for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim() == "+++" {
+        if line.trim() == "---" {
             end_idx = Some(i);
             break;
         }
     }
 
-    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '+++' for TOML frontmatter"))?;
+    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '---' for YAML frontmatter"))?;
 
     // Extract frontmatter string.
-    let toml_str = lines[1..end_idx].join("\n");
-    let frontmatter: TaskFrontmatter =
-        toml::from_str(&toml_str).map_err(|e| eyre!("Failed to parse TOML frontmatter: {}", e))?;
+    let yaml_str = lines[1..end_idx].join("\n");
+    let raw_frontmatter: YamlTaskFrontmatter = serde_saphyr::from_str(&yaml_str)
+        .map_err(|e| eyre!("Failed to parse YAML frontmatter: {}", e))?;
 
-    // Extract body, stripping leading newlines after the closing '+++'.
+    let mut extra = HashMap::new();
+    for (key, value) in raw_frontmatter.extra {
+        extra.insert(key, json_to_toml_value(value)?);
+    }
+
+    let frontmatter = TaskFrontmatter {
+        id: raw_frontmatter.id,
+        title: raw_frontmatter.title,
+        status: raw_frontmatter.status,
+        priority: raw_frontmatter.priority,
+        created_at: parse_optional_datetime(raw_frontmatter.created_at, "created_at")?,
+        modified_at: parse_optional_datetime(raw_frontmatter.modified_at, "modified_at")?,
+        resolved_at: parse_optional_datetime(raw_frontmatter.resolved_at, "resolved_at")?,
+        needs: raw_frontmatter.needs,
+        tags: raw_frontmatter.tags,
+        extra,
+    };
+
+    // Extract body, stripping leading newlines after the closing '---'.
     let body_lines = &lines[end_idx + 1..];
 
     // We want to reconstruct the body. We can use `join("\n")`,
@@ -95,7 +175,7 @@ mod tests {
 id: issue-1
 title: Test
 status: todo
-created_at: 2026-02-21T17:00:00Z
+created_at: "2026-02-21T17:00:00Z"
 ---
 
 # Body
@@ -123,7 +203,7 @@ This is the body.
 id: issue-1
 title: Test
 status: todo
-created_at: 2026-02-21T17:00:00Z
+created_at: "2026-02-21T17:00:00Z"
 "#;
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is unclosed");
@@ -136,7 +216,7 @@ created_at: 2026-02-21T17:00:00Z
 id: issue-1
 title: Test
 status: invalid_status
-created_at: 2026-02-21T17:00:00Z
+created_at: "2026-02-21T17:00:00Z"
 ---"#;
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is invalid YAML");

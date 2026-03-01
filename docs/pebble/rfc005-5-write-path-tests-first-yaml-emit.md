@@ -7,6 +7,10 @@ created_at = 2026-03-01T16:41:38.740487853+00:00
 needs = ["pebl-gr537c9can"]
 tags = ["planning", "rfc005"]
 +++
+Execution Note (Manual Tracking During YAML Migration):
+- `cargo pebble` task reads are temporarily non-functional until RFC005-8 converts all `docs/pebble/*.md` files to YAML frontmatter.
+- During this window, mark task state changes by directly editing frontmatter fields in task files (`status`, `modified_at`, `resolved_at`) instead of using `cargo pebble update`.
+
 Goal:
 Add failing tests for write commands to define YAML output before implementation changes.
 

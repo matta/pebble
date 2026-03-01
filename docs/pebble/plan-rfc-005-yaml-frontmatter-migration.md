@@ -15,11 +15,17 @@ Execution Policy:
 - Store baseline/parity JSON evidence in `artifacts/rfc005-parity/` so it is durable and git-tracked.
 - If parity evidence files are deleted later, remove them with `git rm artifacts/rfc005-parity/*.json`.
 
+Temporary Tracking Mode (Required Until RFC005-8 Completes):
+- Because read-path behavior is now YAML-only and repository task files are still largely TOML frontmatter, `cargo pebble` task queries/updates are temporarily non-functional for this repo.
+- During this period, update task status directly in markdown frontmatter (`status`, `modified_at`, `resolved_at`) rather than using `cargo pebble update`.
+- Keep frontmatter format unchanged per file until the dedicated conversion step (RFC005-8) runs.
+- Immediately after RFC005-8 completes and all task files are YAML-frontmatter, return to normal `cargo pebble` task operations.
+
 Child Tasks (Execution Order):
-- [ ] RFC005-1 Baseline parity snapshot -> `pebl-urd2fpbmfk`
-- [ ] RFC005-2 Spec-to-code inventory -> `pebl-zjpn6fbfmp`
-- [ ] RFC005-3 Read-path tests first (YAML-only detection) -> `pebl-rm0kn1fvli`
-- [ ] RFC005-4 Implement YAML read path -> `pebl-gr537c9can`
+- [x] RFC005-1 Baseline parity snapshot -> `pebl-urd2fpbmfk`
+- [x] RFC005-2 Spec-to-code inventory -> `pebl-zjpn6fbfmp`
+- [x] RFC005-3 Read-path tests first (YAML-only detection) -> `pebl-rm0kn1fvli`
+- [x] RFC005-4 Implement YAML read path -> `pebl-gr537c9can`
 - [ ] RFC005-5 Write-path tests first (YAML emit) -> `pebl-ombr9kv475`
 - [ ] RFC005-6 Implement YAML write path -> `pebl-jfi8jsyoai`
 - [ ] RFC005-7 Migration script (dry run + backup plan) -> `pebl-41j62swwnm`

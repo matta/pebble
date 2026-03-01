@@ -7,6 +7,10 @@ created_at = 2026-03-01T16:43:25.890222517+00:00
 needs = ["pebl-i0eszfcxas"]
 tags = ["planning", "rfc005"]
 +++
+Execution Note (Manual Tracking During YAML Migration):
+- If RFC005-8 is not yet complete, update this task status manually in frontmatter.
+- After RFC005-8 conversion completes, use `cargo pebble` commands normally for parity verification steps and final status updates.
+
 Goal:
 Prove the migration preserved command-visible task information while switching to YAML frontmatter.
 

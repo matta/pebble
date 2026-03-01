@@ -236,7 +236,7 @@ fn test_load_from_dir_prefers_yaml_frontmatter_and_ignores_non_yaml() {
 id: YAML-1
 title: YAML task
 status: todo
-created_at: 2026-02-21T17:00:00Z
+created_at: "2026-02-21T17:00:00Z"
 ---
 Body
 "#;
