@@ -206,12 +206,7 @@ impl TaskNode {
             resolved_at: self.frontmatter.resolved_at.map(|dt| dt.to_rfc3339()),
             needs: self.frontmatter.needs.clone(),
             tags: self.frontmatter.tags.clone(),
-            extra: self
-                .frontmatter
-                .extra
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
+            extra: self.frontmatter.extra.clone(),
         };
 
         let mut yaml_payload = serde_saphyr::to_string(&yaml_frontmatter)?;
