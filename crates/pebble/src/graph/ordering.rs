@@ -49,9 +49,15 @@ pub(super) fn default_order<'a>(
     let id_to_node = build_id_to_node(&nodes);
     let adjacency = build_adjacency(&ids, &id_to_node);
     let blocking_counts = compute_blocking_counts(graph, &ids);
+    let effective_priorities = compute_effective_priorities(graph, &ids);
 
     let scc_data = compute_sccs(&ids, adjacency.clone());
-    let scc_keys = scc_keys(&scc_data.sccs, &id_to_node, &blocking_counts)?;
+    let scc_keys = scc_keys(
+        &scc_data.sccs,
+        &id_to_node,
+        &blocking_counts,
+        &effective_priorities,
+    )?;
     let ordered_sccs = topo_order_sccs(&scc_data.sccs, &scc_data.index, &adjacency, &scc_keys);
 
     let mut ordered_nodes: Vec<&TaskNode> = Vec::with_capacity(ids.len());
@@ -63,15 +69,23 @@ pub(super) fn default_order<'a>(
     Ok(ordered_nodes)
 }
 
-/// Builds a [`NodeKey`] for a single task, using the pre-computed blocking count.
-fn node_key(node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKey {
+/// Builds a [`NodeKey`] for a single task, using pre-computed scoring keys.
+fn node_key(
+    node: &TaskNode,
+    blocking_counts: &HashMap<String, usize>,
+    effective_priorities: &HashMap<String, u32>,
+) -> NodeKey {
     let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
-    let priority = node.frontmatter.priority.map(u32::from).unwrap_or(u32::MAX);
+    let base_priority = node.frontmatter.priority.map(u32::from).unwrap_or(100);
+    let effective_priority = *effective_priorities
+        .get(&node.frontmatter.id)
+        .unwrap_or(&base_priority);
     let created_at = node.frontmatter.created_at.unwrap_or_else(default_datetime);
 
     NodeKey {
+        effective_priority,
+        base_priority,
         blocking_count: Reverse(blocking_count),
-        priority,
         created_at,
         id: node.frontmatter.id.clone(),
     }
@@ -137,17 +151,27 @@ fn compute_blocking_counts(graph: &TaskGraph, ids: &[String]) -> HashMap<String,
     counts
 }
 
+/// Computes graph-wide effective priority for each ID in `ids`.
+fn compute_effective_priorities(graph: &TaskGraph, ids: &[String]) -> HashMap<String, u32> {
+    let mut priorities = HashMap::new();
+    for id in ids {
+        priorities.insert(id.clone(), graph.effective_priority_for_task(id));
+    }
+    priorities
+}
+
 /// Returns the representative [`NodeKey`] for each SCC (the minimum key among its members).
 fn scc_keys(
     sccs: &[Vec<String>],
     id_to_node: &HashMap<String, &TaskNode>,
     blocking_counts: &HashMap<String, usize>,
+    effective_priorities: &HashMap<String, u32>,
 ) -> Result<Vec<NodeKey>> {
     sccs.iter()
         .map(|scc| {
             scc.iter()
                 .filter_map(|id| id_to_node.get(id))
-                .map(|node| node_key(node, blocking_counts))
+                .map(|node| node_key(node, blocking_counts, effective_priorities))
                 .min()
                 .ok_or_else(|| eyre!("Internal error: SCC must contain at least one node"))
         })

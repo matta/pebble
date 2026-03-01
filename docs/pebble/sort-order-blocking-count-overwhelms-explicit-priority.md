@@ -1,12 +1,14 @@
 ---
-id: "pebl-buDx2q"
+id: pebl-buDx2q
 title: "Sort order: blocking count overwhelms explicit priority"
-status: "todo"
-created_at: "2026-02-23T05:46:42.77611+00:00"
-needs: []
-tags: ["design", "sort"]
+status: done
+created_at: 2026-02-23T05:46:42.776110+00:00
+modified_at: 2026-03-01T23:22:51.870096+00:00
+resolved_at: 2026-03-01T23:22:51.870081+00:00
+tags:
+  - design
+  - sort
 ---
-
 ## Problem
 
 The current default sort order is:
