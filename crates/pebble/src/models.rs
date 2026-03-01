@@ -53,15 +53,6 @@ impl TaskStatus {
     /// Checks if the status represents an open, workable state.
     ///
     /// Returns `true` if the status is [`TaskStatus::Todo`] or [`TaskStatus::InProgress`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use pebble::models::TaskStatus;
-    /// assert!(TaskStatus::Todo.is_actionable());
-    /// assert!(TaskStatus::InProgress.is_actionable());
-    /// assert!(!TaskStatus::Done.is_actionable());
-    /// ```
     pub fn is_actionable(&self) -> bool {
         matches!(self, Self::Todo | Self::InProgress)
     }

@@ -61,7 +61,7 @@ impl Default for Config {
 /// let deeply_nested = root.join("some").join("deep").join("path");
 /// fs::create_dir_all(&deeply_nested)?;
 ///
-/// let found = find_project_root(&deeply_nested).unwrap();
+/// let found = find_project_root(&deeply_nested).expect("Should find project root");
 /// assert_eq!(found, root);
 /// # Ok(())
 /// # }
