@@ -1,16 +1,13 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-use assert_cmd::Command;
-use assert_cmd::cargo_bin;
 use std::fs;
-use std::path::Path;
 use std::process::Output;
 
 mod support;
 use support::{TestEnv, setup_test_env};
 
-fn run_fix(root: &Path, json: bool) -> Output {
-    let mut cmd = Command::new(cargo_bin!("pebble"));
-    cmd.current_dir(root).arg("check").arg("--fix");
+fn run_fix(env: &TestEnv, json: bool) -> Output {
+    let mut cmd = env.pebble();
+    cmd.arg("check").arg("--fix");
     if json {
         cmd.arg("--json");
     }
@@ -42,7 +39,7 @@ status = "todo"
 Body"#;
     write_file(&env, "A.md", content);
 
-    let output = run_fix(&env.root, false);
+    let output = run_fix(&env, false);
     assert!(
         output.status.success(),
         "fix should succeed even if it modifies files"
@@ -70,7 +67,7 @@ weird_key = "abc"
 Body"#;
     write_file(&env, "A.md", content);
 
-    let output = run_fix(&env.root, false);
+    let output = run_fix(&env, false);
     assert_eq!(output.status.code(), Some(1));
 
     let stderr = stderr_text(&output);
@@ -95,7 +92,7 @@ status = "todo"
 Body"#;
     write_file(&env, "A.md", content);
 
-    let output = run_fix(&env.root, true);
+    let output = run_fix(&env, true);
     assert!(output.status.success());
 
     let json: serde_json::Value =
@@ -121,7 +118,7 @@ weird_key = "abc"
 Body"#;
     write_file(&env, "A.md", content);
 
-    let output = run_fix(&env.root, true);
+    let output = run_fix(&env, true);
     assert_eq!(output.status.code(), Some(1));
 
     let json: serde_json::Value =
@@ -150,7 +147,7 @@ needs = ["MISSING_TASK"]
 Body"#;
     write_file(&env, "A.md", content);
 
-    let output = run_fix(&env.root, false);
+    let output = run_fix(&env, false);
     assert_eq!(output.status.code(), Some(1));
 
     let stderr = stderr_text(&output);
