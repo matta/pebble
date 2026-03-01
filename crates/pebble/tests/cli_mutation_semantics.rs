@@ -1,9 +1,9 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-mod support;
+pub mod support;
 
 use serde_json::Value;
 use std::fs;
-use std::thread;
+use std::thread::sleep;
 use std::time::Duration;
 use support::{setup_test_env, write_task};
 
@@ -245,7 +245,7 @@ fn test_update_no_changes_does_not_modify_disk() {
         .expect("mtime y mod");
 
     // Wait for mtime resolution
-    thread::sleep(Duration::from_millis(100));
+    sleep(Duration::from_millis(100));
 
     // Update X with no changes (except --blocks Y, which only affects Y)
     let output = env

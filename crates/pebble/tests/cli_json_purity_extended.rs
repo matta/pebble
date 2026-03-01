@@ -1,5 +1,5 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-mod support;
+pub mod support;
 
 use assert_cmd::cargo_bin;
 use serde_json::Value;

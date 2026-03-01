@@ -8,20 +8,15 @@ use tempfile::TempDir;
 
 /// Temp Pebble workspace with an initialized config and tasks directory.
 pub struct TestEnv {
-    // TODO(pebl-Vs0xNh): Refactor TestEnv ownership/usage so this dead_code allowance is unnecessary.
-    #[allow(dead_code)]
-    dir: TempDir,
+    _dir: TempDir,
     /// Root directory of the temporary test workspace.
-    #[allow(dead_code)]
     pub root: PathBuf,
     /// Tasks directory within the temporary workspace.
-    #[allow(dead_code)]
     pub tasks_dir: PathBuf,
 }
 
 impl TestEnv {
     /// Returns a pre-configured `assert_cmd::Command` for the pebble CLI.
-    #[allow(dead_code)]
     pub fn pebble(&self) -> Command {
         let mut cmd = Command::new(cargo_bin!());
         cmd.current_dir(&self.root);
@@ -30,7 +25,6 @@ impl TestEnv {
 }
 
 /// Create a temp Pebble project with a config and empty tasks dir.
-#[allow(dead_code)]
 pub fn setup_test_env() -> TestEnv {
     let dir = tempfile::tempdir().expect("temp directory should be created");
     let root = dir.path().to_path_buf();
@@ -50,7 +44,7 @@ pub fn setup_test_env() -> TestEnv {
     fs::create_dir(&tasks_dir).expect("tasks directory should be created");
 
     TestEnv {
-        dir,
+        _dir: dir,
         root,
         tasks_dir,
     }
@@ -75,8 +69,6 @@ Body
 }
 
 /// Write a simple task file with title equal to the id.
-// TODO(pebl-Vs0xNh): Remove this helper or expand usage so this dead_code allowance is unnecessary.
-#[allow(dead_code)]
 pub fn write_task_with_id(tasks_dir: &Path, id: &str) {
     write_task(tasks_dir, id, id, "todo");
 }

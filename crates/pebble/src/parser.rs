@@ -148,7 +148,7 @@ This is the body.
             .expect("Should parse valid task file");
         assert_eq!(node.frontmatter.id, "issue-1");
         assert_eq!(node.frontmatter.title, "Test");
-        assert_eq!(node.frontmatter.status, TaskStatus::Todo);
+        assert_eq!(node.frontmatter.status, TaskStatus::todo());
         assert_eq!(node.body, "# Body\nThis is the body.\n");
     }
 

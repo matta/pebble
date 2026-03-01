@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::fs;
 use std::process::Output;
 
-mod support;
+pub mod support;
 use support::{TestEnv, setup_test_env};
 
 #[derive(Clone, Copy, Debug)]

@@ -1,5 +1,5 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-mod support;
+pub mod support;
 
 use predicates::prelude::*;
 use std::fs;

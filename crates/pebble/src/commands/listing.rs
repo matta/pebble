@@ -1,5 +1,5 @@
 use crate::graph::TaskGraph;
-use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus};
+use crate::models::{ClosedStatus, LiveStatus, NotFoundError, Priority, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -127,10 +127,10 @@ fn sort_list_tasks<'a>(
     let min_priority = Priority::MIN;
     let status_rank = |status: &TaskStatus| -> u8 {
         match status {
-            TaskStatus::Todo => 0,
-            TaskStatus::InProgress => 1,
-            TaskStatus::Done => 2,
-            TaskStatus::Canceled => 3,
+            TaskStatus::Live(LiveStatus::Todo) => 0,
+            TaskStatus::Live(LiveStatus::InProgress) => 1,
+            TaskStatus::Closed(ClosedStatus::Done) => 2,
+            TaskStatus::Closed(ClosedStatus::Canceled) => 3,
         }
     };
 
@@ -196,7 +196,7 @@ fn emit_task_list(ctx: &RunContext, graph: &TaskGraph, tasks: Vec<&TaskNode>) ->
     } else {
         for task in tasks {
             println!(
-                "{} {} ({:?})",
+                "{} {} ({})",
                 task.frontmatter.id, task.frontmatter.title, task.frontmatter.status
             );
         }

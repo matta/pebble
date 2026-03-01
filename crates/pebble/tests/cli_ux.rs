@@ -1,4 +1,4 @@
-mod support;
+pub mod support;
 
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;

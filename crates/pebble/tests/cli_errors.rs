@@ -1,5 +1,5 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-mod support;
+pub mod support;
 
 use assert_cmd::cargo_bin;
 use std::process::Command;
@@ -11,8 +11,8 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
 
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["show", "PROJ-404", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -26,8 +26,8 @@ fn test_show_json_missing_id_reports_error_on_stderr() {
 fn test_add_invalid_status_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "add",
             "Bad Status",
@@ -49,8 +49,8 @@ fn test_add_invalid_status_is_usage_error() {
 fn test_add_priority_above_99_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["add", "Bad Priority", "--priority", "100", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -65,8 +65,8 @@ fn test_update_priority_above_99_is_usage_error() {
     let env = setup_test_env();
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["update", "PROJ-1", "--priority", "100", "--json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -116,8 +116,8 @@ fn test_update_invalid_status_is_usage_error() {
     let env = setup_test_env();
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update",
             "PROJ-1",
@@ -139,8 +139,8 @@ fn test_update_invalid_status_is_usage_error() {
 fn test_list_invalid_sort_field_is_usage_error() {
     let env = setup_test_env();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args(["list", "--sort", "not-a-field", "--json", "--dir", "tasks"])
         .output()
         .expect("pebble command should execute successfully");
@@ -157,8 +157,8 @@ fn test_update_missing_id_is_runtime_error() {
     let env = setup_test_env();
     write_task_with_id(&env.tasks_dir, "PROJ-1");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(&env.root)
+    let output = env
+        .pebble()
         .args([
             "update", "PROJ-404", "--status", "done", "--json", "--dir", "tasks",
         ])

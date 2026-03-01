@@ -173,9 +173,9 @@ impl TaskGraph {
     /// Determines if a task is "ready" to be worked on.
     ///
     /// A task is considered ready if it satisfies all of the following conditions:
-    /// 1. Its status is actionable (i.e., [`crate::models::TaskStatus::Todo`] or [`crate::models::TaskStatus::InProgress`]).
+    /// 1. Its status is actionable (i.e., [`crate::models::TaskStatus::todo()`] or [`crate::models::TaskStatus::in_progress()`]).
     /// 2. It has no missing dependencies (all tasks in `needs` exist in the graph).
-    /// 3. All its dependencies are in a terminal state (i.e., [`crate::models::TaskStatus::Done`] or [`crate::models::TaskStatus::Canceled`]).
+    /// 3. All its dependencies are in a terminal state (i.e., [`crate::models::TaskStatus::done()`] or [`crate::models::TaskStatus::canceled()`]).
     pub fn is_ready(&self, task_id: &str) -> bool {
         let Some(node) = self.nodes.get(task_id) else {
             return false;

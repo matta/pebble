@@ -2,7 +2,7 @@
 use std::fs;
 use std::process::Output;
 
-mod support;
+pub mod support;
 use support::{TestEnv, setup_test_env};
 
 fn run_fix(env: &TestEnv, json: bool) -> Output {

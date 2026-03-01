@@ -1,13 +1,16 @@
 use chrono::{DateTime, Utc};
-use clap::ValueEnum;
+use clap::{ValueEnum, builder::PossibleValue};
 use color_eyre::eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::de::Error as SerdeDeError;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::result::Result as StdResult;
+use std::str::FromStr;
 
 /// Error representing an invalid user invocation or configuration value.
 /// Should results in exit code 2.
@@ -31,47 +34,162 @@ impl fmt::Display for NotFoundError {
 }
 impl error::Error for NotFoundError {}
 
-/// Represents the lifecycle state of a task.
-///
-/// This enum defines the possible states a task can be in.
-/// The variants are serialized to snake_case strings in task frontmatter.
-///
-/// # Examples
-///
-/// ```
-/// # use pebble::models::TaskStatus;
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let status = TaskStatus::Todo;
-/// // Serializes to "todo"
-/// assert_eq!(serde_json::to_string(&status)?, "\"todo\"");
-/// # Ok(())
-/// # }
-/// ```
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, Copy, ValueEnum)]
+/// Represents the actionable lifecycle states of a task.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
-#[clap(rename_all = "snake_case")]
-pub enum TaskStatus {
+pub enum LiveStatus {
     /// Task has not been started yet.
     Todo,
     /// Task is actively being worked on.
     InProgress,
+}
+
+/// Represents the closed lifecycle states of a task.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum ClosedStatus {
     /// Task has been completed successfully.
     Done,
     /// Task has been abandoned without completion.
     Canceled,
 }
 
+/// Represents the lifecycle state of a task.
+///
+/// # Examples
+///
+/// ```
+/// # use pebble::models::TaskStatus;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let status = <TaskStatus as std::str::FromStr>::from_str("todo")?;
+/// // Serializes to "todo"
+/// assert_eq!(serde_json::to_string(&status)?, "\"todo\"");
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum TaskStatus {
+    /// Task can still be worked on.
+    Live(LiveStatus),
+    /// Task is in a terminal state.
+    Closed(ClosedStatus),
+}
+
 impl TaskStatus {
+    pub const fn todo() -> Self {
+        Self::Live(LiveStatus::Todo)
+    }
+
+    pub const fn in_progress() -> Self {
+        Self::Live(LiveStatus::InProgress)
+    }
+
+    pub const fn done() -> Self {
+        Self::Closed(ClosedStatus::Done)
+    }
+
+    pub const fn canceled() -> Self {
+        Self::Closed(ClosedStatus::Canceled)
+    }
+
     /// Checks if the status represents an open, workable state.
     ///
-    /// Returns `true` if the status is [`TaskStatus::Todo`] or [`TaskStatus::InProgress`].
+    /// Returns `true` if the status is one of the live statuses.
     pub fn is_actionable(&self) -> bool {
-        matches!(self, Self::Todo | Self::InProgress)
+        matches!(self, Self::Live(_))
     }
 
     /// Returns `true` if the status represents a terminal state (`done` or `canceled`).
     pub fn is_closed(&self) -> bool {
-        matches!(self, Self::Done | Self::Canceled)
+        matches!(self, Self::Closed(_))
+    }
+
+    /// Returns the contained live status, if this task is actionable.
+    pub fn as_live(&self) -> Option<LiveStatus> {
+        match self {
+            Self::Live(status) => Some(*status),
+            Self::Closed(_) => None,
+        }
+    }
+
+    /// Returns the contained closed status, if this task is terminal.
+    pub fn as_closed(&self) -> Option<ClosedStatus> {
+        match self {
+            Self::Live(_) => None,
+            Self::Closed(status) => Some(*status),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Live(LiveStatus::Todo) => "todo",
+            Self::Live(LiveStatus::InProgress) => "in_progress",
+            Self::Closed(ClosedStatus::Done) => "done",
+            Self::Closed(ClosedStatus::Canceled) => "canceled",
+        }
+    }
+}
+
+impl Serialize for TaskStatus {
+    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str((*self).as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for TaskStatus {
+    fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        <Self as FromStr>::from_str(&raw).map_err(SerdeDeError::custom)
+    }
+}
+
+impl FromStr for TaskStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> StdResult<Self, Self::Err> {
+        match s {
+            "todo" => Ok(Self::Live(LiveStatus::Todo)),
+            "in_progress" => Ok(Self::Live(LiveStatus::InProgress)),
+            "done" => Ok(Self::Closed(ClosedStatus::Done)),
+            "canceled" => Ok(Self::Closed(ClosedStatus::Canceled)),
+            _ => Err(format!(
+                "invalid status '{s}', expected one of: todo, in_progress, done, canceled"
+            )),
+        }
+    }
+}
+
+impl ValueEnum for TaskStatus {
+    fn value_variants<'a>() -> &'a [Self] {
+        const VARIANTS: [TaskStatus; 4] = [
+            TaskStatus::Live(LiveStatus::Todo),
+            TaskStatus::Live(LiveStatus::InProgress),
+            TaskStatus::Closed(ClosedStatus::Done),
+            TaskStatus::Closed(ClosedStatus::Canceled),
+        ];
+        &VARIANTS
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        Some(PossibleValue::new((*self).as_str()))
+    }
+}
+
+impl fmt::Display for TaskStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = match self {
+            TaskStatus::Live(LiveStatus::Todo) => "Todo",
+            TaskStatus::Live(LiveStatus::InProgress) => "InProgress",
+            TaskStatus::Closed(ClosedStatus::Done) => "Done",
+            TaskStatus::Closed(ClosedStatus::Canceled) => "Canceled",
+        };
+        write!(f, "{label}")
     }
 }
 
@@ -97,7 +215,7 @@ bounded_integer::bounded_integer! {
 /// let yaml_str = "id: issue-123\ntitle: Test\nstatus: todo\ncreated_at: \"2023-01-01T00:00:00Z\"";
 /// let fm: TaskFrontmatter = serde_saphyr::from_str(yaml_str)?;
 /// assert_eq!(fm.title, "Test");
-/// assert_eq!(fm.status, TaskStatus::Todo);
+/// assert_eq!(fm.status, TaskStatus::todo());
 /// # Ok(())
 /// # }
 /// ```
@@ -148,7 +266,7 @@ pub struct TaskFrontmatter {
 ///     frontmatter: TaskFrontmatter {
 ///         id: "issue-123".into(),
 ///         title: "My Task".into(),
-///         status: TaskStatus::Todo,
+///         status: TaskStatus::todo(),
 ///         priority: None,
 ///         created_at: DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")?.with_timezone(&Utc),
 ///         modified_at: None,
@@ -251,184 +369,4 @@ pub fn default_datetime() -> DateTime<Utc> {
 
 #[cfg(test)]
 #[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-mod tests {
-    use super::*;
-    use chrono::{DateTime, Utc};
-    use std::convert::TryFrom;
-    use std::mem;
-
-    #[test]
-    fn test_task_status_deserialization() {
-        assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"todo\"").expect("Should deserialize todo"),
-            TaskStatus::Todo
-        );
-        assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"in_progress\"")
-                .expect("Should deserialize in_progress"),
-            TaskStatus::InProgress
-        );
-        assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"done\"").expect("Should deserialize done"),
-            TaskStatus::Done
-        );
-        assert_eq!(
-            serde_json::from_str::<TaskStatus>("\"canceled\"")
-                .expect("Should deserialize canceled"),
-            TaskStatus::Canceled
-        );
-
-        let err = serde_json::from_str::<TaskStatus>("\"invalid_status\"")
-            .expect_err("Should fail to deserialize invalid status");
-        assert!(err.to_string().contains("unknown variant"));
-    }
-
-    #[test]
-    fn test_task_status_helpers() {
-        assert!(TaskStatus::Todo.is_actionable());
-        assert!(TaskStatus::InProgress.is_actionable());
-        assert!(!TaskStatus::Done.is_actionable());
-        assert!(!TaskStatus::Canceled.is_actionable());
-
-        assert!(TaskStatus::Done.is_closed());
-        assert!(TaskStatus::Canceled.is_closed());
-        assert!(!TaskStatus::Todo.is_closed());
-        assert!(!TaskStatus::InProgress.is_closed());
-    }
-
-    #[test]
-    fn test_task_frontmatter_deserialization() {
-        let yaml_str = r#"
-id: issue-123
-title: Implement Task Node
-status: todo
-priority: 1
-created_at: "2026-02-21T17:00:00Z"
-needs: ["issue-122"]
-"#;
-        let fm: TaskFrontmatter = serde_saphyr::from_str(yaml_str).expect("Valid task frontmatter");
-        assert_eq!(fm.id, "issue-123");
-        assert_eq!(fm.title, "Implement Task Node");
-        assert_eq!(fm.status, TaskStatus::Todo);
-        assert_eq!(
-            fm.priority,
-            Some(Priority::try_from(1).expect("Priority 1 is valid"))
-        );
-        assert_eq!(fm.needs, vec!["issue-122"]);
-        assert!(
-            fm.tags.is_empty(),
-            "Tags should default to empty vec if omitted"
-        );
-    }
-
-    #[test]
-    fn test_priority_try_from_u8_enforces_range() {
-        assert_eq!(
-            Priority::try_from(0u8).expect("Priority 0 is valid").get(),
-            0
-        );
-        assert_eq!(
-            Priority::try_from(99u8)
-                .expect("Priority 99 is valid")
-                .get(),
-            99
-        );
-        assert!(Priority::try_from(100u8).is_err());
-    }
-
-    #[test]
-    fn test_task_frontmatter_rejects_out_of_range_priority() {
-        let yaml_str = r#"
-id: issue-123
-title: Implement Task Node
-status: todo
-priority: 100
-created_at: "2026-02-21T17:00:00Z"
-"#;
-
-        let err = serde_saphyr::from_str::<TaskFrontmatter>(yaml_str)
-            .expect_err("Should reject out-of-range priority");
-        assert!(
-            err.to_string().contains("priority"),
-            "Expected priority validation error, got: {err}"
-        );
-    }
-
-    #[test]
-    fn test_priority_json_serializes_as_integer() {
-        #[derive(Serialize)]
-        struct Wrapper {
-            priority: Priority,
-        }
-
-        let wrapper = Wrapper {
-            priority: Priority::try_from(5).expect("Priority 5 is valid"),
-        };
-        let json = serde_json::to_value(&wrapper).expect("Should serialize Wrapper");
-        assert_eq!(json["priority"].as_u64(), Some(5));
-    }
-
-    #[test]
-    fn test_priority_uses_u32_representation_size() {
-        assert_eq!(
-            mem::size_of::<Priority>(),
-            mem::size_of::<u32>(),
-            "Priority should use u32 representation"
-        );
-    }
-
-    #[test]
-    fn test_priority_into_u32() {
-        let p = Priority::new(42).expect("Priority 42 is valid");
-        let v: u32 = p.into();
-        assert_eq!(v, 42);
-    }
-
-    #[test]
-    fn test_task_node_disk_content_uses_yaml_frontmatter() {
-        let node = TaskNode {
-            path: PathBuf::from("docs/pebble/task.md"),
-            frontmatter: TaskFrontmatter {
-                id: "issue-123".to_string(),
-                title: "YAML writer".to_string(),
-                status: TaskStatus::Todo,
-                priority: None,
-                created_at: Some(
-                    DateTime::parse_from_rfc3339("2026-03-01T00:00:00Z")
-                        .expect("created_at should parse")
-                        .with_timezone(&Utc),
-                ),
-                modified_at: None,
-                resolved_at: None,
-                needs: vec![],
-                tags: vec![],
-                extra: HashMap::new(),
-            },
-            body: "Body\n".to_string(),
-        };
-
-        let content = node
-            .get_content_for_disk()
-            .expect("task content should render");
-        assert!(
-            content.starts_with("---\n"),
-            "frontmatter should start with YAML delimiter"
-        );
-        assert!(
-            content.contains("\n---\n"),
-            "frontmatter should include YAML closing delimiter"
-        );
-        assert!(
-            content.contains("\nid:"),
-            "frontmatter should use YAML key syntax"
-        );
-        assert!(
-            !content.contains("+++"),
-            "frontmatter should not use TOML delimiters"
-        );
-        assert!(
-            !content.contains("id = "),
-            "frontmatter should not use TOML assignment syntax"
-        );
-    }
-}
+mod tests;

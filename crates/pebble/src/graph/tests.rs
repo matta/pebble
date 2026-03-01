@@ -34,15 +34,15 @@ fn test_absolute_readiness() {
     let mut nodes = HashMap::new();
     nodes.insert(
         "A".to_string(),
-        make_test_node("A", TaskStatus::Todo, vec![]),
+        make_test_node("A", TaskStatus::todo(), vec![]),
     );
     nodes.insert(
         "B".to_string(),
-        make_test_node("B", TaskStatus::Todo, vec!["A"]),
+        make_test_node("B", TaskStatus::todo(), vec!["A"]),
     );
     nodes.insert(
         "C".to_string(),
-        make_test_node("C", TaskStatus::Todo, vec!["X"]),
+        make_test_node("C", TaskStatus::todo(), vec!["X"]),
     ); // Dangling pointer
 
     let graph = TaskGraph::new(nodes);
@@ -58,14 +58,14 @@ fn test_dynamic_scoring() {
     // C and D depend on B
     let mut nodes = HashMap::new();
 
-    let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
+    let mut a = make_test_node("A", TaskStatus::todo(), vec![]);
     a.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
 
-    let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
+    let mut b = make_test_node("B", TaskStatus::todo(), vec![]);
     b.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
 
-    let c = make_test_node("C", TaskStatus::Todo, vec!["B"]);
-    let d = make_test_node("D", TaskStatus::Todo, vec!["B"]);
+    let c = make_test_node("C", TaskStatus::todo(), vec!["B"]);
+    let d = make_test_node("D", TaskStatus::todo(), vec!["B"]);
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -87,11 +87,11 @@ fn test_dynamic_scoring() {
 fn test_count_blocking_excludes_terminal_and_self() {
     let mut nodes = HashMap::new();
 
-    let a = make_test_node("A", TaskStatus::Todo, vec![]);
-    let b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
-    let c = make_test_node("C", TaskStatus::Done, vec!["B"]);
-    let d = make_test_node("D", TaskStatus::Todo, vec!["C"]);
-    let e = make_test_node("E", TaskStatus::Todo, vec!["B"]);
+    let a = make_test_node("A", TaskStatus::todo(), vec![]);
+    let b = make_test_node("B", TaskStatus::todo(), vec!["A"]);
+    let c = make_test_node("C", TaskStatus::done(), vec!["B"]);
+    let d = make_test_node("D", TaskStatus::todo(), vec!["C"]);
+    let e = make_test_node("E", TaskStatus::todo(), vec!["B"]);
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -111,11 +111,11 @@ fn test_count_blocking_cycle_excludes_self() {
     let mut nodes = HashMap::new();
     nodes.insert(
         "A".to_string(),
-        make_test_node("A", TaskStatus::Todo, vec!["B"]),
+        make_test_node("A", TaskStatus::todo(), vec!["B"]),
     );
     nodes.insert(
         "B".to_string(),
-        make_test_node("B", TaskStatus::Todo, vec!["A"]),
+        make_test_node("B", TaskStatus::todo(), vec!["A"]),
     );
 
     let graph = TaskGraph::new(nodes);
@@ -128,13 +128,13 @@ fn test_count_blocking_cycle_excludes_self() {
 fn test_default_order_respects_needs_and_priority() {
     let mut nodes = HashMap::new();
 
-    let mut a = make_test_node("A", TaskStatus::Todo, vec![]);
+    let mut a = make_test_node("A", TaskStatus::todo(), vec![]);
     a.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
 
-    let mut b = make_test_node("B", TaskStatus::Todo, vec![]);
+    let mut b = make_test_node("B", TaskStatus::todo(), vec![]);
     b.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
 
-    let c = make_test_node("C", TaskStatus::Todo, vec!["A", "B"]);
+    let c = make_test_node("C", TaskStatus::todo(), vec!["A", "B"]);
 
     nodes.insert("A".to_string(), a);
     nodes.insert("B".to_string(), b);
@@ -157,9 +157,9 @@ fn test_default_order_respects_needs_and_priority() {
 fn test_default_order_cycle_grouping_created_at() {
     let mut nodes = HashMap::new();
 
-    let mut a = make_test_node("A", TaskStatus::Todo, vec!["B"]);
-    let mut b = make_test_node("B", TaskStatus::Todo, vec!["A"]);
-    let c = make_test_node("C", TaskStatus::Todo, vec!["A"]);
+    let mut a = make_test_node("A", TaskStatus::todo(), vec!["B"]);
+    let mut b = make_test_node("B", TaskStatus::todo(), vec!["A"]);
+    let c = make_test_node("C", TaskStatus::todo(), vec!["A"]);
 
     a.frontmatter.created_at = Some(
         DateTime::parse_from_rfc3339("2026-01-02T00:00:00Z")
@@ -193,8 +193,8 @@ fn test_default_order_cycle_grouping_created_at() {
 fn test_default_order_id_tiebreaker() {
     let mut nodes = HashMap::new();
 
-    let a = make_test_node("A", TaskStatus::Todo, vec![]);
-    let b = make_test_node("B", TaskStatus::Todo, vec![]);
+    let a = make_test_node("A", TaskStatus::todo(), vec![]);
+    let b = make_test_node("B", TaskStatus::todo(), vec![]);
 
     nodes.insert("B".to_string(), b);
     nodes.insert("A".to_string(), a);
@@ -217,11 +217,11 @@ fn test_cycle_readiness() {
     let mut nodes = HashMap::new();
     nodes.insert(
         "X".to_string(),
-        make_test_node("X", TaskStatus::Todo, vec!["Y"]),
+        make_test_node("X", TaskStatus::todo(), vec!["Y"]),
     );
     nodes.insert(
         "Y".to_string(),
-        make_test_node("Y", TaskStatus::Todo, vec!["X"]),
+        make_test_node("Y", TaskStatus::todo(), vec!["X"]),
     );
 
     let graph = TaskGraph::new(nodes);
