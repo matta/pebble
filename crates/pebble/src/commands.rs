@@ -208,7 +208,7 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     } else {
         let obj = TaskObject::from_node(node, &graph, &ctx.tasks_dir);
         println!("Task: {} ({})", obj.title, obj.id);
-        println!("Status: {:?}", obj.status);
+        println!("Status: {}", obj.status);
         println!("Path: {}", obj.path);
         if !obj.tags.is_empty() {
             println!("Tags: {:?}", obj.tags);
@@ -342,15 +342,15 @@ mod tests {
         let mut nodes = HashMap::new();
         nodes.insert(
             "A".to_string(),
-            make_test_node("A", TaskStatus::Todo, vec![]),
+            make_test_node("A", TaskStatus::todo(), vec![]),
         );
         nodes.insert(
             "B".to_string(),
-            make_test_node("B", TaskStatus::Todo, vec!["A"]),
+            make_test_node("B", TaskStatus::todo(), vec!["A"]),
         );
         nodes.insert(
             "C".to_string(),
-            make_test_node("C", TaskStatus::Done, vec!["A"]),
+            make_test_node("C", TaskStatus::done(), vec!["A"]),
         );
 
         let graph = TaskGraph::new(nodes);

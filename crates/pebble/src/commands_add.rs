@@ -154,7 +154,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
     let random_length = required_random_id_length(graph.nodes.len());
     let id_str = nanoid::nanoid!(random_length, ID_ALPHABET);
     let new_id = format!("{}-{}", ctx.config.issue_prefix, id_str);
-    let status = status.unwrap_or(TaskStatus::Todo);
+    let status = status.unwrap_or(TaskStatus::todo());
     let created_at = current_task_time();
     let resolved_at = if status.is_closed() {
         Some(created_at)

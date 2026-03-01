@@ -96,7 +96,7 @@ fn test_init_and_add() {
         .expect("at least one node should exist");
 
     assert_eq!(node.frontmatter.title, "My First Task");
-    assert_eq!(node.frontmatter.status, TaskStatus::Todo);
+    assert_eq!(node.frontmatter.status, TaskStatus::todo());
     assert_eq!(
         node.frontmatter.priority,
         Some(Priority::try_from(5).expect("priority should be valid"))
@@ -111,7 +111,7 @@ fn test_init_and_add() {
         RunUpdateInput {
             id: id.clone(),
             title: Some("Updated Title".to_string()),
-            status: Some(TaskStatus::InProgress),
+            status: Some(TaskStatus::in_progress()),
             priority: None,
             clear_priority: true,
             body: None,
@@ -130,7 +130,7 @@ fn test_init_and_add() {
     let updated_node = graph2.nodes.get(&id).expect("updated node should exist");
 
     assert_eq!(updated_node.frontmatter.title, "Updated Title");
-    assert_eq!(updated_node.frontmatter.status, TaskStatus::InProgress);
+    assert_eq!(updated_node.frontmatter.status, TaskStatus::in_progress());
     assert_eq!(updated_node.frontmatter.priority, None);
     assert_eq!(updated_node.frontmatter.tags, vec!["new_tag".to_string()]);
     assert_eq!(updated_node.body, "Body text\n\nAppended body\n");
