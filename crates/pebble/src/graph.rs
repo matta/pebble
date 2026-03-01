@@ -17,15 +17,24 @@ mod ordering;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct NodeKey {
     /// Effective priority used by dynamic scoring.
-    effective_priority: u32,
-    /// Explicit task priority with a None-last sentinel value.
-    base_priority: u32,
+    effective_priority: PriorityRank,
+    /// Explicit task priority with unset values sorted last.
+    base_priority: PriorityRank,
     /// Descending blocking count (wrapped in [`Reverse`] so `Ord` sorts highest first).
     blocking_count: Reverse<usize>,
     /// Creation timestamp, used as a tiebreaker after priority.
     created_at: DateTime<Utc>,
     /// Task ID, used as the final deterministic tiebreaker.
     id: String,
+}
+
+/// Internal ranking key for priorities.
+///
+/// `Set` values sort before `Unset`, and among `Set` values lower numbers sort first.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub(super) enum PriorityRank {
+    Set(u32),
+    Unset,
 }
 
 /// In-memory task graph with forward nodes and a reverse dependency index.
@@ -38,8 +47,6 @@ pub struct TaskGraph {
 }
 
 impl TaskGraph {
-    const UNSET_PRIORITY_SENTINEL: u32 = 100;
-
     /// Recursively collect all Markdown files under `dir` in deterministic order.
     fn collect_markdown_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
         let mut entries: Vec<_> = fs::read_dir(dir)?.collect::<result::Result<_, _>>()?;
@@ -233,12 +240,13 @@ impl TaskGraph {
         count
     }
 
-    /// Returns the base priority for a task node, using a sentinel for unset priority.
-    fn base_priority(node: &TaskNode) -> u32 {
+    /// Returns the base priority ranking key for a task node.
+    fn base_priority(node: &TaskNode) -> PriorityRank {
         node.frontmatter
             .priority
             .map(u32::from)
-            .unwrap_or(Self::UNSET_PRIORITY_SENTINEL)
+            .map(PriorityRank::Set)
+            .unwrap_or(PriorityRank::Unset)
     }
 
     /// Returns the minimum base priority among actionable transitive downstream dependents.
@@ -246,27 +254,27 @@ impl TaskGraph {
     /// Traversal follows reverse `needs` edges, excludes the task itself, and only
     /// includes actionable (`todo` / `in_progress`) tasks. Terminal dependents stop
     /// traversal for that branch, matching transitive blocking semantics.
-    fn downstream_min_priority(&self, task_id: &str) -> u32 {
-        let mut visited = HashSet::new();
-        let mut stack = vec![task_id.to_string()];
-        let mut min_priority = Self::UNSET_PRIORITY_SENTINEL;
+    fn downstream_min_priority(&self, task_id: &str) -> PriorityRank {
+        let mut visited: HashSet<&str> = HashSet::new();
+        let mut stack = vec![task_id];
+        let mut min_priority = PriorityRank::Unset;
 
-        visited.insert(task_id.to_string());
+        visited.insert(task_id);
 
         while let Some(current) = stack.pop() {
-            if let Some(downstream_ids) = self.blocking.get(&current) {
+            if let Some(downstream_ids) = self.blocking.get(current) {
                 for downstream_id in downstream_ids {
-                    if !visited.insert(downstream_id.clone()) {
+                    if !visited.insert(downstream_id.as_str()) {
                         continue;
                     }
 
-                    let Some(node) = self.nodes.get(downstream_id) else {
+                    let Some(node) = self.nodes.get(downstream_id.as_str()) else {
                         continue;
                     };
 
                     if node.frontmatter.status.is_actionable() {
                         min_priority = min_priority.min(Self::base_priority(node));
-                        stack.push(downstream_id.clone());
+                        stack.push(downstream_id.as_str());
                     }
                 }
             }
@@ -276,9 +284,9 @@ impl TaskGraph {
     }
 
     /// Returns effective priority for a task ID.
-    pub(crate) fn effective_priority_for_task(&self, task_id: &str) -> u32 {
+    pub(super) fn effective_priority_for_task(&self, task_id: &str) -> PriorityRank {
         let Some(node) = self.nodes.get(task_id) else {
-            return Self::UNSET_PRIORITY_SENTINEL;
+            return PriorityRank::Unset;
         };
 
         let base = Self::base_priority(node);
@@ -294,7 +302,7 @@ impl TaskGraph {
         &self,
         node: &TaskNode,
         blocking_counts: &HashMap<String, usize>,
-        effective_priorities: &HashMap<String, u32>,
+        effective_priorities: &HashMap<String, PriorityRank>,
     ) -> NodeKey {
         let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
         let base_priority = Self::base_priority(node);
@@ -345,7 +353,7 @@ impl TaskGraph {
             })
             .collect();
 
-        let effective_priorities: HashMap<String, u32> = ready_tasks
+        let effective_priorities: HashMap<String, PriorityRank> = ready_tasks
             .iter()
             .map(|n| {
                 (

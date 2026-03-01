@@ -59,10 +59,12 @@ fn test_dynamic_scoring() {
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::todo(), vec![]);
-    a.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
+    a.frontmatter.priority =
+        Some(Priority::try_from(1).expect("Priority value should be within the valid range 0-99"));
 
     let mut b = make_test_node("B", TaskStatus::todo(), vec![]);
-    b.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
+    b.frontmatter.priority =
+        Some(Priority::try_from(5).expect("Priority value should be within the valid range 0-99"));
 
     let c = make_test_node("C", TaskStatus::todo(), vec!["B"]);
     let d = make_test_node("D", TaskStatus::todo(), vec!["B"]);
@@ -91,10 +93,12 @@ fn test_dynamic_scoring_promotes_blocker_of_higher_priority_downstream_work() {
     let blocker = make_test_node("BLOCKER", TaskStatus::todo(), vec![]);
 
     let mut p0_task = make_test_node("P0-TASK", TaskStatus::todo(), vec!["BLOCKER"]);
-    p0_task.frontmatter.priority = Some(Priority::try_from(0).expect("Valid priority"));
+    p0_task.frontmatter.priority =
+        Some(Priority::try_from(0).expect("Priority value should be within the valid range 0-99"));
 
     let mut other = make_test_node("OTHER", TaskStatus::todo(), vec![]);
-    other.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
+    other.frontmatter.priority =
+        Some(Priority::try_from(1).expect("Priority value should be within the valid range 0-99"));
 
     nodes.insert("BLOCKER".to_string(), blocker);
     nodes.insert("P0-TASK".to_string(), p0_task);
@@ -116,13 +120,16 @@ fn test_dynamic_scoring_effective_priority_tie_breaks_by_base_priority() {
     let mut nodes = HashMap::new();
 
     let mut direct = make_test_node("DIRECT", TaskStatus::todo(), vec![]);
-    direct.frontmatter.priority = Some(Priority::try_from(2).expect("Valid priority"));
+    direct.frontmatter.priority =
+        Some(Priority::try_from(2).expect("Priority value should be within the valid range 0-99"));
 
     let mut blocker = make_test_node("BLOCKER", TaskStatus::todo(), vec![]);
-    blocker.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
+    blocker.frontmatter.priority =
+        Some(Priority::try_from(5).expect("Priority value should be within the valid range 0-99"));
 
     let mut downstream_p2 = make_test_node("DOWNSTREAM-P2", TaskStatus::todo(), vec!["BLOCKER"]);
-    downstream_p2.frontmatter.priority = Some(Priority::try_from(2).expect("Valid priority"));
+    downstream_p2.frontmatter.priority =
+        Some(Priority::try_from(2).expect("Priority value should be within the valid range 0-99"));
 
     nodes.insert("DIRECT".to_string(), direct);
     nodes.insert("BLOCKER".to_string(), blocker);

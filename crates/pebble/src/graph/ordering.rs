@@ -1,4 +1,4 @@
-use super::{NodeKey, TaskGraph};
+use super::{NodeKey, PriorityRank, TaskGraph};
 use crate::models::{TaskNode, default_datetime};
 use color_eyre::eyre::{Result, eyre};
 use std::cmp::{Ordering, Reverse};
@@ -73,10 +73,15 @@ pub(super) fn default_order<'a>(
 fn node_key(
     node: &TaskNode,
     blocking_counts: &HashMap<String, usize>,
-    effective_priorities: &HashMap<String, u32>,
+    effective_priorities: &HashMap<String, PriorityRank>,
 ) -> NodeKey {
     let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
-    let base_priority = node.frontmatter.priority.map(u32::from).unwrap_or(100);
+    let base_priority = node
+        .frontmatter
+        .priority
+        .map(u32::from)
+        .map(PriorityRank::Set)
+        .unwrap_or(PriorityRank::Unset);
     let effective_priority = *effective_priorities
         .get(&node.frontmatter.id)
         .unwrap_or(&base_priority);
@@ -152,7 +157,10 @@ fn compute_blocking_counts(graph: &TaskGraph, ids: &[String]) -> HashMap<String,
 }
 
 /// Computes graph-wide effective priority for each ID in `ids`.
-fn compute_effective_priorities(graph: &TaskGraph, ids: &[String]) -> HashMap<String, u32> {
+fn compute_effective_priorities(
+    graph: &TaskGraph,
+    ids: &[String],
+) -> HashMap<String, PriorityRank> {
     let mut priorities = HashMap::new();
     for id in ids {
         priorities.insert(id.clone(), graph.effective_priority_for_task(id));
@@ -165,7 +173,7 @@ fn scc_keys(
     sccs: &[Vec<String>],
     id_to_node: &HashMap<String, &TaskNode>,
     blocking_counts: &HashMap<String, usize>,
-    effective_priorities: &HashMap<String, u32>,
+    effective_priorities: &HashMap<String, PriorityRank>,
 ) -> Result<Vec<NodeKey>> {
     sccs.iter()
         .map(|scc| {

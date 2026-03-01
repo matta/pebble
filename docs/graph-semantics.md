@@ -41,10 +41,10 @@ Because hierarchy is flattened into `needs`, a low-priority prerequisite can blo
 `pebble next` (and `pebble list --is-ready`) ranks the ready frontier by the sort key tuple **`(effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC)`**:
 
 1. **Effective Priority** — `min(base_priority, downstream_min_priority)`, where:
-   - `base_priority` is the task's own `priority` value, or sentinel `100` when unset.
+   - `base_priority` is the task's own `priority` value, with unset values sorted after all explicit priorities.
    - `downstream_min_priority` is the minimum `base_priority` among actionable transitive downstream dependents (reachable by reverse `needs` traversal).
    This means a low/no-priority blocker of urgent work is treated with matching urgency.
-2. **Base Priority** — The task's explicit `priority` from frontmatter (lower = higher priority), with unset priority sorting after all explicit values via sentinel `100`. This preserves user intent when `effective_priority` ties.
+2. **Base Priority** — The task's explicit `priority` from frontmatter (lower = higher priority), with unset priority sorting after all explicit values. This preserves user intent when `effective_priority` ties.
 3. **Transitive Blocking Count** — The count of **unique, non-terminal** (`todo` or `in_progress`) tasks reachable by walking **reverse** `needs` edges from this task (i.e., direct and indirect dependents). The task itself is excluded. Missing IDs are ignored; cycles are handled via visited-set tracking. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Note: `len(blocking)` counts only *direct* non-terminal dependents; the transitive count walks the full downstream graph.
 4. **Created At** — Oldest task wins.
 5. **ID** — Lexicographic ascending. Guarantees determinism when all other keys are equal.

@@ -226,8 +226,8 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--limit <N>`: Limits returned rows.
 * **Default sort order**: Deterministic and dependency-aware:
     1. **Topological order** (respecting `needs`): if B depends on A, A appears before B. Missing needs are ignored for ordering (only existing tasks participate). Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
-    2. **Effective priority** ascending: `min(base_priority, downstream_min_priority)`, where `base_priority` is the task's own priority (unset mapped to sentinel `100`) and `downstream_min_priority` is the minimum base priority among actionable transitive downstream dependents.
-    3. **Base priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks using sentinel `100`.
+    2. **Effective priority** ascending: `min(base_priority, downstream_min_priority)`, where `base_priority` is the task's own priority (with unset values sorted after all explicit priorities) and `downstream_min_priority` is the minimum base priority among actionable transitive downstream dependents.
+    3. **Base priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
     4. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `needs` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Tasks blocking more downstream work appear first.
     5. **`created_at`** ascending (oldest first).
     6. **`id`** ascending (lexicographic) as the absolute tiebreaker, guaranteeing determinism.
