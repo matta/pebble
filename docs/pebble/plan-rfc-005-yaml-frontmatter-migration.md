@@ -4,7 +4,7 @@ title: "Plan RFC 005 YAML frontmatter migration"
 status: "todo"
 priority: 0
 created_at: "2026-03-01T16:36:23.238794357+00:00"
-modified_at: "2026-03-01T17:33:03.445059895+00:00"
+modified_at: "2026-03-01T17:36:44.426656883+00:00"
 needs: ["pebl-urd2fpbmfk", "pebl-zjpn6fbfmp", "pebl-rm0kn1fvli", "pebl-gr537c9can", "pebl-ombr9kv475", "pebl-jfi8jsyoai", "pebl-41j62swwnm", "pebl-1cq47q454u", "pebl-i0eszfcxas", "pebl-53ae3r5qrk"]
 tags: ["planning", "rfc"]
 ---
@@ -15,11 +15,8 @@ Execution Policy:
 - Store baseline/parity JSON evidence in `artifacts/rfc005-parity/` so it is durable and git-tracked.
 - If parity evidence files are deleted later, remove them with `git rm artifacts/rfc005-parity/*.json`.
 
-Temporary Tracking Mode (Required Until RFC005-8 Completes):
-- Because read-path behavior is now YAML-only and repository task files are still largely TOML frontmatter, `cargo pebble` task queries/updates are temporarily non-functional for this repo.
-- During this period, update task status directly in markdown frontmatter (`status`, `modified_at`, `resolved_at`) rather than using `cargo pebble update`.
-- Keep frontmatter format unchanged per file until the dedicated conversion step (RFC005-8) runs.
-- Immediately after RFC005-8 completes and all task files are YAML-frontmatter, return to normal `cargo pebble` task operations.
+Migration Status:
+- RFC005-8 completed. Repository task files are YAML-frontmatter and normal `cargo pebble` task operations are active.
 
 Child Tasks (Execution Order):
 - [x] RFC005-1 Baseline parity snapshot -> `pebl-urd2fpbmfk`

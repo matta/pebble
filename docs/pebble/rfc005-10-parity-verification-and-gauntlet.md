@@ -4,7 +4,7 @@ title: "RFC005-10 Parity verification and gauntlet"
 status: "done"
 priority: 0
 created_at: "2026-03-01T16:43:25.890222517+00:00"
-modified_at: "2026-03-01T17:33:03.445059895+00:00"
+modified_at: "2026-03-01T17:36:44.426656883+00:00"
 resolved_at: "2026-03-01T17:33:03.445059895+00:00"
 needs: ["pebl-i0eszfcxas"]
 tags: ["planning", "rfc005"]
@@ -56,6 +56,8 @@ Execution Evidence (current pass):
     - Task timestamps now use `chrono::DateTime<Utc>`, and task unknown fields use `serde_json::Value`.
     - Remaining runtime TOML parse usage is config-only: `crates/pebble/src/config.rs` (`toml::from_str` for `.pebble/config.toml`).
 
+Cleanup after parity sign-off:
+- Removed parity evidence files via `git rm artifacts/rfc005-parity/*.json` (all six before/after JSON snapshots).
+
 Conclusion:
-- Parity snapshots are captured and staged.
-- Migration parity evidence is documented, required gauntlet commands pass, and exit criteria are met.
+- Migration parity evidence is documented, required gauntlet commands pass, cleanup was completed with `git rm`, and exit criteria are met.
