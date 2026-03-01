@@ -21,7 +21,7 @@ mod task_io;
 
 use crate::cli::{Cli, Commands, ConfigCommands};
 use crate::help_json::help_json_schema;
-use crate::models::UsageError;
+use crate::models::{NotFoundError, UsageError};
 use clap::Parser;
 use clap::error::ErrorKind;
 use color_eyre::eyre::Result;
@@ -178,7 +178,11 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
 
-        eprintln!("Runtime error: {:?}", err);
+        if err.is::<NotFoundError>() {
+            eprintln!("{}", err);
+        } else {
+            eprintln!("Runtime error: {:?}", err);
+        }
         return ExitCode::from(1);
     }
     ExitCode::SUCCESS

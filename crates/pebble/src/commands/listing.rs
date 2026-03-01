@@ -1,5 +1,5 @@
 use crate::graph::TaskGraph;
-use crate::models::{Priority, TaskNode, TaskStatus};
+use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus};
 use color_eyre::eyre::{Result, eyre};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -231,10 +231,7 @@ pub fn run_search(ctx: &RunContext, query: &str) -> Result<()> {
         .collect();
 
     if tasks.is_empty() {
-        return Err(color_eyre::eyre::eyre!(
-            "No tasks found matching query '{}'",
-            query
-        ));
+        return Err(NotFoundError(format!("No tasks found matching query '{}'", query)).into());
     }
 
     let tasks = graph.default_order(tasks)?;
