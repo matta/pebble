@@ -1,5 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
+use assert_cmd::cargo_bin;
+use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use std::process::Command;
 
 #[test]
 fn test_all_subcommands_include_examples_section() {
@@ -19,7 +22,7 @@ fn test_all_subcommands_include_examples_section() {
     ];
 
     for (args, contains_all) in cases {
-        let output = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"))
+        let output = Command::new(cargo_bin!())
             .args(*args)
             .output()
             .expect("pebble command should execute successfully");
@@ -39,7 +42,7 @@ fn test_all_subcommands_include_examples_section() {
 
 #[test]
 fn test_list_help_describes_combined_filter_semantics() {
-    let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+    let mut cmd = Command::new(cargo_bin!());
     cmd.args(["list", "--help"])
         .assert()
         .success()
@@ -50,7 +53,7 @@ fn test_list_help_describes_combined_filter_semantics() {
 }
 #[test]
 fn test_config_get_help_documents_keys() {
-    let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+    let mut cmd = Command::new(cargo_bin!());
     cmd.args(["config", "get", "--help"])
         .assert()
         .success()
