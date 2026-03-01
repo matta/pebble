@@ -20,6 +20,17 @@ impl fmt::Display for UsageError {
 }
 impl error::Error for UsageError {}
 
+/// Error representing a search or retrieval failure when the item is not found.
+/// Should result in exit code 1 without a stack trace.
+#[derive(Debug)]
+pub struct NotFoundError(pub String);
+impl fmt::Display for NotFoundError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl error::Error for NotFoundError {}
+
 /// Represents the lifecycle state of a task.
 ///
 /// This enum defines the possible states a task can be in.
