@@ -224,6 +224,7 @@ mod tests {
     use super::*;
     use std::convert::TryFrom;
     use std::mem;
+    use std::str::FromStr;
 
     #[test]
     fn test_task_status_deserialization() {
@@ -350,5 +351,52 @@ created_at = 2026-02-21T17:00:00Z
         let p = Priority::new(42).expect("Priority 42 is valid");
         let v: u32 = p.into();
         assert_eq!(v, 42);
+    }
+
+    #[test]
+    fn test_task_node_disk_content_uses_yaml_frontmatter() {
+        let node = TaskNode {
+            path: PathBuf::from("docs/pebble/task.md"),
+            frontmatter: TaskFrontmatter {
+                id: "issue-123".to_string(),
+                title: "YAML writer".to_string(),
+                status: TaskStatus::Todo,
+                priority: None,
+                created_at: Some(
+                    Datetime::from_str("2026-03-01T00:00:00Z")
+                        .expect("created_at should parse"),
+                ),
+                modified_at: None,
+                resolved_at: None,
+                needs: vec![],
+                tags: vec![],
+                extra: HashMap::new(),
+            },
+            body: "Body\n".to_string(),
+        };
+
+        let content = node
+            .get_content_for_disk()
+            .expect("task content should render");
+        assert!(
+            content.starts_with("---\n"),
+            "frontmatter should start with YAML delimiter"
+        );
+        assert!(
+            content.contains("\n---\n"),
+            "frontmatter should include YAML closing delimiter"
+        );
+        assert!(
+            content.contains("\nid:"),
+            "frontmatter should use YAML key syntax"
+        );
+        assert!(
+            !content.contains("+++"),
+            "frontmatter should not use TOML delimiters"
+        );
+        assert!(
+            !content.contains("id = "),
+            "frontmatter should not use TOML assignment syntax"
+        );
     }
 }

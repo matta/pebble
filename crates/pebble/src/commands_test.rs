@@ -9,6 +9,37 @@ use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
 
+fn assert_yaml_frontmatter(content: &str) {
+    assert!(
+        content.starts_with("---\n"),
+        "task file should start with YAML delimiter"
+    );
+    assert!(
+        content.contains("\n---\n"),
+        "task file should include a closing YAML delimiter"
+    );
+    assert!(
+        content.contains("\nid:"),
+        "frontmatter should use YAML key syntax"
+    );
+    assert!(
+        content.contains("\ntitle:"),
+        "frontmatter should include title in YAML syntax"
+    );
+    assert!(
+        content.contains("\nstatus:"),
+        "frontmatter should include status in YAML syntax"
+    );
+    assert!(
+        !content.contains("+++"),
+        "task file should not use TOML frontmatter delimiters"
+    );
+    assert!(
+        !content.contains("id = "),
+        "task file should not use TOML assignment syntax"
+    );
+}
+
 fn add_task(ctx: &RunContext, title: &str) {
     run_add(
         ctx,
@@ -170,4 +201,92 @@ fn test_add_slug_filename() {
         .to_string_lossy()
         .to_string();
     assert!(stem.len() <= 80, "slug was {} chars", stem.len());
+}
+
+#[test]
+fn test_add_writes_yaml_frontmatter() {
+    let dir = tempdir().expect("temp directory should be created");
+    let current_dir = dir.path();
+    let tasks_dir = current_dir.join("docs/pebble");
+
+    let ctx = RunContext {
+        current_dir: current_dir.to_path_buf(),
+        project_root: Some(current_dir.to_path_buf()),
+        config: Config {
+            issue_prefix: "TEST".to_string(),
+            tasks_dir: PathBuf::from("docs/pebble"),
+            ..Config::default()
+        },
+        tasks_dir: tasks_dir.clone(),
+        json: false,
+    };
+
+    add_task(&ctx, "YAML frontmatter from add");
+
+    let task_file = fs::read_dir(&tasks_dir)
+        .expect("tasks directory should be readable")
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|ext| ext == "md"))
+        .expect("add should create one markdown task file");
+
+    let content = fs::read_to_string(task_file).expect("task file should be readable");
+    assert_yaml_frontmatter(&content);
+}
+
+#[test]
+fn test_update_writes_yaml_frontmatter() {
+    let dir = tempdir().expect("temp directory should be created");
+    let current_dir = dir.path();
+    let tasks_dir = current_dir.join("docs/pebble");
+    fs::create_dir_all(&tasks_dir).expect("tasks directory should be created");
+
+    let ctx = RunContext {
+        current_dir: current_dir.to_path_buf(),
+        project_root: Some(current_dir.to_path_buf()),
+        config: Config {
+            issue_prefix: "TEST".to_string(),
+            tasks_dir: PathBuf::from("docs/pebble"),
+            ..Config::default()
+        },
+        tasks_dir: tasks_dir.clone(),
+        json: false,
+    };
+
+    let task_path = tasks_dir.join("task-1.md");
+    fs::write(
+        &task_path,
+        r#"---
+id: TEST-1
+title: Existing task
+status: todo
+created_at: "2026-03-01T00:00:00Z"
+---
+Body
+"#,
+    )
+    .expect("seed task should be written");
+
+    run_update(
+        &ctx,
+        RunUpdateInput {
+            id: "TEST-1".to_string(),
+            title: Some("Updated task".to_string()),
+            status: None,
+            priority: None,
+            clear_priority: false,
+            body: None,
+            append_body: None,
+            add_tags: vec![],
+            remove_tags: vec![],
+            add_needs: vec![],
+            remove_needs: vec![],
+            blocks: vec![],
+            remove_blocks: vec![],
+        },
+    )
+    .expect("update should execute successfully");
+
+    let content = fs::read_to_string(task_path).expect("updated task file should be readable");
+    assert_yaml_frontmatter(&content);
 }

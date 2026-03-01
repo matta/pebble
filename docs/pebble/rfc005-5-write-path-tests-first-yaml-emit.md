@@ -1,9 +1,11 @@
 +++
 id = "pebl-ombr9kv475"
 title = "RFC005-5 Write-path tests first (YAML emit)"
-status = "todo"
+status = "done"
 priority = 0
 created_at = 2026-03-01T16:41:38.740487853+00:00
+modified_at = 2026-03-01T17:14:15.926528050+00:00
+resolved_at = 2026-03-01T17:14:15.926528050+00:00
 needs = ["pebl-gr537c9can"]
 tags = ["planning", "rfc005"]
 +++
@@ -26,3 +28,8 @@ Do exactly this:
 Acceptance Criteria:
 - New/updated tests fail before write-path code changes.
 - No production writer logic is changed in this task.
+
+Failing tests recorded before implementation:
+- `commands_test::test_add_writes_yaml_frontmatter`
+- `commands_test::test_update_writes_yaml_frontmatter`
+- `models::tests::test_task_node_disk_content_uses_yaml_frontmatter`
