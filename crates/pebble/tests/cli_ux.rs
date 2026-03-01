@@ -4,7 +4,8 @@ use predicates::prelude::*;
 
 #[test]
 fn test_next_stdout_is_clean_when_no_tasks() {
-    let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+    let env = support::setup_test_env();
+    let mut cmd = env.pebble();
     cmd.arg("next")
         .assert()
         .failure()
@@ -14,7 +15,8 @@ fn test_next_stdout_is_clean_when_no_tasks() {
 
 #[test]
 fn test_add_stdout_is_clean_non_json() {
-    let mut cmd = assert_cmd::Command::new(assert_cmd::cargo_bin!("pebble"));
+    let env = support::setup_test_env();
+    let mut cmd = env.pebble();
     cmd.arg("add")
         .arg("Clean Task")
         .assert()
