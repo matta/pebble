@@ -53,16 +53,18 @@ fn test_absolute_readiness() {
 
 #[test]
 fn test_dynamic_scoring() {
-    // A is priority 1, blocks nothing
-    // B is priority 5, blocks C and D
-    // C and D depend on B
+    // A is priority 1, blocks nothing.
+    // B is priority 5 and blocks C and D, but downstream priorities are unset.
+    // Explicit priority should remain primary in this case.
     let mut nodes = HashMap::new();
 
     let mut a = make_test_node("A", TaskStatus::todo(), vec![]);
-    a.frontmatter.priority = Some(Priority::try_from(1).expect("Valid priority"));
+    a.frontmatter.priority =
+        Some(Priority::try_from(1).expect("Priority value should be within the valid range 0-99"));
 
     let mut b = make_test_node("B", TaskStatus::todo(), vec![]);
-    b.frontmatter.priority = Some(Priority::try_from(5).expect("Valid priority"));
+    b.frontmatter.priority =
+        Some(Priority::try_from(5).expect("Priority value should be within the valid range 0-99"));
 
     let c = make_test_node("C", TaskStatus::todo(), vec!["B"]);
     let d = make_test_node("D", TaskStatus::todo(), vec!["B"]);
@@ -77,10 +79,68 @@ fn test_dynamic_scoring() {
 
     assert_eq!(next_tasks.len(), 2); // C and D are not ready
 
-    // B should be first because it blocks 2 things, even though its priority is 5.
-    // A blocks 0 things.
-    assert_eq!(next_tasks[0].frontmatter.id, "B");
-    assert_eq!(next_tasks[1].frontmatter.id, "A");
+    assert_eq!(next_tasks[0].frontmatter.id, "A");
+    assert_eq!(next_tasks[1].frontmatter.id, "B");
+}
+
+#[test]
+fn test_dynamic_scoring_promotes_blocker_of_higher_priority_downstream_work() {
+    // BLOCKER has no explicit priority, but it blocks P0-TASK.
+    // OTHER has explicit priority 1.
+    // BLOCKER should be treated as effective P0 and surface first.
+    let mut nodes = HashMap::new();
+
+    let blocker = make_test_node("BLOCKER", TaskStatus::todo(), vec![]);
+
+    let mut p0_task = make_test_node("P0-TASK", TaskStatus::todo(), vec!["BLOCKER"]);
+    p0_task.frontmatter.priority =
+        Some(Priority::try_from(0).expect("Priority value should be within the valid range 0-99"));
+
+    let mut other = make_test_node("OTHER", TaskStatus::todo(), vec![]);
+    other.frontmatter.priority =
+        Some(Priority::try_from(1).expect("Priority value should be within the valid range 0-99"));
+
+    nodes.insert("BLOCKER".to_string(), blocker);
+    nodes.insert("P0-TASK".to_string(), p0_task);
+    nodes.insert("OTHER".to_string(), other);
+
+    let graph = TaskGraph::new(nodes);
+    let next_tasks = graph.get_next_tasks();
+
+    assert_eq!(next_tasks.len(), 2); // P0-TASK is not ready
+    assert_eq!(next_tasks[0].frontmatter.id, "BLOCKER");
+    assert_eq!(next_tasks[1].frontmatter.id, "OTHER");
+}
+
+#[test]
+fn test_dynamic_scoring_effective_priority_tie_breaks_by_base_priority() {
+    // DIRECT has base priority 2 and no downstream dependents.
+    // BLOCKER has base priority 5 but blocks DOWNSTREAM-P2, so effective priority is 2.
+    // With equal effective priority, lower base priority should win.
+    let mut nodes = HashMap::new();
+
+    let mut direct = make_test_node("DIRECT", TaskStatus::todo(), vec![]);
+    direct.frontmatter.priority =
+        Some(Priority::try_from(2).expect("Priority value should be within the valid range 0-99"));
+
+    let mut blocker = make_test_node("BLOCKER", TaskStatus::todo(), vec![]);
+    blocker.frontmatter.priority =
+        Some(Priority::try_from(5).expect("Priority value should be within the valid range 0-99"));
+
+    let mut downstream_p2 = make_test_node("DOWNSTREAM-P2", TaskStatus::todo(), vec!["BLOCKER"]);
+    downstream_p2.frontmatter.priority =
+        Some(Priority::try_from(2).expect("Priority value should be within the valid range 0-99"));
+
+    nodes.insert("DIRECT".to_string(), direct);
+    nodes.insert("BLOCKER".to_string(), blocker);
+    nodes.insert("DOWNSTREAM-P2".to_string(), downstream_p2);
+
+    let graph = TaskGraph::new(nodes);
+    let next_tasks = graph.get_next_tasks();
+
+    assert_eq!(next_tasks.len(), 2); // DOWNSTREAM-P2 is not ready
+    assert_eq!(next_tasks[0].frontmatter.id, "DIRECT");
+    assert_eq!(next_tasks[1].frontmatter.id, "BLOCKER");
 }
 
 #[test]

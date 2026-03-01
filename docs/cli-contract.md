@@ -226,12 +226,13 @@ Parses the directory, builds the DAG, and lists tasks. Defaults to omitting `don
     * `--limit <N>`: Limits returned rows.
 * **Default sort order**: Deterministic and dependency-aware:
     1. **Topological order** (respecting `needs`): if B depends on A, A appears before B. Missing needs are ignored for ordering (only existing tasks participate). Cycles are grouped together; tasks inside a cycle are ordered by `created_at` then `id`.
-    2. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `needs` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Tasks blocking more downstream work appear first.
-    3. **Priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
-    4. **`created_at`** ascending (oldest first).
-    5. **`id`** ascending (lexicographic) as the absolute tiebreaker, guaranteeing determinism.
+    2. **Effective priority** ascending: `min(base_priority, downstream_min_priority)`, where `base_priority` is the task's own priority (with unset values sorted after all explicit priorities) and `downstream_min_priority` is the minimum base priority among actionable transitive downstream dependents.
+    3. **Base priority** ascending (lower number = higher priority). Tasks with no `priority` sort after all prioritized tasks.
+    4. **Transitive blocking count** descending: the number of non-terminal tasks recursively reachable by traversing **reverse** `needs` edges (tasks that depend on this task, directly or indirectly), using unique task IDs and excluding self. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Tasks blocking more downstream work appear first.
+    5. **`created_at`** ascending (oldest first).
+    6. **`id`** ascending (lexicographic) as the absolute tiebreaker, guaranteeing determinism.
 * When `--sort` is specified, topological ordering is NOT applied — the results are sorted purely by the requested field. Ties are broken by `created_at` ascending, then `id` ascending.
-* When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the order is effectively: blocking count → priority → created_at → id.
+* When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the order is effectively: effective priority → base priority → blocking count → created_at → id.
 * **Output (`--json`)**: `{"tasks": [<TaskObject>, ...]}`
 
 #### `pebble list --help` Must-Have Semantics
@@ -250,7 +251,7 @@ The `pebble list --help` output **MUST** explicitly document:
 * `--sort` field set and tie-breaker behavior.
 
 ### `pebble next`
-Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.
+Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC)`, where `effective_priority = min(base_priority, downstream_min_priority)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.
 * **Inputs**: None.
 * **Output (`--json`)**: A single unwrapped `<TaskObject>`, or `null` if no ready tasks exist.
 

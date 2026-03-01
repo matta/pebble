@@ -74,7 +74,7 @@ pub enum Commands {
     },
     #[command(
         about = "Return the next task to work on.",
-        long_about = "Return the single highest-ranked ready task using Pebble's default scoring: (transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC).",
+        long_about = "Return the single highest-ranked ready task using Pebble's default scoring: (effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC). effective_priority is min(base_priority, downstream_min_priority).",
         after_help = "Examples:\n  pebble next\n  pebble next --json"
     )]
     /// Return the single highest-priority task that is ready to work on.

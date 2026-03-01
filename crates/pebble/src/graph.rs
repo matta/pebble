@@ -12,18 +12,29 @@ mod ordering;
 
 /// Composite sort key for ordering tasks in `pebble next` output.
 ///
-/// Fields are compared lexicographically: tasks that block more downstream work
-/// rank first; ties are broken by priority, then creation time, then ID.
+/// Fields are compared lexicographically: effective priority first, then base
+/// priority, then downstream blocking count, then creation time, then ID.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct NodeKey {
+    /// Effective priority used by dynamic scoring.
+    effective_priority: PriorityRank,
+    /// Explicit task priority with unset values sorted last.
+    base_priority: PriorityRank,
     /// Descending blocking count (wrapped in [`Reverse`] so `Ord` sorts highest first).
     blocking_count: Reverse<usize>,
-    /// Raw priority value; `u32::MAX` is used when priority is unset (sorts last).
-    priority: u32,
     /// Creation timestamp, used as a tiebreaker after priority.
     created_at: DateTime<Utc>,
     /// Task ID, used as the final deterministic tiebreaker.
     id: String,
+}
+
+/// Internal ranking key for priorities.
+///
+/// `Set` values sort before `Unset`, and among `Set` values lower numbers sort first.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub(super) enum PriorityRank {
+    Set(u32),
+    Unset,
 }
 
 /// In-memory task graph with forward nodes and a reverse dependency index.
@@ -229,24 +240,88 @@ impl TaskGraph {
         count
     }
 
+    /// Returns the base priority ranking key for a task node.
+    fn base_priority(node: &TaskNode) -> PriorityRank {
+        node.frontmatter
+            .priority
+            .map(u32::from)
+            .map(PriorityRank::Set)
+            .unwrap_or(PriorityRank::Unset)
+    }
+
+    /// Returns the minimum base priority among actionable transitive downstream dependents.
+    ///
+    /// Traversal follows reverse `needs` edges, excludes the task itself, and only
+    /// includes actionable (`todo` / `in_progress`) tasks. Terminal dependents stop
+    /// traversal for that branch, matching transitive blocking semantics.
+    fn downstream_min_priority(&self, task_id: &str) -> PriorityRank {
+        let mut visited: HashSet<&str> = HashSet::new();
+        let mut stack = vec![task_id];
+        let mut min_priority = PriorityRank::Unset;
+
+        visited.insert(task_id);
+
+        while let Some(current) = stack.pop() {
+            if let Some(downstream_ids) = self.blocking.get(current) {
+                for downstream_id in downstream_ids {
+                    if !visited.insert(downstream_id.as_str()) {
+                        continue;
+                    }
+
+                    let Some(node) = self.nodes.get(downstream_id.as_str()) else {
+                        continue;
+                    };
+
+                    if node.frontmatter.status.is_actionable() {
+                        min_priority = min_priority.min(Self::base_priority(node));
+                        stack.push(downstream_id.as_str());
+                    }
+                }
+            }
+        }
+
+        min_priority
+    }
+
+    /// Returns effective priority for a task ID.
+    pub(super) fn effective_priority_for_task(&self, task_id: &str) -> PriorityRank {
+        let Some(node) = self.nodes.get(task_id) else {
+            return PriorityRank::Unset;
+        };
+
+        let base = Self::base_priority(node);
+        let downstream_min = self.downstream_min_priority(task_id);
+        base.min(downstream_min)
+    }
+
     /// Builds the composite [`NodeKey`] for a task, used during sort comparisons.
     ///
     /// Looks up the pre-computed blocking count; falls back to 0 if the task is not
-    /// present in `blocking_counts`. Unset priority is mapped to `u32::MAX`.
-    fn next_task_key(&self, node: &TaskNode, blocking_counts: &HashMap<String, usize>) -> NodeKey {
+    /// present in `blocking_counts`.
+    fn next_task_key(
+        &self,
+        node: &TaskNode,
+        blocking_counts: &HashMap<String, usize>,
+        effective_priorities: &HashMap<String, PriorityRank>,
+    ) -> NodeKey {
         let blocking_count = *blocking_counts.get(&node.frontmatter.id).unwrap_or(&0);
-        let priority = node.frontmatter.priority.map(u32::from).unwrap_or(u32::MAX);
+        let base_priority = Self::base_priority(node);
+        let effective_priority = *effective_priorities
+            .get(&node.frontmatter.id)
+            .unwrap_or(&base_priority);
         let created_at = node.frontmatter.created_at.unwrap_or_else(default_datetime);
 
         NodeKey {
+            effective_priority,
+            base_priority,
             blocking_count: Reverse(blocking_count),
-            priority,
             created_at,
             id: node.frontmatter.id.clone(),
         }
     }
 
-    /// Order tasks by dependency-aware default sort (topology, blocking, priority, time, id).
+    /// Order tasks by dependency-aware default sort
+    /// (topology, effective priority, base priority, blocking, time, id).
     pub fn default_order<'a>(&'a self, nodes: Vec<&'a TaskNode>) -> Result<Vec<&'a TaskNode>> {
         ordering::default_order(self, nodes)
     }
@@ -254,11 +329,12 @@ impl TaskGraph {
     /// Returns a list of tasks that are ready to be worked on.
     ///
     /// The returned tasks are those that satisfy [`TaskGraph::is_ready`] and are sorted
-    /// using a Dynamic Scoring algorithm. The sort order is determined by:
-    /// 1. Number of downstream blocked tasks (descending).
-    /// 2. Priority (ascending, with unset priority sorting last).
-    /// 3. Creation time (ascending).
-    /// 4. Task ID (lexicographical tie-breaker).
+    /// using Dynamic Scoring. The sort order is determined by:
+    /// 1. Effective priority (ascending).
+    /// 2. Base priority (ascending, with unset priority sorting last).
+    /// 3. Number of downstream blocked tasks (descending).
+    /// 4. Creation time (ascending).
+    /// 5. Task ID (lexicographical tie-breaker).
     pub fn get_next_tasks(&self) -> Vec<&TaskNode> {
         let mut ready_tasks: Vec<&TaskNode> = self
             .nodes
@@ -277,11 +353,21 @@ impl TaskGraph {
             })
             .collect();
 
+        let effective_priorities: HashMap<String, PriorityRank> = ready_tasks
+            .iter()
+            .map(|n| {
+                (
+                    n.frontmatter.id.clone(),
+                    self.effective_priority_for_task(&n.frontmatter.id),
+                )
+            })
+            .collect();
+
         let mut keys: HashMap<String, NodeKey> = HashMap::new();
         for node in &ready_tasks {
             keys.insert(
                 node.frontmatter.id.clone(),
-                self.next_task_key(node, &blocking_counts),
+                self.next_task_key(node, &blocking_counts, &effective_priorities),
             );
         }
 

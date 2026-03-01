@@ -18,6 +18,33 @@ fn write_task_with_needs(tasks_dir: &Path, id: &str, title: &str, status: &str, 
     fs::write(tasks_dir.join(format!("{id}.md")), content).expect("task file should be written");
 }
 
+struct BlockingTask<'a> {
+    id: &'a str,
+    title: &'a str,
+    status: &'a str,
+    needs: &'a [&'a str],
+    priority: Option<u8>,
+}
+
+fn write_blocking_task(tasks_dir: &Path, task: BlockingTask<'_>) {
+    let needs_str = task
+        .needs
+        .iter()
+        .map(|n| format!("\"{n}\""))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let mut frontmatter = format!(
+        "id: \"{}\"\ntitle: \"{}\"\nstatus: \"{}\"\ncreated_at: \"2024-01-01T00:00:00Z\"\nneeds: [{needs_str}]\n",
+        task.id, task.title, task.status
+    );
+    if let Some(value) = task.priority {
+        frontmatter.push_str(&format!("priority: {value}\n"));
+    }
+    let content = format!("---\n{frontmatter}---\nBody\n");
+    fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
+        .expect("task file should be written");
+}
+
 #[test]
 fn test_show_json_blocking_field_contains_direct_non_terminal_dependents() {
     let env = setup_test_env();
@@ -129,5 +156,126 @@ fn test_list_default_order_blocking_count_breaks_ties() {
     assert!(
         y_pos < x_pos,
         "PROJ-Y (blocking count 1) should appear before PROJ-X (blocking count 0), got order: {ids:?}"
+    );
+}
+
+#[test]
+fn test_next_promotes_blocker_of_higher_priority_downstream_work() {
+    let env = setup_test_env();
+
+    write_blocking_task(
+        &env.tasks_dir,
+        BlockingTask {
+            id: "PROJ-BLOCKER",
+            title: "Blocker",
+            status: "todo",
+            needs: &[],
+            priority: None,
+        },
+    );
+    write_blocking_task(
+        &env.tasks_dir,
+        BlockingTask {
+            id: "PROJ-URGENT",
+            title: "Urgent blocked task",
+            status: "todo",
+            needs: &["PROJ-BLOCKER"],
+            priority: Some(0),
+        },
+    );
+    write_blocking_task(
+        &env.tasks_dir,
+        BlockingTask {
+            id: "PROJ-OTHER",
+            title: "Other ready task",
+            status: "todo",
+            needs: &[],
+            priority: Some(1),
+        },
+    );
+
+    let output = env
+        .pebble()
+        .args(["next", "--json", "--dir", "tasks"])
+        .output()
+        .expect("next command should execute successfully");
+
+    assert!(
+        output.status.success(),
+        "next failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    assert_eq!(value["id"].as_str(), Some("PROJ-BLOCKER"));
+}
+
+#[test]
+fn test_list_is_ready_uses_effective_priority_then_base_priority() {
+    let env = setup_test_env();
+
+    write_blocking_task(
+        &env.tasks_dir,
+        BlockingTask {
+            id: "PROJ-BLOCKER",
+            title: "Blocker",
+            status: "todo",
+            needs: &[],
+            priority: Some(5),
+        },
+    );
+    write_blocking_task(
+        &env.tasks_dir,
+        BlockingTask {
+            id: "PROJ-DIRECT",
+            title: "Direct P2 task",
+            status: "todo",
+            needs: &[],
+            priority: Some(2),
+        },
+    );
+    write_blocking_task(
+        &env.tasks_dir,
+        BlockingTask {
+            id: "PROJ-DOWNSTREAM",
+            title: "Downstream P2 task",
+            status: "todo",
+            needs: &["PROJ-BLOCKER"],
+            priority: Some(2),
+        },
+    );
+
+    let output = env
+        .pebble()
+        .args(["list", "--json", "--dir", "tasks", "--is-ready"])
+        .output()
+        .expect("list command should execute successfully");
+
+    assert!(
+        output.status.success(),
+        "list failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    let ids: Vec<&str> = value["tasks"]
+        .as_array()
+        .expect("tasks should be an array")
+        .iter()
+        .filter_map(|task| task["id"].as_str())
+        .collect();
+
+    let direct_pos = ids
+        .iter()
+        .position(|&id| id == "PROJ-DIRECT")
+        .expect("PROJ-DIRECT should be present");
+    let blocker_pos = ids
+        .iter()
+        .position(|&id| id == "PROJ-BLOCKER")
+        .expect("PROJ-BLOCKER should be present");
+
+    assert!(
+        direct_pos < blocker_pos,
+        "When effective priority ties at P2, base priority should break ties: {ids:?}"
     );
 }

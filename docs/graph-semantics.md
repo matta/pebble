@@ -38,11 +38,15 @@ The write path allows these structures without failing. Preemptive validation an
 
 Because hierarchy is flattened into `needs`, a low-priority prerequisite can block high-priority dependents. Rather than propagating priority up the graph, Pebble scores tasks dynamically at read time.
 
-`pebble next` (and `pebble list --is-ready`) ranks the ready frontier by the sort key tuple **`(transitive_blocking_count DESC, priority ASC, created_at ASC, id ASC)`**:
+`pebble next` (and `pebble list --is-ready`) ranks the ready frontier by the sort key tuple **`(effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC)`**:
 
-1. **Transitive Blocking Count** — The count of **unique, non-terminal** (`todo` or `in_progress`) tasks reachable by walking **reverse** `needs` edges from this task (i.e., direct and indirect dependents). The task itself is excluded. Missing IDs are ignored; cycles are handled via visited-set tracking. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Example: if B depends on A, and C depends on B, then A's count is 2 **only if B is non-terminal**. This ensures a bottleneck surfaces above isolated tasks regardless of local priority. Note: `len(blocking)` counts only *direct* non-terminal dependents; the transitive count walks the full downstream graph.
-2. **Priority** — The `priority` field from frontmatter (lower = higher priority). Tasks with no `priority` sort after all prioritized tasks.
-3. **Created At** — Oldest task wins.
-4. **ID** — Lexicographic ascending. Guarantees determinism when all other keys are equal.
+1. **Effective Priority** — `min(base_priority, downstream_min_priority)`, where:
+   - `base_priority` is the task's own `priority` value, with unset values sorted after all explicit priorities.
+   - `downstream_min_priority` is the minimum `base_priority` among actionable transitive downstream dependents (reachable by reverse `needs` traversal).
+   This means a low/no-priority blocker of urgent work is treated with matching urgency.
+2. **Base Priority** — The task's explicit `priority` from frontmatter (lower = higher priority), with unset priority sorting after all explicit values. This preserves user intent when `effective_priority` ties.
+3. **Transitive Blocking Count** — The count of **unique, non-terminal** (`todo` or `in_progress`) tasks reachable by walking **reverse** `needs` edges from this task (i.e., direct and indirect dependents). The task itself is excluded. Missing IDs are ignored; cycles are handled via visited-set tracking. Traversal stops at terminal tasks (`done`/`canceled`) so completed work does not propagate blocking. Note: `len(blocking)` counts only *direct* non-terminal dependents; the transitive count walks the full downstream graph.
+4. **Created At** — Oldest task wins.
+5. **ID** — Lexicographic ascending. Guarantees determinism when all other keys are equal.
 
-The general default sort for `pebble list` prepends a topological tier: (1) topological order respecting `needs` (cycles are grouped together and sorted internally by `created_at` then `id`), (2) transitive blocking count descending, (3) priority ascending, (4) `created_at` ascending, (5) `id` ascending. When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the sort reduces to the tuple above. See `cli-contract.md` for the full specification.
+The general default sort for `pebble list` prepends a topological tier: (1) topological order respecting `needs` (cycles are grouped together and sorted internally by `created_at` then `id`), (2) effective priority ascending, (3) base priority ascending, (4) transitive blocking count descending, (5) `created_at` ascending, (6) `id` ascending. When `--is-ready` is active, all returned tasks are at the dependency frontier, so topological ordering has no practical effect and the sort reduces to the tuple above. See `cli-contract.md` for the full specification.
