@@ -127,7 +127,6 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
     if mutations.clear_priority {
         node.frontmatter.priority = None;
     }
-    node.frontmatter.modified_at = Some(current_task_time());
 
     let mut existing_tags: HashSet<_> = node.frontmatter.tags.iter().cloned().collect();
     for t in mutations.add_tags {
@@ -151,7 +150,9 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
 
     if let Some(b) = mutations.body {
         node.body = b;
-    } else if let Some(a) = mutations.append_body {
+    } else if let Some(a) = mutations.append_body
+        && !a.is_empty()
+    {
         if node.body.trim().is_empty() {
             node.body = a;
         } else {
@@ -267,10 +268,14 @@ pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
         .nodes
         .remove(&id)
         .ok_or_else(|| eyre!("Task '{}' not found", id))?;
+
+    let original_node = node.clone();
+
     let add_blocks_targets =
         validate_task_references(&graph, blocks, Some(id.as_str()), "--blocks")?;
     let remove_blocks_targets =
         validate_task_references(&graph, remove_blocks, Some(id.as_str()), "--remove-blocks")?;
+
     apply_update_mutations(
         &mut node,
         UpdateMutations {
@@ -293,7 +298,10 @@ pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
         remove_blocks_targets,
     )?;
 
-    node.write_to_disk()?;
+    if node != original_node {
+        node.frontmatter.modified_at = Some(current_task_time());
+        node.write_to_disk()?;
+    }
 
     if ctx.json {
         graph
