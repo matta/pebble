@@ -76,7 +76,7 @@ Body"#;
     let updated_content =
         fs::read_to_string(env.tasks_dir.join("A.md")).expect("file should be readable");
     assert!(
-        updated_content.contains("weird_key: \"abc\""),
+        updated_content.contains("weird_key: abc"),
         "unknown keys should be preserved"
     );
 }
@@ -126,7 +126,7 @@ Body"#;
     assert_eq!(json["ok"].as_bool(), Some(false));
     assert_eq!(
         json["fixed_tasks"].as_array().map(|items| items.len()),
-        Some(0)
+        Some(1)
     );
     assert_eq!(json["errors"].as_array().map(|items| items.len()), Some(1));
 

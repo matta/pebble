@@ -2,7 +2,7 @@ use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::{Result, eyre};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -19,7 +19,7 @@ struct YamlTaskFrontmatter {
     #[serde(default)]
     tags: Vec<String>,
     #[serde(flatten)]
-    extra: HashMap<String, serde_json::Value>,
+    pub extra: BTreeMap<String, serde_json::Value>,
 }
 
 fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>> {
@@ -105,24 +105,27 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
         extra: raw_frontmatter.extra,
     };
 
-    // Extract body, stripping leading newlines after the closing '---'.
-    let body_lines = &lines[end_idx + 1..];
-
-    // We want to reconstruct the body. We can use `join("\n")`,
-    // but if the file ended with a newline we might want to be faithful.
-    // For now, joining lines is standard.
-    let mut body = body_lines.join("\n");
-    if !body.is_empty() && content.ends_with('\n') {
-        body.push('\n');
+    // Extract body. We want to be faithful to the original content after the frontmatter.
+    // The frontmatter ends at lines[end_idx]. The body starts after that.
+    // We need to find the byte offset of the end of the frontmatter delimiter.
+    let search_str = "---\n";
+    let mut current_pos = 0;
+    // skip the first ---
+    if let Some(pos) = content.find(search_str) {
+        current_pos = pos + search_str.len();
     }
-
-    // Trim leading whitespace/newlines from the body to drop the immediate gap after ---
-    let body = body.trim_start().to_string();
+    // find the second ---
+    let body = if let Some(pos) = content[current_pos..].find(search_str) {
+        let body_start = current_pos + pos + search_str.len();
+        &content[body_start..]
+    } else {
+        ""
+    };
 
     Ok(TaskNode {
         path: path.to_path_buf(),
         frontmatter,
-        body,
+        body: body.to_string(),
     })
 }
 
@@ -149,7 +152,7 @@ This is the body.
         assert_eq!(node.frontmatter.id, "issue-1");
         assert_eq!(node.frontmatter.title, "Test");
         assert_eq!(node.frontmatter.status, TaskStatus::todo());
-        assert_eq!(node.body, "# Body\nThis is the body.\n");
+        assert_eq!(node.body, "\n# Body\nThis is the body.\n");
     }
 
     #[test]

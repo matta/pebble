@@ -20,6 +20,7 @@ deunicode.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
+anyhow = "1.0"
 
 [lints]
 workspace = true

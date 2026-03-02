@@ -1,32 +1,26 @@
 use crate::commands::RunContext;
 use crate::commands_diagnostics::collect_diagnostics;
 use crate::graph::TaskGraph;
+use crate::models::TaskNode;
 use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
+use std::fs;
 
 /// Executes repair behavior for `pebble check --fix`.
 pub fn run_fix(ctx: &RunContext) -> Result<()> {
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut modified_ids = Vec::new();
-    let current_time = current_task_time();
 
-    for node in graph.nodes.values_mut() {
-        let mut modified = false;
-
-        // Backfill missing created_at
-        if node.frontmatter.created_at.is_none() {
-            node.frontmatter.created_at = Some(current_time);
-            modified = true;
-        }
-
-        if modified {
-            node.write_to_disk()?;
-            modified_ids.push(node.frontmatter.id.clone());
+    // 1. Perform repairs on all nodes
+    for (id, node) in graph.nodes.iter_mut() {
+        if repair_node(node, ctx)? && !modified_ids.contains(id) {
+            modified_ids.push(id.clone());
         }
     }
 
     modified_ids.sort();
 
+    // 2. Re-load the graph after repairs to capture current state for diagnostics
     // Determine whether any findings remain after repairs.
     let errors = collect_diagnostics(ctx)?;
     let ok = errors.is_empty();
@@ -57,4 +51,28 @@ pub fn run_fix(ctx: &RunContext) -> Result<()> {
     } else {
         Err(eyre!("Check --fix failed: unresolved findings remain."))
     }
+}
+
+fn repair_node(node: &mut TaskNode, _ctx: &RunContext) -> Result<bool> {
+    let mut modified = false;
+
+    // Backfill missing created_at
+    if node.frontmatter.created_at.is_none() {
+        node.frontmatter.created_at = Some(current_task_time());
+        modified = true;
+    }
+
+    // Check for normalization (elided fields, formatting, trailing newlines)
+    if let Ok(disk_content) = fs::read_to_string(&node.path)
+        && let Ok(canonical_content) = node.get_content_for_disk()
+        && disk_content != canonical_content
+    {
+        modified = true;
+    }
+
+    if modified {
+        node.write_to_disk()?;
+    }
+
+    Ok(modified)
 }

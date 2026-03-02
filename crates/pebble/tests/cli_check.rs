@@ -117,19 +117,19 @@ fn parse_json_stdout(output: &Output) -> Value {
 
 fn setup_healthy_graph(env: &TestEnv) {
     let a = r#"---
-id: "A"
-title: "A"
-status: "todo"
-created_at: "2026-03-01T00:00:00Z"
-needs: []
+id: A
+title: A
+status: todo
+created_at: 2026-03-01T00:00:00+00:00
 ---
 "#;
     let b = r#"---
-id: "B"
-title: "B"
-status: "todo"
-created_at: "2026-03-01T00:00:00Z"
-needs: ["A"]
+id: B
+title: B
+status: todo
+created_at: 2026-03-01T00:00:00+00:00
+needs:
+  - A
 ---
 "#;
     write_file(env, "A.md", a);
@@ -138,25 +138,26 @@ needs: ["A"]
 
 fn setup_unknown_keys_graph(env: &TestEnv) {
     let x = r#"---
-id: "issue-X"
-title: "X"
-status: "todo"
-created_at: "2026-03-01T00:00:00Z"
-needs: []
-weird_key: "abc"
+id: issue-X
+title: X
+status: todo
+created_at: 2026-03-01T00:00:00+00:00
 other_key: 123
+weird_key: abc
 ---
-Body"#;
+Body
+"#;
     write_file(env, "X.md", x);
 }
 
 fn setup_dangling_need_graph(env: &TestEnv) {
     let b = r#"---
-id: "B"
-title: "B"
-status: "todo"
-created_at: "2026-03-01T00:00:00Z"
-needs: ["MISSING_TASK"]
+id: B
+title: B
+status: todo
+created_at: 2026-03-01T00:00:00+00:00
+needs:
+  - MISSING_TASK
 ---
 "#;
     write_file(env, "B.md", b);
@@ -164,19 +165,21 @@ needs: ["MISSING_TASK"]
 
 fn setup_cycle_graph(env: &TestEnv) {
     let a = r#"---
-id: "A"
-title: "A"
-status: "todo"
-created_at: "2026-03-01T00:00:00Z"
-needs: ["B"]
+id: A
+title: A
+status: todo
+created_at: 2026-03-01T00:00:00+00:00
+needs:
+  - B
 ---
 "#;
     let b = r#"---
-id: "B"
-title: "B"
-status: "todo"
-created_at: "2026-03-01T00:00:00Z"
-needs: ["A"]
+id: B
+title: B
+status: todo
+created_at: 2026-03-01T00:00:00+00:00
+needs:
+  - A
 ---
 "#;
     write_file(env, "A.md", a);
@@ -185,10 +188,9 @@ needs: ["A"]
 
 fn setup_missing_created_at_graph(env: &TestEnv) {
     let a = r#"---
-id: "A"
-title: "A"
-status: "todo"
-needs: []
+id: A
+title: A
+status: todo
 ---
 "#;
     write_file(env, "A.md", a);

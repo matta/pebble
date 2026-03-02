@@ -1,7 +1,9 @@
 use crate::commands::RunContext;
 use crate::graph::TaskGraph;
+use crate::models::TaskNode;
 use color_eyre::eyre::Result;
 use serde::Serialize;
+use std::fs;
 
 /// A standard error shape emitted by diagnostics checks (suitable for JSON).
 /// Contains a human-readable message, an identifier for the file (if applicable),
@@ -69,9 +71,24 @@ pub(crate) fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticErro
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let mut errors = Vec::new();
 
-    let current_dir = &ctx.current_dir;
-
     // 1. Check for duplicate IDs
+    check_duplicate_ids(&graph, &mut errors);
+
+    // 2. Iterate through loaded valid nodes and check dangling needs, unknown keys, and canonicalization.
+    for node in graph.nodes.values() {
+        check_node_diagnostics(&graph, node, ctx, &mut errors);
+    }
+
+    // 3. Cycle detection
+    check_dependency_cycles(&graph, ctx, &mut errors);
+
+    // Sort to make testing easier
+    errors.sort_by(|a, b| a.file.cmp(&b.file).then(a.message.cmp(&b.message)));
+
+    Ok(errors)
+}
+
+fn check_duplicate_ids(graph: &TaskGraph, errors: &mut Vec<DiagnosticError>) {
     for id in &graph.duplicate_ids {
         errors.push(DiagnosticError {
             file: "<multiple files>".to_string(),
@@ -80,50 +97,68 @@ pub(crate) fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticErro
             code: Some("duplicate_id".to_string()),
         });
     }
+}
 
-    // 2. Iterate through loaded valid nodes and check dangling needs and extra keys.
-    for node in graph.nodes.values() {
-        let rel_path = node
-            .path
-            .strip_prefix(current_dir)
-            .unwrap_or(&node.path)
-            .display()
-            .to_string();
+fn check_node_diagnostics(
+    graph: &TaskGraph,
+    node: &TaskNode,
+    ctx: &RunContext,
+    errors: &mut Vec<DiagnosticError>,
+) {
+    let rel_path = node
+        .path
+        .strip_prefix(&ctx.current_dir)
+        .unwrap_or(&node.path)
+        .display()
+        .to_string();
 
-        // Missing required keys
-        if node.frontmatter.created_at.is_none() {
+    // Missing required keys
+    if node.frontmatter.created_at.is_none() {
+        errors.push(DiagnosticError {
+            file: rel_path.clone(),
+            line: None,
+            message: "Missing required frontmatter key: 'created_at'".to_string(),
+            code: Some("missing_created_at".to_string()),
+        });
+    }
+
+    // Unknown keys
+    for key in node.frontmatter.extra.keys() {
+        errors.push(DiagnosticError {
+            file: rel_path.clone(),
+            line: None,
+            message: format!("Unknown frontmatter key: '{}'", key),
+            code: Some("unknown_key".to_string()),
+        });
+    }
+
+    // Dangling references
+    for need in &node.frontmatter.needs {
+        if !graph.nodes.contains_key(need) {
             errors.push(DiagnosticError {
                 file: rel_path.clone(),
                 line: None,
-                message: "Missing required frontmatter key: 'created_at'".to_string(),
-                code: Some("missing_created_at".to_string()),
+                message: format!("Dangling reference in 'needs': '{}' not found", need),
+                code: Some("dangling_need".to_string()),
             });
-        }
-
-        // Unknown keys
-        for key in node.frontmatter.extra.keys() {
-            errors.push(DiagnosticError {
-                file: rel_path.clone(),
-                line: None,
-                message: format!("Unknown frontmatter key: '{}'", key),
-                code: Some("unknown_key".to_string()),
-            });
-        }
-
-        // Dangling references
-        for need in &node.frontmatter.needs {
-            if !graph.nodes.contains_key(need) {
-                errors.push(DiagnosticError {
-                    file: rel_path.clone(),
-                    line: None,
-                    message: format!("Dangling reference in 'needs': '{}' not found", need),
-                    code: Some("dangling_need".to_string()),
-                });
-            }
         }
     }
 
-    // 3. Cycle detection
+    // 4. Check for uncanonical task file content (e.g., frontmatter formatting or trailing newlines)
+    if let Ok(disk_content) = fs::read_to_string(&node.path)
+        && let Ok(canonical_content) = node.get_content_for_disk()
+        && disk_content != canonical_content
+    {
+        errors.push(DiagnosticError {
+            file: rel_path.clone(),
+            line: None,
+            message: "Task file is not canonical".to_string(),
+            code: Some("uncanonical_file".to_string()),
+        });
+    }
+}
+
+fn check_dependency_cycles(graph: &TaskGraph, ctx: &RunContext, errors: &mut Vec<DiagnosticError>) {
     let scc_data = graph.compute_sccs();
     for scc in &scc_data.sccs {
         if scc_data.is_cycle(scc) {
@@ -135,7 +170,7 @@ pub(crate) fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticErro
                 if let Some(node) = graph.nodes.get(id) {
                     let rel_path = node
                         .path
-                        .strip_prefix(current_dir)
+                        .strip_prefix(&ctx.current_dir)
                         .unwrap_or(&node.path)
                         .display()
                         .to_string();
@@ -150,9 +185,4 @@ pub(crate) fn collect_diagnostics(ctx: &RunContext) -> Result<Vec<DiagnosticErro
             }
         }
     }
-
-    // Sort to make testing easier
-    errors.sort_by(|a, b| a.file.cmp(&b.file).then(a.message.cmp(&b.message)));
-
-    Ok(errors)
 }

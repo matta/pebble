@@ -1,5 +1,6 @@
 use super::*;
 use chrono::{DateTime, Utc};
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::mem;
 
@@ -163,7 +164,7 @@ fn test_task_node_disk_content_uses_yaml_frontmatter() {
             resolved_at: None,
             needs: vec![],
             tags: vec![],
-            extra: HashMap::new(),
+            extra: BTreeMap::new(),
         },
         body: "Body\n".to_string(),
     };
@@ -211,7 +212,7 @@ fn test_task_node_disk_content_elides_empty_collections() {
             resolved_at: None,
             needs: vec![],
             tags: vec![],
-            extra: HashMap::new(),
+            extra: BTreeMap::new(),
         },
         body: "Body\n".to_string(),
     };
