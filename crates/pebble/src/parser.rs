@@ -19,7 +19,7 @@ struct YamlTaskFrontmatter {
     #[serde(default)]
     tags: Vec<String>,
     #[serde(flatten)]
-    pub extra: BTreeMap<String, serde_json::Value>,
+    extra: BTreeMap<String, serde_json::Value>,
 }
 
 fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>> {
