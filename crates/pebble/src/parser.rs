@@ -32,6 +32,19 @@ fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<
         .transpose()
 }
 
+fn extract_body_after_frontmatter(content: &str, end_idx: usize) -> &str {
+    let mut offset = 0usize;
+
+    for (i, segment) in content.split_inclusive('\n').enumerate() {
+        offset += segment.len();
+        if i == end_idx {
+            return &content[offset..];
+        }
+    }
+
+    ""
+}
+
 /// Parses a Markdown file with YAML frontmatter into a [`TaskNode`].
 ///
 /// The file must start with a YAML frontmatter block delimited by `---` on the first
@@ -105,22 +118,7 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
         extra: raw_frontmatter.extra,
     };
 
-    // Extract body. We want to be faithful to the original content after the frontmatter.
-    // The frontmatter ends at lines[end_idx]. The body starts after that.
-    // We need to find the byte offset of the end of the frontmatter delimiter.
-    let search_str = "---\n";
-    let mut current_pos = 0;
-    // skip the first ---
-    if let Some(pos) = content.find(search_str) {
-        current_pos = pos + search_str.len();
-    }
-    // find the second ---
-    let body = if let Some(pos) = content[current_pos..].find(search_str) {
-        let body_start = current_pos + pos + search_str.len();
-        &content[body_start..]
-    } else {
-        ""
-    };
+    let body = extract_body_after_frontmatter(content, end_idx);
 
     Ok(TaskNode {
         path: path.to_path_buf(),
@@ -200,5 +198,23 @@ created_at = 2026-02-21T17:00:00Z
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Legacy TOML frontmatter should be treated as missing YAML frontmatter");
         assert!(err.to_string().contains("must start with '---'"));
+    }
+
+    #[test]
+    fn test_parse_yaml_delimiters_with_trailing_spaces() {
+        let content = "---   \n\
+id: issue-1\n\
+title: Test\n\
+status: todo\n\
+created_at: \"2026-02-21T17:00:00Z\"\n\
+---   \n\
+\n\
+# Body\n\
+This is the body.\n";
+
+        let node = parse_task_file(Path::new("issue-1.md"), content)
+            .expect("Should parse valid YAML with trailing spaces on both delimiters");
+        assert_eq!(node.frontmatter.id, "issue-1");
+        assert_eq!(node.body, "\n# Body\nThis is the body.\n");
     }
 }
