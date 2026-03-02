@@ -1,13 +1,16 @@
 ---
-id: "pebl-i0eszfcxas"
-title: "RFC005-9 Docs and contract sync"
-status: "done"
+id: pebl-i0eszfcxas
+title: RFC005-9 Docs and contract sync
+status: done
 priority: 0
-created_at: "2026-03-01T16:43:09.597888821+00:00"
-modified_at: "2026-03-01T17:20:40.643521868+00:00"
-resolved_at: "2026-03-01T17:20:40.643521868+00:00"
-needs: ["pebl-1cq47q454u"]
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:43:09.597888821+00:00
+modified_at: 2026-03-01T17:20:40.643521868+00:00
+resolved_at: 2026-03-01T17:20:40.643521868+00:00
+needs:
+  - pebl-1cq47q454u
+tags:
+  - planning
+  - rfc005
 ---
 Execution Note (Manual Tracking During YAML Migration):
 - If this task is started before RFC005-8 completion, continue manual frontmatter state edits (`status`, `modified_at`, `resolved_at`) in task files.

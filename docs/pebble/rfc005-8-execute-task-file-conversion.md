@@ -1,13 +1,16 @@
 ---
-id: "pebl-1cq47q454u"
-title: "RFC005-8 Execute task-file conversion"
-status: "done"
+id: pebl-1cq47q454u
+title: RFC005-8 Execute task-file conversion
+status: done
 priority: 0
-created_at: "2026-03-01T16:42:50.803369062+00:00"
-modified_at: "2026-03-01T17:18:05.401965115+00:00"
-resolved_at: "2026-03-01T17:18:05.401965115+00:00"
-needs: ["pebl-41j62swwnm"]
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:42:50.803369062+00:00
+modified_at: 2026-03-01T17:18:05.401965115+00:00
+resolved_at: 2026-03-01T17:18:05.401965115+00:00
+needs:
+  - pebl-41j62swwnm
+tags:
+  - planning
+  - rfc005
 ---
 Execution Note (Manual Tracking During YAML Migration):
 - This task is the re-enable point for normal Pebble operations.

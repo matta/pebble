@@ -1,13 +1,14 @@
 ---
-id: "pebl-urd2fpbmfk"
-title: "RFC005-1 Baseline parity snapshot"
-status: "done"
+id: pebl-urd2fpbmfk
+title: RFC005-1 Baseline parity snapshot
+status: done
 priority: 0
-created_at: "2026-03-01T16:38:55.000718409+00:00"
-modified_at: "2026-03-01T16:50:53.440346091+00:00"
-resolved_at: "2026-03-01T16:50:53.440335476+00:00"
-needs: []
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:38:55.000718409+00:00
+modified_at: 2026-03-01T16:50:53.440346091+00:00
+resolved_at: 2026-03-01T16:50:53.440335476+00:00
+tags:
+  - planning
+  - rfc005
 ---
 Goal:
 Capture pre-change command output so post-migration parity can be checked mechanically.

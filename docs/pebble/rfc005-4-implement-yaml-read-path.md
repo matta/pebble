@@ -1,13 +1,16 @@
 ---
-id: "pebl-gr537c9can"
-title: "RFC005-4 Implement YAML read path"
-status: "done"
+id: pebl-gr537c9can
+title: RFC005-4 Implement YAML read path
+status: done
 priority: 0
-created_at: "2026-03-01T16:41:29.176343279+00:00"
-modified_at: "2026-03-01T17:07:37.368467321+00:00"
-resolved_at: "2026-03-01T17:07:37.368467321+00:00"
-needs: ["pebl-rm0kn1fvli"]
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:41:29.176343279+00:00
+modified_at: 2026-03-01T17:07:37.368467321+00:00
+resolved_at: 2026-03-01T17:07:37.368467321+00:00
+needs:
+  - pebl-rm0kn1fvli
+tags:
+  - planning
+  - rfc005
 ---
 Execution Note (Manual Tracking During YAML Migration):
 - `cargo pebble` read operations are currently non-functional against the repository task set because the read path is now YAML-only while most `docs/pebble/*.md` files are still TOML frontmatter.

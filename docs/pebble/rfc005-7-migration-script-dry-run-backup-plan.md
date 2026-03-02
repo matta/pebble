@@ -1,13 +1,16 @@
 ---
-id: "pebl-41j62swwnm"
-title: "RFC005-7 Migration script (dry run + backup plan)"
-status: "done"
+id: pebl-41j62swwnm
+title: RFC005-7 Migration script (dry run + backup plan)
+status: done
 priority: 0
-created_at: "2026-03-01T16:42:26.492454988+00:00"
-modified_at: "2026-03-01T17:17:10.797943292+00:00"
-resolved_at: "2026-03-01T17:17:10.797943292+00:00"
-needs: ["pebl-jfi8jsyoai"]
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:42:26.492454988+00:00
+modified_at: 2026-03-01T17:17:10.797943292+00:00
+resolved_at: 2026-03-01T17:17:10.797943292+00:00
+needs:
+  - pebl-jfi8jsyoai
+tags:
+  - planning
+  - rfc005
 ---
 Execution Note (Manual Tracking During YAML Migration):
 - `cargo pebble` task reads are temporarily non-functional until RFC005-8 converts all `docs/pebble/*.md` files to YAML frontmatter.

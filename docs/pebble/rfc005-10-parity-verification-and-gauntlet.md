@@ -1,13 +1,16 @@
 ---
-id: "pebl-53ae3r5qrk"
-title: "RFC005-10 Parity verification and gauntlet"
-status: "done"
+id: pebl-53ae3r5qrk
+title: RFC005-10 Parity verification and gauntlet
+status: done
 priority: 0
-created_at: "2026-03-01T16:43:25.890222517+00:00"
-modified_at: "2026-03-01T17:36:44.426656883+00:00"
-resolved_at: "2026-03-01T17:33:03.445059895+00:00"
-needs: ["pebl-i0eszfcxas"]
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:43:25.890222517+00:00
+modified_at: 2026-03-01T17:36:44.426656883+00:00
+resolved_at: 2026-03-01T17:33:03.445059895+00:00
+needs:
+  - pebl-i0eszfcxas
+tags:
+  - planning
+  - rfc005
 ---
 Execution Note (Manual Tracking During YAML Migration):
 - If RFC005-8 is not yet complete, update this task status manually in frontmatter.
