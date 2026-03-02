@@ -1,6 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;
+use pebble::config::CONFIG_KEYS;
 use predicates::prelude::*;
 use serde_json::Value;
 use std::process::Command;
@@ -86,10 +87,13 @@ fn test_list_help_describes_combined_filter_semantics() {
 #[test]
 fn test_config_get_help_documents_keys() {
     let mut cmd = Command::new(cargo_bin!());
-    cmd.args(["config", "get", "--help"])
+    let mut assert = cmd
+        .args(["config", "get", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Configuration key to fetch"))
-        .stdout(predicate::str::contains("issue-prefix"))
-        .stdout(predicate::str::contains("tasks-dir"));
+        .stdout(predicate::str::contains("Configuration key to fetch"));
+
+    for key in CONFIG_KEYS {
+        assert = assert.stdout(predicate::str::contains(*key));
+    }
 }
