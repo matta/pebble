@@ -1,4 +1,4 @@
-use crate::models::{FRONTMATTER_DELIMITER, Priority, TaskFrontmatter, TaskNode, TaskStatus};
+use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::{Result, eyre};
 use serde::Deserialize;
@@ -83,23 +83,22 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
     let lines: Vec<&str> = content.lines().collect();
 
     // Frontmatter must start on the first line.
-    if lines.is_empty() || lines[0].trim() != FRONTMATTER_DELIMITER {
+    if lines.is_empty() || lines[0].trim() != "---" {
         return Err(eyre!(
-            "Missing or invalid YAML frontmatter: file must start with '{FRONTMATTER_DELIMITER}'"
+            "Missing or invalid YAML frontmatter: file must start with '---'"
         ));
     }
 
     // Find the end of the frontmatter.
     let mut end_idx = None;
     for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim() == FRONTMATTER_DELIMITER {
+        if line.trim() == "---" {
             end_idx = Some(i);
             break;
         }
     }
 
-    let end_idx = end_idx
-        .ok_or_else(|| eyre!("Missing closing '{FRONTMATTER_DELIMITER}' for YAML frontmatter"))?;
+    let end_idx = end_idx.ok_or_else(|| eyre!("Missing closing '---' for YAML frontmatter"))?;
 
     // Extract frontmatter string.
     let yaml_str = lines[1..end_idx].join("\n");
@@ -159,8 +158,7 @@ This is the body.
         let content = "# Just a markdown file";
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is missing");
-        let msg = const_format::formatcp!("must start with '{FRONTMATTER_DELIMITER}'");
-        assert!(err.to_string().contains(msg));
+        assert!(err.to_string().contains("must start with '---'"));
     }
 
     #[test]
@@ -173,8 +171,7 @@ created_at: "2026-02-21T17:00:00Z"
 "#;
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is unclosed");
-        let msg = const_format::formatcp!("Missing closing '{FRONTMATTER_DELIMITER}'");
-        assert!(err.to_string().contains(msg));
+        assert!(err.to_string().contains("Missing closing '---'"));
     }
 
     #[test]
@@ -200,8 +197,7 @@ created_at = 2026-02-21T17:00:00Z
 +++"#;
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Legacy TOML frontmatter should be treated as missing YAML frontmatter");
-        let msg = const_format::formatcp!("must start with '{FRONTMATTER_DELIMITER}'");
-        assert!(err.to_string().contains(msg));
+        assert!(err.to_string().contains("must start with '---'"));
     }
 
     #[test]

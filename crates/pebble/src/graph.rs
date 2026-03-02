@@ -1,4 +1,4 @@
-use crate::models::{FRONTMATTER_DELIMITER, TaskNode, default_datetime};
+use crate::models::{TaskNode, default_datetime};
 use crate::parser::parse_task_file;
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::Result;
@@ -95,7 +95,7 @@ impl TaskGraph {
 
                 let content = fs::read_to_string(&path)?;
                 // Skip files that don't start with YAML frontmatter.
-                if content.starts_with(FRONTMATTER_DELIMITER) {
+                if content.starts_with("---") {
                     match parse_task_file(&path, &content) {
                         Ok(node) => {
                             parsed_nodes.push(node);
