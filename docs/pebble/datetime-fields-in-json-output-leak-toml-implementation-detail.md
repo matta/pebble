@@ -1,8 +1,10 @@
 ---
 id: pebl-549tht8znx
 title: datetime fields in JSON output leak TOML implementation detail
-status: todo
+status: done
 created_at: 2026-02-25T03:43:10.719708+00:00
+modified_at: 2026-03-02T14:41:10.716632601+00:00
+resolved_at: 2026-03-02T14:41:10.716621882+00:00
 ---
 Currently, `pebl` emits datetime fields in JSON output as TOML internal wrapper objects:
 
