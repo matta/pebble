@@ -5,10 +5,23 @@ use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 mod listing;
 pub use listing::{ListOptions, run_list, run_search};
+
+/// If the value is "-", read the entire content from stdin and return it.
+pub fn read_stdin_if_dash(value: Option<String>) -> Result<Option<String>> {
+    match value {
+        Some(s) if s == "-" => {
+            let mut buffer = String::new();
+            io::stdin().read_to_string(&mut buffer)?;
+            Ok(Some(buffer))
+        }
+        _ => Ok(value),
+    }
+}
 
 /// Serialized version of a TaskObject as expected by the JSON API contract.
 #[derive(Serialize)]
