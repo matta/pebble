@@ -331,8 +331,8 @@ impl TaskNode {
         };
 
         let mut yaml_payload = serde_saphyr::to_string(&yaml_frontmatter)?;
-        let prefix = format!("{FRONTMATTER_DELIMITER}\n");
-        if let Some(stripped) = yaml_payload.strip_prefix(&prefix) {
+        let prefix = const_format::formatcp!("{FRONTMATTER_DELIMITER}\n");
+        if let Some(stripped) = yaml_payload.strip_prefix(prefix) {
             yaml_payload = stripped.to_string();
         }
         if let Some(stripped) = yaml_payload.strip_suffix("...\n") {
@@ -343,16 +343,11 @@ impl TaskNode {
         }
 
         let body = self.body.trim();
+        let delim_nl = const_format::formatcp!("{FRONTMATTER_DELIMITER}\n");
         if body.is_empty() {
-            Ok(format!(
-                "{FRONTMATTER_DELIMITER}\n{}{FRONTMATTER_DELIMITER}\n",
-                yaml_payload
-            ))
+            Ok(format!("{delim_nl}{yaml_payload}{delim_nl}"))
         } else {
-            Ok(format!(
-                "{FRONTMATTER_DELIMITER}\n{}{FRONTMATTER_DELIMITER}\n{}\n",
-                yaml_payload, body
-            ))
+            Ok(format!("{delim_nl}{yaml_payload}{delim_nl}{body}\n"))
         }
     }
 

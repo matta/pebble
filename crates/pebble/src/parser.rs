@@ -159,10 +159,8 @@ This is the body.
         let content = "# Just a markdown file";
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is missing");
-        assert!(
-            err.to_string()
-                .contains(&format!("must start with '{FRONTMATTER_DELIMITER}'"))
-        );
+        let msg = const_format::formatcp!("must start with '{FRONTMATTER_DELIMITER}'");
+        assert!(err.to_string().contains(msg));
     }
 
     #[test]
@@ -175,10 +173,8 @@ created_at: "2026-02-21T17:00:00Z"
 "#;
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Should fail when frontmatter is unclosed");
-        assert!(
-            err.to_string()
-                .contains(&format!("Missing closing '{FRONTMATTER_DELIMITER}'"))
-        );
+        let msg = const_format::formatcp!("Missing closing '{FRONTMATTER_DELIMITER}'");
+        assert!(err.to_string().contains(msg));
     }
 
     #[test]
@@ -204,10 +200,8 @@ created_at = 2026-02-21T17:00:00Z
 +++"#;
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Legacy TOML frontmatter should be treated as missing YAML frontmatter");
-        assert!(
-            err.to_string()
-                .contains(&format!("must start with '{FRONTMATTER_DELIMITER}'"))
-        );
+        let msg = const_format::formatcp!("must start with '{FRONTMATTER_DELIMITER}'");
+        assert!(err.to_string().contains(msg));
     }
 
     #[test]

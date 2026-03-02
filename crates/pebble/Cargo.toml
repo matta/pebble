@@ -16,6 +16,7 @@ bounded-integer.workspace = true
 const_format.workspace = true
 serde-saphyr = "0.0.21"
 deunicode.workspace = true
+const_format.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
