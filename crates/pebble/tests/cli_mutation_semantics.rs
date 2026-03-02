@@ -294,3 +294,32 @@ fn test_update_no_changes_does_not_modify_disk() {
             || content_y.contains("needs: [\"X\"]")
     );
 }
+
+#[test]
+fn test_update_body_and_append_body_together() {
+    let env = setup_test_env();
+    write_task(&env.tasks_dir, "PROJ-1", "Task 1", "todo");
+
+    let output = env
+        .pebble()
+        .args([
+            "update",
+            "PROJ-1",
+            "--body",
+            "New Base Body",
+            "--append-body",
+            "Appended Part",
+            "--json",
+        ])
+        .output()
+        .expect("pebble command should execute successfully");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be valid JSON");
+
+    assert_eq!(
+        json["body"], "New Base Body\n\nAppended Part",
+        "Both --body and --append-body should be applied if provided"
+    );
+}

@@ -1,4 +1,4 @@
-use crate::commands::{RunContext, TaskObject, validate_task_references};
+use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
@@ -150,7 +150,8 @@ fn apply_update_mutations(node: &mut TaskNode, mutations: UpdateMutations) -> Re
 
     if let Some(b) = mutations.body {
         node.body = b;
-    } else if let Some(a) = mutations.append_body
+    }
+    if let Some(a) = mutations.append_body
         && !a.is_empty()
     {
         if node.body.trim().is_empty() {
@@ -241,7 +242,10 @@ All commands support `--json` for structured output. Prefer `--json` for agent w
     Ok(())
 }
 
-pub fn run_update(ctx: &RunContext, input: RunUpdateInput) -> Result<()> {
+pub fn run_update(ctx: &RunContext, mut input: RunUpdateInput) -> Result<()> {
+    input.body = read_stdin_if_dash(input.body)?;
+    input.append_body = read_stdin_if_dash(input.append_body)?;
+
     let RunUpdateInput {
         id,
         title,

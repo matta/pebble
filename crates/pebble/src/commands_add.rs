@@ -1,4 +1,4 @@
-use crate::commands::{RunContext, TaskObject, validate_task_references};
+use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_task_time;
@@ -148,6 +148,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         tags,
         blocks,
     } = input;
+    let body = read_stdin_if_dash(body)?;
     let mut graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let deduped_blocks = validate_task_references(&graph, blocks, None, "--blocks")?;
 
