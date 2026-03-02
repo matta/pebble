@@ -8,4 +8,5 @@ resolved_at: 2026-03-01T22:42:43.925377+00:00
 tags:
   - feature
 ---
+
 Currently slugify drops non-ASCII characters entirely (e.g. café → caf). Consider using a transliteration library like deunicode to convert them to ASCII equivalents instead (e.g. café → cafe). This would improve usability for non-English users.

@@ -342,7 +342,7 @@ impl TaskNode {
         if body.is_empty() {
             Ok(format!("---\n{}---\n", yaml_payload))
         } else {
-            Ok(format!("---\n{}---\n{}\n", yaml_payload, body))
+            Ok(format!("---\n{}---\n\n{}\n", yaml_payload, body))
         }
     }
 

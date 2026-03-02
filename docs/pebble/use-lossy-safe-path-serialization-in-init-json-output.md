@@ -9,4 +9,5 @@ tags:
   - review_followup
   - self_hosted
 ---
+
 init --json uses display() for path serialization, which is lossy on non-UTF-8 systems. Consider to_string_lossy() or erroring on non-UTF-8 paths for strict JSON correctness.

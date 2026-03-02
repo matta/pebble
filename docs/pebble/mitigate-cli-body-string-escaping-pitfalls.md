@@ -6,6 +6,7 @@ created_at: 2026-02-24T05:37:28.694274+00:00
 modified_at: 2026-03-02T05:21:22.904645249+00:00
 resolved_at: 2026-03-02T05:21:22.904634465+00:00
 ---
+
 ### Problem Statement
 When dealing with multiline strings in a CLI environment (particularly via shell scripts or automated agents), standard shell quoting rules can cause unintended escape sequence outcomes. For example, `pebble update --append-body "\n\nText"` often results in literal `\` and `n` characters being appended to a markdown task instead of true newline characters.
 

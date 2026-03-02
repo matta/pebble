@@ -9,4 +9,5 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Resolve whether help-json docs should use exact implementation keys for clarity or conceptual labels for flexibility. Record the chosen rule and apply it consistently across cli-contract text.

@@ -10,6 +10,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Goal:
 Capture pre-change command output so post-migration parity can be checked mechanically.
 

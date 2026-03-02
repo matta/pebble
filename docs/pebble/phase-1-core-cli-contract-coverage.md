@@ -7,6 +7,7 @@ tags:
   - bootstrap
   - self_hosted
 ---
+
 Checklist:
 - [x] P1.0 Deferred scan/duplicate handling (immediately after Phase Zero)
 - [x] P1.0.a Recursive scan of `tasks-dir` for all `*.md` files

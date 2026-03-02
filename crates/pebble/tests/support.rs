@@ -8,7 +8,7 @@ use tempfile::TempDir;
 
 /// Temp Pebble workspace with an initialized config and tasks directory.
 pub struct TestEnv {
-    _dir: TempDir,
+    _temp_dir: TempDir,
     /// Root directory of the temporary test workspace.
     pub root: PathBuf,
     /// Tasks directory within the temporary workspace.
@@ -44,7 +44,7 @@ pub fn setup_test_env() -> TestEnv {
     fs::create_dir(&tasks_dir).expect("tasks directory should be created");
 
     TestEnv {
-        _dir: dir,
+        _temp_dir: dir,
         root,
         tasks_dir,
     }

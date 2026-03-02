@@ -12,6 +12,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Execution Note (Manual Tracking During YAML Migration):
 - If this task is started before RFC005-8 completion, continue manual frontmatter state edits (`status`, `modified_at`, `resolved_at`) in task files.
 - Once RFC005-8 completes successfully, switch back to normal `cargo pebble` task updates.

@@ -12,6 +12,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Goal:
 Create an explicit file-level inventory so implementation work is mechanical.
 

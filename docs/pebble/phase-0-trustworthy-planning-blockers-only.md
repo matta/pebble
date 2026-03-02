@@ -14,4 +14,5 @@ tags:
   - bootstrap
   - self_hosted
 ---
+
 Goal: confidently express phases as tasks with dependencies and trust `list`/`next` ordering, with reliable JSON output for agent use.

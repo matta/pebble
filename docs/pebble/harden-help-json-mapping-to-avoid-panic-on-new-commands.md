@@ -9,6 +9,7 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Prevent runtime panic when command surface grows and mapping lags. Return a safe error or enforce completeness without panic.
 
 **Resolution**: Canceled without changes. We rely on the existing unit test (`test_all_commands_have_help_json_output_schema`) to validate the exhaustiveness of the command mapping at compile/test time. The panic acts as intended to ensure CI fails if new commands are missing schema mappings.

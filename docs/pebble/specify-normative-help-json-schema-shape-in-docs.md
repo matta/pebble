@@ -9,4 +9,5 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Document help-json as AI-facing discoverability guidance. Describe the kinds of metadata it returns without presenting it as a strict or fixed schema contract.

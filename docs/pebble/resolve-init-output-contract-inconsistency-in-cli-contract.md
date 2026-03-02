@@ -9,4 +9,5 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 cli-contract currently states both no init output and structured JSON output. Make the normative contract internally consistent for human and --json modes.

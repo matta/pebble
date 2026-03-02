@@ -10,6 +10,7 @@ tags:
   - bootstrap
   - self_hosted
 ---
+
 Checklist:
 - [x] P0.4.a `--json` emits valid JSON to `stdout` and nothing else.
 - [x] P0.4.b Errors and diagnostics go to `stderr` only; exit codes follow `0/1/2`.
