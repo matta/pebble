@@ -192,3 +192,43 @@ fn test_task_node_disk_content_uses_yaml_frontmatter() {
         "frontmatter should not use TOML assignment syntax"
     );
 }
+
+#[test]
+fn test_task_node_disk_content_elides_empty_collections() {
+    let node = TaskNode {
+        path: PathBuf::from("docs/pebble/task.md"),
+        frontmatter: TaskFrontmatter {
+            id: "issue-123".to_string(),
+            title: "YAML writer".to_string(),
+            status: TaskStatus::todo(),
+            priority: None,
+            created_at: Some(
+                DateTime::parse_from_rfc3339("2026-03-01T00:00:00Z")
+                    .expect("created_at should parse")
+                    .with_timezone(&Utc),
+            ),
+            modified_at: None,
+            resolved_at: None,
+            needs: vec![],
+            tags: vec![],
+            extra: HashMap::new(),
+        },
+        body: "Body\n".to_string(),
+    };
+
+    let content = node
+        .get_content_for_disk()
+        .expect("task content should render");
+
+    // Robust assertions: ensure the keys are entirely absent from the frontmatter.
+    // We check for "\nkey:" or "key:" at the start to ensure we aren't matching
+    // substrings in values or other keys.
+    assert!(
+        !content.contains("\nneeds:"),
+        "Key 'needs' should be entirely absent from frontmatter, but found:\n{content}"
+    );
+    assert!(
+        !content.contains("\ntags:"),
+        "Key 'tags' should be entirely absent from frontmatter, but found:\n{content}"
+    );
+}
