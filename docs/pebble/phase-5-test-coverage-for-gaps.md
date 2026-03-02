@@ -3,9 +3,12 @@ id: pebl-pCyebx
 title: Phase 5 Test Coverage for Gaps
 status: done
 created_at: 2026-02-23T01:36:06.795969+00:00
-modified_at: 2026-03-01T22:09:32.412340+00:00
+modified_at: 2026-03-02T01:29:36.135944231+00:00
 needs:
   - pebl-fFdi_z
+  - pebl-z5v17c3486
+  - pebl-zlijanufss
+  - pebl-n6xopu3hq3
 tags:
   - bootstrap
   - self_hosted
@@ -95,4 +98,7 @@ safety invariant checks.
 Integration tests in `tests/cli_add.rs`: JSON path relative to cwd, human output relative path.
 
 Child Tasks:
-- None currently. Promote only when Adaptive Decomposition criteria are met.
+- [x] P5.2: pebl-z5v17c3486
+- [x] P5.3: pebl-zlijanufss
+- [x] P5.4: pebl-n6xopu3hq3
+- None others currently. Promote only when Adaptive Decomposition criteria are met.
