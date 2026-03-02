@@ -1,13 +1,16 @@
 ---
-id: "pebl-rm0kn1fvli"
-title: "RFC005-3 Read-path tests first (YAML-only detection)"
-status: "done"
+id: pebl-rm0kn1fvli
+title: RFC005-3 Read-path tests first (YAML-only detection)
+status: done
 priority: 0
-created_at: "2026-03-01T16:41:06.656429171+00:00"
-modified_at: "2026-03-01T16:55:54.908955326+00:00"
-resolved_at: "2026-03-01T16:55:54.908944206+00:00"
-needs: ["pebl-zjpn6fbfmp"]
-tags: ["planning", "rfc005"]
+created_at: 2026-03-01T16:41:06.656429171+00:00
+modified_at: 2026-03-01T16:55:54.908955326+00:00
+resolved_at: 2026-03-01T16:55:54.908944206+00:00
+needs:
+  - pebl-zjpn6fbfmp
+tags:
+  - planning
+  - rfc005
 ---
 Goal:
 Write failing tests that define YAML-only frontmatter detection semantics before parser implementation changes.

@@ -2,7 +2,7 @@
 use super::*;
 use crate::models::{Priority, TaskFrontmatter, TaskStatus};
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use tempfile::tempdir;
 
@@ -24,7 +24,7 @@ fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
             resolved_at: None,
             needs: needs.into_iter().map(|s| s.to_string()).collect(),
             tags: vec![],
-            extra: HashMap::new(),
+            extra: BTreeMap::new(),
         },
     }
 }

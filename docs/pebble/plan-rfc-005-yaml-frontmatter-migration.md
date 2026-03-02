@@ -1,13 +1,25 @@
 ---
-id: "pebl-ez0v1cj5ai"
-title: "Plan RFC 005 YAML frontmatter migration"
-status: "done"
+id: pebl-ez0v1cj5ai
+title: Plan RFC 005 YAML frontmatter migration
+status: done
 priority: 0
-created_at: "2026-03-01T16:36:23.238794357+00:00"
-modified_at: "2026-03-01T17:38:29.593300297+00:00"
-resolved_at: "2026-03-01T17:38:29.593300297+00:00"
-needs: ["pebl-urd2fpbmfk", "pebl-zjpn6fbfmp", "pebl-rm0kn1fvli", "pebl-gr537c9can", "pebl-ombr9kv475", "pebl-jfi8jsyoai", "pebl-41j62swwnm", "pebl-1cq47q454u", "pebl-i0eszfcxas", "pebl-53ae3r5qrk"]
-tags: ["planning", "rfc"]
+created_at: 2026-03-01T16:36:23.238794357+00:00
+modified_at: 2026-03-01T17:38:29.593300297+00:00
+resolved_at: 2026-03-01T17:38:29.593300297+00:00
+needs:
+  - pebl-urd2fpbmfk
+  - pebl-zjpn6fbfmp
+  - pebl-rm0kn1fvli
+  - pebl-gr537c9can
+  - pebl-ombr9kv475
+  - pebl-jfi8jsyoai
+  - pebl-41j62swwnm
+  - pebl-1cq47q454u
+  - pebl-i0eszfcxas
+  - pebl-53ae3r5qrk
+tags:
+  - planning
+  - rfc
 ---
 Execution Policy:
 - Use Pebble subtasks only; do one subtask at a time in order.

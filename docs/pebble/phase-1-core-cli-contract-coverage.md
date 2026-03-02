@@ -1,10 +1,11 @@
 ---
-id: "pebl-cdIZGN"
-title: "Phase 1 Core CLI Contract Coverage"
-status: "done"
-created_at: "2026-02-23T01:36:05.771442+00:00"
-needs: []
-tags: ["bootstrap", "self_hosted"]
+id: pebl-cdIZGN
+title: Phase 1 Core CLI Contract Coverage
+status: done
+created_at: 2026-02-23T01:36:05.771442+00:00
+tags:
+  - bootstrap
+  - self_hosted
 ---
 Checklist:
 - [x] P1.0 Deferred scan/duplicate handling (immediately after Phase Zero)

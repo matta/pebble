@@ -2,7 +2,7 @@ use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use chrono::{DateTime, Utc};
 use color_eyre::eyre::{Result, eyre};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -19,7 +19,7 @@ struct YamlTaskFrontmatter {
     #[serde(default)]
     tags: Vec<String>,
     #[serde(flatten)]
-    extra: HashMap<String, serde_json::Value>,
+    extra: BTreeMap<String, serde_json::Value>,
 }
 
 fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>> {
@@ -30,6 +30,19 @@ fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<
                 .map_err(|err| eyre!("Invalid '{}' datetime '{}': {}", field, raw, err))
         })
         .transpose()
+}
+
+fn extract_body_after_frontmatter(content: &str, end_idx: usize) -> &str {
+    let mut offset = 0usize;
+
+    for (i, segment) in content.split_inclusive('\n').enumerate() {
+        offset += segment.len();
+        if i == end_idx {
+            return &content[offset..];
+        }
+    }
+
+    ""
 }
 
 /// Parses a Markdown file with YAML frontmatter into a [`TaskNode`].
@@ -105,24 +118,12 @@ pub fn parse_task_file(path: &Path, content: &str) -> Result<TaskNode> {
         extra: raw_frontmatter.extra,
     };
 
-    // Extract body, stripping leading newlines after the closing '---'.
-    let body_lines = &lines[end_idx + 1..];
-
-    // We want to reconstruct the body. We can use `join("\n")`,
-    // but if the file ended with a newline we might want to be faithful.
-    // For now, joining lines is standard.
-    let mut body = body_lines.join("\n");
-    if !body.is_empty() && content.ends_with('\n') {
-        body.push('\n');
-    }
-
-    // Trim leading whitespace/newlines from the body to drop the immediate gap after ---
-    let body = body.trim_start().to_string();
+    let body = extract_body_after_frontmatter(content, end_idx);
 
     Ok(TaskNode {
         path: path.to_path_buf(),
         frontmatter,
-        body,
+        body: body.to_string(),
     })
 }
 
@@ -149,7 +150,7 @@ This is the body.
         assert_eq!(node.frontmatter.id, "issue-1");
         assert_eq!(node.frontmatter.title, "Test");
         assert_eq!(node.frontmatter.status, TaskStatus::todo());
-        assert_eq!(node.body, "# Body\nThis is the body.\n");
+        assert_eq!(node.body, "\n# Body\nThis is the body.\n");
     }
 
     #[test]
@@ -197,5 +198,23 @@ created_at = 2026-02-21T17:00:00Z
         let err = parse_task_file(Path::new("file.md"), content)
             .expect_err("Legacy TOML frontmatter should be treated as missing YAML frontmatter");
         assert!(err.to_string().contains("must start with '---'"));
+    }
+
+    #[test]
+    fn test_parse_yaml_delimiters_with_trailing_spaces() {
+        let content = "---   \n\
+id: issue-1\n\
+title: Test\n\
+status: todo\n\
+created_at: \"2026-02-21T17:00:00Z\"\n\
+---   \n\
+\n\
+# Body\n\
+This is the body.\n";
+
+        let node = parse_task_file(Path::new("issue-1.md"), content)
+            .expect("Should parse valid YAML with trailing spaces on both delimiters");
+        assert_eq!(node.frontmatter.id, "issue-1");
+        assert_eq!(node.body, "\n# Body\nThis is the body.\n");
     }
 }

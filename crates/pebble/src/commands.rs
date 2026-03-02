@@ -311,7 +311,7 @@ mod tests {
     use super::*;
     use crate::models::{TaskFrontmatter, TaskStatus};
     use chrono::{DateTime, Utc};
-    use std::collections::{BTreeSet, HashMap};
+    use std::collections::{BTreeMap, BTreeSet, HashMap};
     use std::path::PathBuf;
 
     fn make_test_node(id: &str, status: TaskStatus, needs: Vec<&str>) -> TaskNode {
@@ -332,7 +332,7 @@ mod tests {
                 resolved_at: None,
                 needs: needs.into_iter().map(|s| s.to_string()).collect(),
                 tags: vec![],
-                extra: HashMap::new(),
+                extra: BTreeMap::new(),
             },
         }
     }

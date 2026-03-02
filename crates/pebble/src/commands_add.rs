@@ -3,7 +3,7 @@ use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::Path;
@@ -172,7 +172,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         resolved_at,
         needs,
         tags,
-        extra: HashMap::new(),
+        extra: BTreeMap::new(),
     };
 
     fs::create_dir_all(&ctx.tasks_dir)?;

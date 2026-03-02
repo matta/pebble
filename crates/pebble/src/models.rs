@@ -3,7 +3,7 @@ use clap::{ValueEnum, builder::PossibleValue};
 use color_eyre::eyre::Result;
 use serde::de::Error as SerdeDeError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::error;
 use std::fmt;
 use std::fs;
@@ -244,8 +244,8 @@ pub struct TaskFrontmatter {
     pub tags: Vec<String>,
     /// Unknown keys preserved from parsing.
     #[serde(flatten)]
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub extra: HashMap<String, serde_json::Value>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub extra: BTreeMap<String, serde_json::Value>,
 }
 
 /// The in-memory representation of a task.
@@ -309,11 +309,11 @@ struct YamlTaskFrontmatter {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     tags: Vec<String>,
     #[serde(flatten)]
-    extra: HashMap<String, serde_json::Value>,
+    extra: BTreeMap<String, serde_json::Value>,
 }
 
 impl TaskNode {
-    fn get_content_for_disk(&self) -> Result<String> {
+    pub(crate) fn get_content_for_disk(&self) -> Result<String> {
         let yaml_frontmatter = YamlTaskFrontmatter {
             id: self.frontmatter.id.clone(),
             title: self.frontmatter.title.clone(),
@@ -338,11 +338,12 @@ impl TaskNode {
             yaml_payload.push('\n');
         }
 
-        let mut content = format!("---\n{}---\n{}", yaml_payload, self.body);
-        if !content.ends_with('\n') {
-            content.push('\n');
+        let body = self.body.trim();
+        if body.is_empty() {
+            Ok(format!("---\n{}---\n", yaml_payload))
+        } else {
+            Ok(format!("---\n{}---\n{}\n", yaml_payload, body))
         }
-        Ok(content)
     }
 
     pub fn write_to_disk(&self) -> Result<()> {
