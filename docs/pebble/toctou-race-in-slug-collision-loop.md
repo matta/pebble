@@ -3,6 +3,7 @@ id: "pebl-GoOi96"
 title: "TOCTOU race in slug collision loop"
 status: "done"
 created_at: "2026-02-22T22:32:50.259702+00:00"
+resolved_at: "2026-03-01T16:40:00.000000+00:00"
 needs: []
 tags: ["defect"]
 ---
