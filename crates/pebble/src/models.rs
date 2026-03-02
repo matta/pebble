@@ -268,7 +268,7 @@ pub struct TaskFrontmatter {
 ///         title: "My Task".into(),
 ///         status: TaskStatus::todo(),
 ///         priority: None,
-///         created_at: DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")?.with_timezone(&Utc),
+///         created_at: Some(DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")?.with_timezone(&Utc)),
 ///         modified_at: None,
 ///         resolved_at: None,
 ///         needs: vec![],

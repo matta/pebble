@@ -1,35 +1,17 @@
-//! `pebble` — a CLI task tracker built on Markdown-native, graph-based storage.
-//!
-//! Tasks are stored as individual Markdown files with YAML frontmatter. The files
-//! themselves form a directed dependency graph; no external database is required.
-pub mod cli;
-pub mod commands;
-pub mod commands_add;
-pub mod commands_archive;
-pub mod commands_diagnostics;
-pub mod commands_fix;
-pub mod commands_write;
-
-#[cfg(test)]
-mod commands_test;
-mod config;
-pub mod graph;
-pub mod help_json;
-pub mod models;
-pub mod parser;
-mod task_io;
-
-use crate::cli::{Cli, Commands, ConfigCommands};
-use crate::help_json::help_json_schema;
-use crate::models::{NotFoundError, UsageError};
 use clap::Parser;
 use clap::error::ErrorKind;
 use color_eyre::eyre::Result;
-use commands::{ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show};
-use commands_add::{RunAddInput, run_add};
-use commands_archive::run_archive;
-use commands_fix::run_fix;
-use commands_write::{RunUpdateInput, run_init, run_update};
+use pebble::cli::{Cli, Commands, ConfigCommands};
+use pebble::commands::{
+    ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show,
+};
+use pebble::commands_add::{RunAddInput, run_add};
+use pebble::commands_archive::run_archive;
+use pebble::commands_diagnostics;
+use pebble::commands_fix::run_fix;
+use pebble::commands_write::{RunUpdateInput, run_init, run_update};
+use pebble::help_json::help_json_schema;
+use pebble::models::{NotFoundError, UsageError};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

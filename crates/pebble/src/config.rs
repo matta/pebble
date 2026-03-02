@@ -2,6 +2,16 @@ use color_eyre::eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};
 
+/// Key for the issue prefix configuration.
+pub const ISSUE_PREFIX_KEY: &str = "issue-prefix";
+/// Key for the tasks directory configuration.
+pub const TASKS_DIR_KEY: &str = "tasks-dir";
+/// Key for the archive threshold days configuration.
+pub const ARCHIVE_THRESHOLD_DAYS_KEY: &str = "archive-threshold-days";
+
+/// All supported configuration keys.
+pub const CONFIG_KEYS: &[&str] = &[ISSUE_PREFIX_KEY, TASKS_DIR_KEY, ARCHIVE_THRESHOLD_DAYS_KEY];
+
 /// Resolved project configuration loaded from `.pebble/config.toml`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Config {

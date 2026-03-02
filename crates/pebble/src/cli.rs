@@ -4,8 +4,10 @@
 //! It serves as the primary entry point for parsing arguments and dispatching
 //! to command handlers.
 
+use crate::config::{ARCHIVE_THRESHOLD_DAYS_KEY, ISSUE_PREFIX_KEY, TASKS_DIR_KEY};
 use crate::models::{Priority, TaskStatus};
 use clap::{Parser, Subcommand};
+use const_format::formatcp;
 use std::path::PathBuf;
 
 /// Top-level command-line argument parser.
@@ -217,8 +219,12 @@ pub enum Commands {
     },
     #[command(
         about = "Read configuration values.",
-        long_about = "Read resolved configuration values (issue-prefix or tasks-dir) by key.",
-        after_help = "Examples:\n  pebble config get issue-prefix\n  pebble config get tasks-dir --json"
+        long_about = formatcp!(
+            "Read resolved configuration values ({ISSUE_PREFIX_KEY}, {TASKS_DIR_KEY}, or {ARCHIVE_THRESHOLD_DAYS_KEY}) by key.",
+        ),
+        after_help = formatcp!(
+            "Examples:\n  pebble config get {ISSUE_PREFIX_KEY}\n  pebble config get {TASKS_DIR_KEY} --json",
+        )
     )]
     /// View or modify Pebble configuration.
     Config {
@@ -239,13 +245,17 @@ pub enum Commands {
 pub enum ConfigCommands {
     #[command(
         about = "Get one resolved config value.",
-        long_about = "Get one resolved configuration value by key (issue-prefix or tasks-dir). Output for unknown keys is a usage error.",
-        after_help = "Examples:\n  pebble config get issue-prefix\n  pebble config get tasks-dir --json"
+        long_about = formatcp!(
+            "Get one resolved configuration value by key ({ISSUE_PREFIX_KEY}, {TASKS_DIR_KEY}, or {ARCHIVE_THRESHOLD_DAYS_KEY}). Output for unknown keys is a usage error.",
+        ),
+        after_help = formatcp!(
+            "Examples:\n  pebble config get {ISSUE_PREFIX_KEY}\n  pebble config get {TASKS_DIR_KEY} --json",
+        )
     )]
     /// Retrieve the value of a specific configuration key.
     Get {
-        /// Configuration key to fetch (issue-prefix or tasks-dir).
-        #[arg(value_name = "KEY")]
+        /// Configuration key to fetch (issue-prefix, tasks-dir, or archive-threshold-days).
+        #[arg(value_name = "KEY", help = formatcp!("Configuration key to fetch ({ISSUE_PREFIX_KEY}, {TASKS_DIR_KEY}, or {ARCHIVE_THRESHOLD_DAYS_KEY})."))]
         key: String,
     },
 }
