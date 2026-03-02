@@ -12,6 +12,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Execution Note (Manual Tracking During YAML Migration):
 - This task is the re-enable point for normal Pebble operations.
 - Until this task completes, task status updates must be done by editing frontmatter directly in `docs/pebble/*.md`.

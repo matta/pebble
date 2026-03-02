@@ -14,4 +14,5 @@ tags:
   - bootstrap
   - self_hosted
 ---
+
 Checklist:\n- [x] P3.2 `check` command: unknown frontmatter keys as errors, non-zero exit on issues\n- [x] P3.3 `fix` command: backfill missing `created_at`, warn on unknown keys, never rewrite dependencies\n\nChild Tasks:\n- [x] P3.1: pebl-kntw9t388a\n- [x] P3.1.b: pebl-cug7mpg7cz\n

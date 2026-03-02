@@ -12,6 +12,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Execution Note (Manual Tracking During YAML Migration):
 - If RFC005-8 is not yet complete, update this task status manually in frontmatter.
 - After RFC005-8 conversion completes, use `cargo pebble` commands normally for parity verification steps and final status updates.

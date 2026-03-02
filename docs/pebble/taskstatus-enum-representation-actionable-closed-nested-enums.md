@@ -8,6 +8,7 @@ resolved_at: 2026-03-01T22:49:08.643678+00:00
 tags:
   - design
 ---
+
 ## Context
 While implementing blocking/readiness logic we found “terminal/non-terminal” wording confusing. The match expressions also felt scattered. We introduced helper methods (`is_actionable`, `is_closed`) but the model could go further to make invalid states unrepresentable.
 

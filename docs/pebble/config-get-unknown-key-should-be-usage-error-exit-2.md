@@ -7,4 +7,5 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Align runtime behavior with CLI/help contract. Unknown config key should return exit code 2 with stderr diagnostic. Add regression test coverage for status code and stream purity.

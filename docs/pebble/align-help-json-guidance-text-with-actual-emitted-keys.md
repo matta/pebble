@@ -9,6 +9,7 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Current docs mention fields like output_shape and alias metadata that do not match current help-json output. Update guidance to use field names that are actually emitted today, while keeping the section non-normative and defensive.
 
 Completed: updated docs/cli-contract.md help-json guidance to reference emitted field names (including output) and remove alias-metadata wording while keeping non-contract defensive language.

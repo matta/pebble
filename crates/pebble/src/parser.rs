@@ -32,13 +32,18 @@ fn parse_optional_datetime(value: Option<String>, field: &str) -> Result<Option<
         .transpose()
 }
 
+/// Extracts the task body from the content following the frontmatter closing delimiter.
+///
+/// This function identifies the start of the body based on the `end_idx` line number
+/// and returns a slice of the remaining content with all leading and trailing
+/// whitespace removed.
 fn extract_body_after_frontmatter(content: &str, end_idx: usize) -> &str {
     let mut offset = 0usize;
 
     for (i, segment) in content.split_inclusive('\n').enumerate() {
         offset += segment.len();
         if i == end_idx {
-            return &content[offset..];
+            return content[offset..].trim();
         }
     }
 
@@ -150,7 +155,7 @@ This is the body.
         assert_eq!(node.frontmatter.id, "issue-1");
         assert_eq!(node.frontmatter.title, "Test");
         assert_eq!(node.frontmatter.status, TaskStatus::todo());
-        assert_eq!(node.body, "\n# Body\nThis is the body.\n");
+        assert_eq!(node.body, "# Body\nThis is the body.");
     }
 
     #[test]
@@ -215,6 +220,6 @@ This is the body.\n";
         let node = parse_task_file(Path::new("issue-1.md"), content)
             .expect("Should parse valid YAML with trailing spaces on both delimiters");
         assert_eq!(node.frontmatter.id, "issue-1");
-        assert_eq!(node.body, "\n# Body\nThis is the body.\n");
+        assert_eq!(node.body, "# Body\nThis is the body.");
     }
 }

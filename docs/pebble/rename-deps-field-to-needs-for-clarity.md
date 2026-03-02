@@ -10,6 +10,7 @@ tags:
   - rename
   - breaking
 ---
+
 The word "dependency" is a relational noun with no inherent direction. "A depends on
 B" is clear, but "A's dependencies" is ambiguous — it could mean "things A needs" or
 "things that need A." This causes persistent confusion in documentation and

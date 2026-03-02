@@ -10,4 +10,5 @@ needs:
 tags:
   - feature
 ---
+
 P3.3 Implement the 'pebble fix' command to apply safe, deterministic repairs to task files.\n\nRequirements:\n- Backfill missing 'created_at' with current UTC time.\n- Warn on unknown frontmatter keys but do not remove or rewrite them.\n- Do not remove or rewrite dependency edges (needs).\n- Support --json output.\n- Follow TDD: write failing tests first.

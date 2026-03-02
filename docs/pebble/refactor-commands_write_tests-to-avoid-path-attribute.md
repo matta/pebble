@@ -9,4 +9,5 @@ tags:
   - review_followup
   - self_hosted
 ---
+
 The #[path] attribute on commands_write_tests module is non-idiomatic. Refactor to use either the modern module structure (commands_write/ directory) or keep tests inline. The current approach was a pragmatic workaround for xtask token limits.

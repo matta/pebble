@@ -14,6 +14,7 @@ needs:
 tags:
   - milestone
 ---
+
 This task blocks the declaration of the initial Pebble MVP as complete. It represents the final spec-alignment and polishing work defined in the implementation plan.
 
 The MVP is complete when this task and its dependencies are terminal (Done/Canceled).

@@ -9,4 +9,5 @@ tags:
   - review_followup
   - self_hosted
 ---
+
 run_add inserts the new node into graph.nodes but does not rebuild the blocking reverse index. TaskObject::from_node uses the stale index, so blocking/blocked_by may be incorrect in the JSON output for pebble add --json. Either rebuild the index after insert or reload from disk.

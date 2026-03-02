@@ -102,7 +102,7 @@ fn test_init_and_add() {
         Some(Priority::try_from(5).expect("priority should be valid"))
     );
     assert_eq!(node.frontmatter.tags, vec!["urgent".to_string()]);
-    assert_eq!(node.body, "Body text\n");
+    assert_eq!(node.body, "Body text");
 
     let id = node.frontmatter.id.clone();
 
@@ -133,7 +133,7 @@ fn test_init_and_add() {
     assert_eq!(updated_node.frontmatter.status, TaskStatus::in_progress());
     assert_eq!(updated_node.frontmatter.priority, None);
     assert_eq!(updated_node.frontmatter.tags, vec!["new_tag".to_string()]);
-    assert_eq!(updated_node.body, "Body text\n\nAppended body\n");
+    assert_eq!(updated_node.body, "Body text\n\nAppended body");
 }
 
 #[test]

@@ -7,4 +7,5 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Add rustdoc for public Cli, Commands, and ConfigCommands items in cli.rs. Satisfy docs/rust-api-docs.md Tier 1 requirements.

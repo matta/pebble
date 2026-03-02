@@ -9,4 +9,5 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Top-level stream guidance and init-specific stream behavior should be internally consistent. Either document init as an explicit exception in stream rules or adjust wording so both sections agree.

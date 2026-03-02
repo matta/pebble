@@ -12,6 +12,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Execution Note (Manual Tracking During YAML Migration):
 - `cargo pebble` read operations are currently non-functional against the repository task set because the read path is now YAML-only while most `docs/pebble/*.md` files are still TOML frontmatter.
 - Until RFC005-8 completes full task-file conversion, update task completion state by directly editing task frontmatter (`status`, `modified_at`, `resolved_at`) in the markdown files.

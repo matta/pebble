@@ -95,10 +95,10 @@ Body without newline";
         normalized_content.ends_with('\n'),
         "file should have a trailing newline"
     );
-    // The canonical output will have the body trimmed.
+    // The canonical output will have the body trimmed and separated by a blank line.
     assert!(
-        normalized_content.contains("---\nBody without newline\n"),
-        "body should be preserved and followed by a newline"
+        normalized_content.contains("---\n\nBody without newline\n"),
+        "body should be separated by a blank line and followed by a newline"
     );
 
     Ok(())

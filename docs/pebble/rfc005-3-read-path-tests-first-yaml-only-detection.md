@@ -12,6 +12,7 @@ tags:
   - planning
   - rfc005
 ---
+
 Goal:
 Write failing tests that define YAML-only frontmatter detection semantics before parser implementation changes.
 

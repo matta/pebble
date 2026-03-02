@@ -9,6 +9,7 @@ tags:
   - self_hosted
   - review_followup
 ---
+
 Support add-time reverse linking via `--blocks`. Command should update needs on referenced task IDs as appropriate while preserving one true edge semantics.
 
 Implemented: added repeatable `--blocks` to `pebble add`; target task IDs receive the new task ID in `needs` without duplicates; missing/duplicate target IDs fail fast. Added CLI tests for success and missing target failure.

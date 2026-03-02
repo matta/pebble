@@ -7,6 +7,7 @@ resolved_at: 2026-03-01T16:40:00+00:00
 tags:
   - defect
 ---
+
 There is a TOCTOU race condition in run_add: between checking filepath.exists() and calling fs::write(), another process could create the same file. Acceptable for single-user CLI but worth noting.
 
 Common strategies:

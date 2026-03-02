@@ -145,6 +145,7 @@ created_at: 2026-03-01T00:00:00+00:00
 other_key: 123
 weird_key: abc
 ---
+
 Body
 "#;
     write_file(env, "X.md", x);

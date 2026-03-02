@@ -8,6 +8,7 @@ tags:
   - bootstrap
   - self_hosted
 ---
+
 Checklist:
 - [x] P5.2.a `list`: tasks in cycles are never ready.
 - [x] P5.2.b `list`: default topological sort groups cycles.

@@ -233,3 +233,36 @@ fn test_task_node_disk_content_elides_empty_collections() {
         "Key 'tags' should be entirely absent from frontmatter, but found:\n{content}"
     );
 }
+
+#[test]
+fn test_task_node_disk_content_separates_body_with_blank_line() {
+    let node = TaskNode {
+        path: PathBuf::from("docs/pebble/task.md"),
+        frontmatter: TaskFrontmatter {
+            id: "issue-123".to_string(),
+            title: "YAML writer".to_string(),
+            status: TaskStatus::todo(),
+            priority: None,
+            created_at: Some(
+                DateTime::parse_from_rfc3339("2026-03-01T00:00:00Z")
+                    .expect("created_at should parse")
+                    .with_timezone(&Utc),
+            ),
+            modified_at: None,
+            resolved_at: None,
+            needs: vec![],
+            tags: vec![],
+            extra: BTreeMap::new(),
+        },
+        body: "Body content".to_string(),
+    };
+
+    let content = node
+        .get_content_for_disk()
+        .expect("task content should render");
+
+    assert!(
+        content.contains("\n---\n\nBody content\n"),
+        "body should be separated from closing delimiter by a blank line, but got:\n{content}"
+    );
+}
