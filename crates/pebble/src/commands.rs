@@ -11,7 +11,11 @@ use std::path::{Path, PathBuf};
 mod listing;
 pub use listing::{ListOptions, run_list, run_search};
 
-/// If the value is "-", read the entire content from stdin and return it.
+/// Reads the entire content from stdin and returns it if the value is "-".
+///
+/// # Errors
+///
+/// Returns an error if reading from standard input fails.
 pub fn read_stdin_if_dash(value: Option<String>) -> Result<Option<String>> {
     match value {
         Some(s) if s == "-" => {
@@ -256,12 +260,16 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
     Ok(())
 }
 
-/// Validate and deduplicate a list of task IDs against the graph.
+/// Validates and deduplicates a list of task IDs against the graph.
 ///
 /// Ensures that:
 /// 1. Referenced tasks exist in the graph (except optionally `self_id`).
 /// 2. Referenced tasks are not marked as duplicates (ambiguous).
 /// 3. The returned list contains unique IDs.
+///
+/// # Errors
+///
+/// Returns an error if a target ID is marked as duplicate in the graph or if it is not found.
 pub fn validate_task_references(
     graph: &TaskGraph,
     targets: Vec<String>,
