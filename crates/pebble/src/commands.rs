@@ -11,7 +11,14 @@ use std::path::{Path, PathBuf};
 mod listing;
 pub use listing::{ListOptions, run_list, run_search};
 
-/// Reads the entire content from stdin and returns it if the value is "-".
+/// Reads standard input if the provided argument requests it.
+///
+/// If `value` is `Some("-")`, this function reads the entire contents of `stdin`
+/// into a string and returns it. Otherwise, it returns `value` unchanged.
+///
+/// # Arguments
+///
+/// * `value` - An optional string argument. If it equals `"-"`, the function reads from `stdin`.
 ///
 /// # Errors
 ///
@@ -266,6 +273,13 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
 /// 1. Referenced tasks exist in the graph (except optionally `self_id`).
 /// 2. Referenced tasks are not marked as duplicates (ambiguous).
 /// 3. The returned list contains unique IDs.
+///
+/// # Arguments
+///
+/// * `graph` - The task graph to validate against.
+/// * `targets` - A list of task IDs to validate.
+/// * `self_id` - An optional task ID to exclude from existence checks, used when a task refers to itself.
+/// * `flag_name` - The name of the CLI flag that provided the targets, used for error message context.
 ///
 /// # Errors
 ///
