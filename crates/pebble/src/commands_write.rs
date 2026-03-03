@@ -32,10 +32,11 @@ fn apply_reverse_update(
             }
             continue;
         }
-        let mut target_node =
-            graph.nodes.get(&target_id).cloned().ok_or_else(|| {
-                UsageError(format!("Task '{}' not found for --blocks", target_id))
-            })?;
+        let mut target_node = graph
+            .nodes
+            .get(&target_id)
+            .cloned()
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
         if target_node
             .frontmatter
             .needs
@@ -58,12 +59,11 @@ fn apply_reverse_update(
                 .retain(|need| need != &source_id);
             continue;
         }
-        let mut target_node = graph.nodes.get(&target_id).cloned().ok_or_else(|| {
-            UsageError(format!(
-                "Task '{}' not found for --remove-blocks",
-                target_id
-            ))
-        })?;
+        let mut target_node = graph
+            .nodes
+            .get(&target_id)
+            .cloned()
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
         let before_len = target_node.frontmatter.needs.len();
         target_node
             .frontmatter

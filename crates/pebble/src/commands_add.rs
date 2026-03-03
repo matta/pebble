@@ -1,6 +1,6 @@
 use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
 use crate::graph::TaskGraph;
-use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus, UsageError};
+use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::BTreeMap;
@@ -31,10 +31,11 @@ fn apply_reverse_blocks(
     new_id: &str,
 ) -> Result<()> {
     for target_id in block_targets {
-        let mut target_node =
-            graph.nodes.get(&target_id).cloned().ok_or_else(|| {
-                UsageError(format!("Task '{}' not found for --blocks", target_id))
-            })?;
+        let mut target_node = graph
+            .nodes
+            .get(&target_id)
+            .cloned()
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
 
         if target_node
             .frontmatter
