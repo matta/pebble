@@ -2,55 +2,23 @@
 pub mod support;
 
 use serde_json::Value;
-use std::fs;
-use std::path::Path;
-use support::setup_test_env;
-
-struct SortTask<'a> {
-    id: &'a str,
-    title: &'a str,
-    status: &'a str,
-    created_at: &'a str,
-    priority: Option<u8>,
-}
-
-fn write_task_with_created_at(tasks_dir: &Path, task: SortTask<'_>) {
-    let mut frontmatter = format!(
-        "id: \"{}\"\ntitle: \"{}\"\nstatus: \"{}\"\ncreated_at: \"{}\"\n",
-        task.id, task.title, task.status, task.created_at
-    );
-    if let Some(value) = task.priority {
-        frontmatter.push_str(&format!("priority: {value}\n"));
-    }
-    let content = format!("---\n{frontmatter}---\nBody\n");
-    fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
-        .expect("task file should be written");
-}
+use support::{setup_test_env, TaskBuilder};
 
 #[test]
 fn test_list_sort_title_descending() {
     let env = setup_test_env();
 
-    write_task_with_created_at(
-        &env.tasks_dir,
-        SortTask {
-            id: "PROJ-A",
-            title: "Alpha",
-            status: "todo",
-            created_at: "2024-01-01T00:00:00Z",
-            priority: None,
-        },
-    );
-    write_task_with_created_at(
-        &env.tasks_dir,
-        SortTask {
-            id: "PROJ-B",
-            title: "Beta",
-            status: "todo",
-            created_at: "2024-01-01T00:00:00Z",
-            priority: None,
-        },
-    );
+    TaskBuilder::new("PROJ-A")
+        .title("Alpha")
+        .status("todo")
+        .created_at("2024-01-01T00:00:00Z")
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-B")
+        .title("Beta")
+        .status("todo")
+        .created_at("2024-01-01T00:00:00Z")
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -73,36 +41,26 @@ fn test_list_sort_title_descending() {
 fn test_list_sort_priority_uses_created_at_then_id_tiebreakers() {
     let env = setup_test_env();
 
-    write_task_with_created_at(
-        &env.tasks_dir,
-        SortTask {
-            id: "PROJ-B",
-            title: "Task B",
-            status: "todo",
-            created_at: "2024-01-02T00:00:00Z",
-            priority: Some(5),
-        },
-    );
-    write_task_with_created_at(
-        &env.tasks_dir,
-        SortTask {
-            id: "PROJ-A",
-            title: "Task A",
-            status: "todo",
-            created_at: "2024-01-01T00:00:00Z",
-            priority: Some(5),
-        },
-    );
-    write_task_with_created_at(
-        &env.tasks_dir,
-        SortTask {
-            id: "PROJ-C",
-            title: "Task C",
-            status: "todo",
-            created_at: "2024-01-01T00:00:00Z",
-            priority: Some(5),
-        },
-    );
+    TaskBuilder::new("PROJ-B")
+        .title("Task B")
+        .status("todo")
+        .created_at("2024-01-02T00:00:00Z")
+        .priority(5)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-A")
+        .title("Task A")
+        .status("todo")
+        .created_at("2024-01-01T00:00:00Z")
+        .priority(5)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-C")
+        .title("Task C")
+        .status("todo")
+        .created_at("2024-01-01T00:00:00Z")
+        .priority(5)
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
