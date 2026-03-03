@@ -201,7 +201,7 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     let node = graph
         .nodes
         .get(id)
-        .ok_or_else(|| eyre!("Task '{}' not found", id))?;
+        .ok_or_else(|| NotFoundError(format!("Task '{}' not found", id)))?;
 
     if path_only {
         let rel_path = node.path.strip_prefix(&ctx.tasks_dir).unwrap_or(&node.path);
@@ -291,7 +291,9 @@ pub fn validate_task_references(
         }
 
         if !graph.nodes.contains_key(&target_id) {
-            return Err(eyre!("Task '{}' not found for {}", target_id, flag_name));
+            return Err(
+                UsageError(format!("Task '{}' not found for {}", target_id, flag_name)).into(),
+            );
         }
 
         deduped.push(target_id);
