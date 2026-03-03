@@ -2,53 +2,7 @@
 pub mod support;
 
 use serde_json::Value;
-use std::fs;
-use std::path::Path;
-use support::{setup_test_env, write_task};
-
-struct CustomTask<'a> {
-    id: &'a str,
-    title: &'a str,
-    status: &'a str,
-    priority: Option<u8>,
-    needs: &'a [&'a str],
-    tags: &'a [&'a str],
-}
-
-fn write_task_custom(tasks_dir: &Path, task: CustomTask<'_>) {
-    let mut frontmatter = format!(
-        "id: \"{}\"\ntitle: \"{}\"\nstatus: \"{}\"\ncreated_at: \"2024-01-01T00:00:00Z\"\n",
-        task.id, task.title, task.status
-    );
-
-    if let Some(value) = task.priority {
-        frontmatter.push_str(&format!("priority: {value}\n"));
-    }
-
-    if !task.needs.is_empty() {
-        let values = task
-            .needs
-            .iter()
-            .map(|v| format!("\"{v}\""))
-            .collect::<Vec<_>>()
-            .join(", ");
-        frontmatter.push_str(&format!("needs: [{values}]\n"));
-    }
-
-    if !task.tags.is_empty() {
-        let values = task
-            .tags
-            .iter()
-            .map(|v| format!("\"{v}\""))
-            .collect::<Vec<_>>()
-            .join(", ");
-        frontmatter.push_str(&format!("tags: [{values}]\n"));
-    }
-
-    let content = format!("---\n{frontmatter}---\nBody\n");
-    fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
-        .expect("custom task file should be written");
-}
+use support::{TaskBuilder, setup_test_env, write_task};
 
 #[test]
 fn test_list_status_filter_includes_done_without_all() {
@@ -76,39 +30,20 @@ fn test_list_status_filter_includes_done_without_all() {
 fn test_list_tag_filter_requires_all_tags() {
     let env = setup_test_env();
 
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-BOTH",
-            title: "Both Tags",
-            status: "todo",
-            priority: None,
-            needs: &[],
-            tags: &["backend", "urgent"],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-BACKEND",
-            title: "Backend Only",
-            status: "todo",
-            priority: None,
-            needs: &[],
-            tags: &["backend"],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-URGENT",
-            title: "Urgent Only",
-            status: "todo",
-            priority: None,
-            needs: &[],
-            tags: &["urgent"],
-        },
-    );
+    TaskBuilder::new("PROJ-BOTH")
+        .title("Both Tags")
+        .tags(&["backend", "urgent"])
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-BACKEND")
+        .title("Backend Only")
+        .tags(&["backend"])
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-URGENT")
+        .title("Urgent Only")
+        .tags(&["urgent"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -129,39 +64,20 @@ fn test_list_tag_filter_requires_all_tags() {
 fn test_list_need_filter_matches_any_selected_need() {
     let env = setup_test_env();
 
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-NEEDS-A",
-            title: "Needs A",
-            status: "todo",
-            priority: None,
-            needs: &["DEP-A"],
-            tags: &[],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-NEEDS-B",
-            title: "Needs B",
-            status: "todo",
-            priority: None,
-            needs: &["DEP-B"],
-            tags: &[],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-NEEDS-C",
-            title: "Needs C",
-            status: "todo",
-            priority: None,
-            needs: &["DEP-C"],
-            tags: &[],
-        },
-    );
+    TaskBuilder::new("PROJ-NEEDS-A")
+        .title("Needs A")
+        .needs(&["DEP-A"])
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-NEEDS-B")
+        .title("Needs B")
+        .needs(&["DEP-B"])
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-NEEDS-C")
+        .title("Needs C")
+        .needs(&["DEP-C"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -187,39 +103,20 @@ fn test_list_need_filter_matches_any_selected_need() {
 fn test_list_priority_filter_matches_any_selected_priority() {
     let env = setup_test_env();
 
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-P1",
-            title: "Priority 1",
-            status: "todo",
-            priority: Some(1),
-            needs: &[],
-            tags: &[],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-P2",
-            title: "Priority 2",
-            status: "todo",
-            priority: Some(2),
-            needs: &[],
-            tags: &[],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-P3",
-            title: "Priority 3",
-            status: "todo",
-            priority: Some(3),
-            needs: &[],
-            tags: &[],
-        },
-    );
+    TaskBuilder::new("PROJ-P1")
+        .title("Priority 1")
+        .priority(1)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-P2")
+        .title("Priority 2")
+        .priority(2)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-P3")
+        .title("Priority 3")
+        .priority(3)
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -280,39 +177,20 @@ fn test_list_all_includes_closed_tasks() {
 fn test_list_is_ready_filters_only_ready_tasks() {
     let env = setup_test_env();
 
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-DONE-DEP",
-            title: "Done Dependency",
-            status: "done",
-            priority: None,
-            needs: &[],
-            tags: &[],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-READY",
-            title: "Ready Task",
-            status: "todo",
-            priority: None,
-            needs: &["PROJ-DONE-DEP"],
-            tags: &[],
-        },
-    );
-    write_task_custom(
-        &env.tasks_dir,
-        CustomTask {
-            id: "PROJ-BLOCKED",
-            title: "Blocked Task",
-            status: "todo",
-            priority: None,
-            needs: &["PROJ-MISSING"],
-            tags: &[],
-        },
-    );
+    TaskBuilder::new("PROJ-DONE-DEP")
+        .title("Done Dependency")
+        .status("done")
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-READY")
+        .title("Ready Task")
+        .needs(&["PROJ-DONE-DEP"])
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-BLOCKED")
+        .title("Blocked Task")
+        .needs(&["PROJ-MISSING"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
