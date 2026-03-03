@@ -142,25 +142,19 @@ impl<'a> TaskBuilder<'a> {
             frontmatter.push_str(&format!("priority: {p}\n"));
         }
 
-        if !self.needs.is_empty() {
-            let values = self
-                .needs
-                .iter()
-                .map(|v| format!("\"{v}\""))
-                .collect::<Vec<_>>()
-                .join(", ");
-            frontmatter.push_str(&format!("needs: [{values}]\n"));
+        fn append_str_list(fm: &mut String, key: &str, values: &[&str]) {
+            if !values.is_empty() {
+                let items = values
+                    .iter()
+                    .map(|v| format!("\"{v}\""))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                fm.push_str(&format!("{}: [{}]\n", key, items));
+            }
         }
 
-        if !self.tags.is_empty() {
-            let values = self
-                .tags
-                .iter()
-                .map(|v| format!("\"{v}\""))
-                .collect::<Vec<_>>()
-                .join(", ");
-            frontmatter.push_str(&format!("tags: [{values}]\n"));
-        }
+        append_str_list(&mut frontmatter, "needs", &self.needs);
+        append_str_list(&mut frontmatter, "tags", &self.tags);
 
         let content = format!("---\n{frontmatter}---\n{}\n", self.body.unwrap_or("Body"));
         fs::write(tasks_dir.join(format!("{}.md", self.id)), content)
