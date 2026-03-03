@@ -2,7 +2,7 @@
 pub mod support;
 
 use serde_json::Value;
-use support::{setup_test_env, write_task, TaskBuilder};
+use support::{TaskBuilder, setup_test_env, write_task};
 
 #[test]
 fn test_list_status_filter_includes_done_without_all() {

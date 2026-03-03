@@ -2,7 +2,7 @@
 pub mod support;
 
 use serde_json::Value;
-use support::{setup_test_env, TaskBuilder};
+use support::{TaskBuilder, setup_test_env};
 
 #[test]
 fn test_list_sort_title_descending() {

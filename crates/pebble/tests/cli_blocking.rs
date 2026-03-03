@@ -2,15 +2,26 @@
 pub mod support;
 
 use serde_json::Value;
-use support::{setup_test_env, TaskBuilder};
+use support::{TaskBuilder, setup_test_env};
 
 #[test]
 fn test_show_json_blocking_field_contains_direct_non_terminal_dependents() {
     let env = setup_test_env();
 
-    TaskBuilder::new("PROJ-A").title("Task A").status("todo").write(&env.tasks_dir);
-    TaskBuilder::new("PROJ-B").title("Task B").status("todo").needs(&["PROJ-A"]).write(&env.tasks_dir);
-    TaskBuilder::new("PROJ-C").title("Task C").status("done").needs(&["PROJ-A"]).write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-A")
+        .title("Task A")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-B")
+        .title("Task B")
+        .status("todo")
+        .needs(&["PROJ-A"])
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-C")
+        .title("Task C")
+        .status("done")
+        .needs(&["PROJ-A"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -47,9 +58,20 @@ fn test_list_sort_blocking_uses_transitive_count() {
     let env = setup_test_env();
 
     // A blocks B, B blocks C → A has transitive blocking count 2, B has 1, C has 0
-    TaskBuilder::new("PROJ-A").title("Task A").status("todo").write(&env.tasks_dir);
-    TaskBuilder::new("PROJ-B").title("Task B").status("todo").needs(&["PROJ-A"]).write(&env.tasks_dir);
-    TaskBuilder::new("PROJ-C").title("Task C").status("todo").needs(&["PROJ-B"]).write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-A")
+        .title("Task A")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-B")
+        .title("Task B")
+        .status("todo")
+        .needs(&["PROJ-A"])
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-C")
+        .title("Task C")
+        .status("todo")
+        .needs(&["PROJ-B"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -79,9 +101,19 @@ fn test_list_default_order_blocking_count_breaks_ties() {
     let env = setup_test_env();
 
     // X blocks nothing (count 0), Y blocks D (count 1)
-    TaskBuilder::new("PROJ-X").title("Task X").status("todo").write(&env.tasks_dir);
-    TaskBuilder::new("PROJ-Y").title("Task Y").status("todo").write(&env.tasks_dir);
-    TaskBuilder::new("PROJ-D").title("Task D").status("todo").needs(&["PROJ-Y"]).write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-X")
+        .title("Task X")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-Y")
+        .title("Task Y")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-D")
+        .title("Task D")
+        .status("todo")
+        .needs(&["PROJ-Y"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
