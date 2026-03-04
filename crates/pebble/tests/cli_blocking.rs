@@ -2,56 +2,26 @@
 pub mod support;
 
 use serde_json::Value;
-use std::fs;
-use std::path::Path;
-use support::setup_test_env;
-
-fn write_task_with_needs(tasks_dir: &Path, id: &str, title: &str, status: &str, needs: &[&str]) {
-    let needs_str = needs
-        .iter()
-        .map(|n| format!("\"{n}\""))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let content = format!(
-        "---\nid: \"{id}\"\ntitle: \"{title}\"\nstatus: \"{status}\"\ncreated_at: \"2024-01-01T00:00:00Z\"\nneeds: [{needs_str}]\n---\nBody\n"
-    );
-    fs::write(tasks_dir.join(format!("{id}.md")), content).expect("task file should be written");
-}
-
-struct BlockingTask<'a> {
-    id: &'a str,
-    title: &'a str,
-    status: &'a str,
-    needs: &'a [&'a str],
-    priority: Option<u8>,
-}
-
-fn write_blocking_task(tasks_dir: &Path, task: BlockingTask<'_>) {
-    let needs_str = task
-        .needs
-        .iter()
-        .map(|n| format!("\"{n}\""))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let mut frontmatter = format!(
-        "id: \"{}\"\ntitle: \"{}\"\nstatus: \"{}\"\ncreated_at: \"2024-01-01T00:00:00Z\"\nneeds: [{needs_str}]\n",
-        task.id, task.title, task.status
-    );
-    if let Some(value) = task.priority {
-        frontmatter.push_str(&format!("priority: {value}\n"));
-    }
-    let content = format!("---\n{frontmatter}---\nBody\n");
-    fs::write(tasks_dir.join(format!("{}.md", task.id)), content)
-        .expect("task file should be written");
-}
+use support::{TaskBuilder, setup_test_env};
 
 #[test]
 fn test_show_json_blocking_field_contains_direct_non_terminal_dependents() {
     let env = setup_test_env();
 
-    write_task_with_needs(&env.tasks_dir, "PROJ-A", "Task A", "todo", &[]);
-    write_task_with_needs(&env.tasks_dir, "PROJ-B", "Task B", "todo", &["PROJ-A"]);
-    write_task_with_needs(&env.tasks_dir, "PROJ-C", "Task C", "done", &["PROJ-A"]);
+    TaskBuilder::new("PROJ-A")
+        .title("Task A")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-B")
+        .title("Task B")
+        .status("todo")
+        .needs(&["PROJ-A"])
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-C")
+        .title("Task C")
+        .status("done")
+        .needs(&["PROJ-A"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -88,9 +58,20 @@ fn test_list_sort_blocking_uses_transitive_count() {
     let env = setup_test_env();
 
     // A blocks B, B blocks C → A has transitive blocking count 2, B has 1, C has 0
-    write_task_with_needs(&env.tasks_dir, "PROJ-A", "Task A", "todo", &[]);
-    write_task_with_needs(&env.tasks_dir, "PROJ-B", "Task B", "todo", &["PROJ-A"]);
-    write_task_with_needs(&env.tasks_dir, "PROJ-C", "Task C", "todo", &["PROJ-B"]);
+    TaskBuilder::new("PROJ-A")
+        .title("Task A")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-B")
+        .title("Task B")
+        .status("todo")
+        .needs(&["PROJ-A"])
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-C")
+        .title("Task C")
+        .status("todo")
+        .needs(&["PROJ-B"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -120,9 +101,19 @@ fn test_list_default_order_blocking_count_breaks_ties() {
     let env = setup_test_env();
 
     // X blocks nothing (count 0), Y blocks D (count 1)
-    write_task_with_needs(&env.tasks_dir, "PROJ-X", "Task X", "todo", &[]);
-    write_task_with_needs(&env.tasks_dir, "PROJ-Y", "Task Y", "todo", &[]);
-    write_task_with_needs(&env.tasks_dir, "PROJ-D", "Task D", "todo", &["PROJ-Y"]);
+    TaskBuilder::new("PROJ-X")
+        .title("Task X")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-Y")
+        .title("Task Y")
+        .status("todo")
+        .write(&env.tasks_dir);
+    TaskBuilder::new("PROJ-D")
+        .title("Task D")
+        .status("todo")
+        .needs(&["PROJ-Y"])
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -163,36 +154,20 @@ fn test_list_default_order_blocking_count_breaks_ties() {
 fn test_next_promotes_blocker_of_higher_priority_downstream_work() {
     let env = setup_test_env();
 
-    write_blocking_task(
-        &env.tasks_dir,
-        BlockingTask {
-            id: "PROJ-BLOCKER",
-            title: "Blocker",
-            status: "todo",
-            needs: &[],
-            priority: None,
-        },
-    );
-    write_blocking_task(
-        &env.tasks_dir,
-        BlockingTask {
-            id: "PROJ-URGENT",
-            title: "Urgent blocked task",
-            status: "todo",
-            needs: &["PROJ-BLOCKER"],
-            priority: Some(0),
-        },
-    );
-    write_blocking_task(
-        &env.tasks_dir,
-        BlockingTask {
-            id: "PROJ-OTHER",
-            title: "Other ready task",
-            status: "todo",
-            needs: &[],
-            priority: Some(1),
-        },
-    );
+    TaskBuilder::new("PROJ-BLOCKER")
+        .title("Blocker")
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-URGENT")
+        .title("Urgent blocked task")
+        .needs(&["PROJ-BLOCKER"])
+        .priority(0)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-OTHER")
+        .title("Other ready task")
+        .priority(1)
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()
@@ -215,36 +190,21 @@ fn test_next_promotes_blocker_of_higher_priority_downstream_work() {
 fn test_list_is_ready_uses_effective_priority_then_base_priority() {
     let env = setup_test_env();
 
-    write_blocking_task(
-        &env.tasks_dir,
-        BlockingTask {
-            id: "PROJ-BLOCKER",
-            title: "Blocker",
-            status: "todo",
-            needs: &[],
-            priority: Some(5),
-        },
-    );
-    write_blocking_task(
-        &env.tasks_dir,
-        BlockingTask {
-            id: "PROJ-DIRECT",
-            title: "Direct P2 task",
-            status: "todo",
-            needs: &[],
-            priority: Some(2),
-        },
-    );
-    write_blocking_task(
-        &env.tasks_dir,
-        BlockingTask {
-            id: "PROJ-DOWNSTREAM",
-            title: "Downstream P2 task",
-            status: "todo",
-            needs: &["PROJ-BLOCKER"],
-            priority: Some(2),
-        },
-    );
+    TaskBuilder::new("PROJ-BLOCKER")
+        .title("Blocker")
+        .priority(5)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-DIRECT")
+        .title("Direct P2 task")
+        .priority(2)
+        .write(&env.tasks_dir);
+
+    TaskBuilder::new("PROJ-DOWNSTREAM")
+        .title("Downstream P2 task")
+        .needs(&["PROJ-BLOCKER"])
+        .priority(2)
+        .write(&env.tasks_dir);
 
     let output = env
         .pebble()

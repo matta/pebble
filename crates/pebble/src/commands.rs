@@ -11,7 +11,18 @@ use std::path::{Path, PathBuf};
 mod listing;
 pub use listing::{ListOptions, run_list, run_search};
 
-/// If the value is "-", read the entire content from stdin and return it.
+/// Reads standard input if the provided argument requests it.
+///
+/// If `value` is `Some("-")`, this function reads the entire contents of `stdin`
+/// into a string and returns it. Otherwise, it returns `value` unchanged.
+///
+/// # Arguments
+///
+/// * `value` - An optional string argument. If it equals `"-"`, the function reads from `stdin`.
+///
+/// # Errors
+///
+/// Returns an error if reading from standard input fails.
 pub fn read_stdin_if_dash(value: Option<String>) -> Result<Option<String>> {
     match value {
         Some(s) if s == "-" => {
@@ -211,7 +222,7 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     let node = graph
         .nodes
         .get(id)
-        .ok_or_else(|| eyre!("Task '{}' not found", id))?;
+        .ok_or_else(|| NotFoundError(format!("Task '{}' not found", id)))?;
 
     if path_only {
         let rel_path = node.path.strip_prefix(&ctx.tasks_dir).unwrap_or(&node.path);
@@ -266,12 +277,23 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
     Ok(())
 }
 
-/// Validate and deduplicate a list of task IDs against the graph.
+/// Validates and deduplicates a list of task IDs against the graph.
 ///
 /// Ensures that:
 /// 1. Referenced tasks exist in the graph (except optionally `self_id`).
 /// 2. Referenced tasks are not marked as duplicates (ambiguous).
 /// 3. The returned list contains unique IDs.
+///
+/// # Arguments
+///
+/// * `graph` - The task graph to validate against.
+/// * `targets` - A list of task IDs to validate.
+/// * `self_id` - An optional task ID to exclude from existence checks, used when a task refers to itself.
+/// * `flag_name` - The name of the CLI flag that provided the targets, used for error message context.
+///
+/// # Errors
+///
+/// Returns an error if a target ID is marked as duplicate in the graph or if it is not found.
 pub fn validate_task_references(
     graph: &TaskGraph,
     targets: Vec<String>,
@@ -301,7 +323,9 @@ pub fn validate_task_references(
         }
 
         if !graph.nodes.contains_key(&target_id) {
-            return Err(eyre!("Task '{}' not found for {}", target_id, flag_name));
+            return Err(
+                UsageError(format!("Task '{}' not found for {}", target_id, flag_name)).into(),
+            );
         }
 
         deduped.push(target_id);

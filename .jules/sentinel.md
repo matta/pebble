@@ -22,3 +22,8 @@
 **Vulnerability:** A Time-of-Check to Time-of-Use (TOCTOU) vulnerability existed in `run_add` when creating new task files. The code checked if a file existed (`filepath.exists()`) and then later created/wrote to it, leaving a window where a malicious process could create the file or a symlink, leading to unintended overwrites.
 **Learning:** Using separate check and write operations for file creation is inherently unsafe in concurrent or multi-user environments.
 **Prevention:** Always use atomic operations for file creation when uniqueness is required. In Rust, this means using `std::fs::OpenOptions::new().write(true).create_new(true).open(...)` to atomically ensure the file is created only if it does not already exist, and handling the resulting `AlreadyExists` error appropriately (e.g., via a retry loop).
+
+## 2026-03-03 - False Positive: Stack Traces in Open-Source CLI Tools
+**Vulnerability:** Initially identified the use of the Debug formatter (`{:?}`) for `color_eyre::eyre::Result` errors as an information disclosure vulnerability because it leaked stack traces and file paths to stderr.
+**Learning:** For a local, open-source CLI tool that processes data from the user's local disk, internal implementation file paths and stack traces are non-secrets. The codebase is already public. Leaking this information is a UX concern (overly verbose errors), not a security vulnerability.
+**Prevention:** When evaluating potential information disclosure vulnerabilities, consider the application's execution context (local vs. server), the data it processes, and whether the "leaked" information is actually secret or sensitive. Do not flag stack traces as security issues in local, open-source tools.

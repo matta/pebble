@@ -346,6 +346,11 @@ impl TaskNode {
         }
     }
 
+    /// Writes the task content to its file path on disk.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails or if the file write operation fails.
     pub fn write_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
         fs::write(&self.path, content)?;

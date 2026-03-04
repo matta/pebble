@@ -1,7 +1,7 @@
 use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
-use crate::models::{Priority, TaskNode, TaskStatus, UsageError};
+use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus, UsageError};
 use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
 use std::collections::HashSet;
@@ -36,7 +36,7 @@ fn apply_reverse_update(
             .nodes
             .get(&target_id)
             .cloned()
-            .ok_or_else(|| eyre!("Task '{}' not found for --blocks", target_id))?;
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
         if target_node
             .frontmatter
             .needs
@@ -63,7 +63,7 @@ fn apply_reverse_update(
             .nodes
             .get(&target_id)
             .cloned()
-            .ok_or_else(|| eyre!("Task '{}' not found for --remove-blocks", target_id))?;
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
         let before_len = target_node.frontmatter.needs.len();
         target_node
             .frontmatter
@@ -271,7 +271,7 @@ pub fn run_update(ctx: &RunContext, mut input: RunUpdateInput) -> Result<()> {
     let mut node = graph
         .nodes
         .remove(&id)
-        .ok_or_else(|| eyre!("Task '{}' not found", id))?;
+        .ok_or_else(|| NotFoundError(format!("Task '{}' not found", id)))?;
 
     let original_node = node.clone();
 
