@@ -251,9 +251,10 @@ The `pebble list --help` output **MUST** explicitly document:
 * `--sort` field set and tie-breaker behavior.
 
 ### `pebble next`
-Returns the single highest-scoring ready task. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC)`, where `effective_priority = min(base_priority, downstream_min_priority)`. Equivalent to `pebble list --is-ready --limit 1` under the default sort order.
-* **Inputs**: None.
-* **Output (`--json`)**: A single unwrapped `<TaskObject>`, or `null` if no ready tasks exist.
+Returns the highest-scoring ready tasks. Since `--is-ready` places all results at the dependency frontier, the effective sort is: `(effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC)`, where `effective_priority = min(base_priority, downstream_min_priority)`. Equivalent to `pebble list --is-ready --limit N` under the default sort order.
+* **Inputs**:
+    * `--limit <N>`: Limits returned rows (default: 1).
+* **Output (`--json`)**: `{"tasks": [<TaskObject>, ...]}`. (Always returns a wrapped list for consistency with `pebble list`).
 
 ### `pebble show <id>`
 Outputs full details of a specific task.

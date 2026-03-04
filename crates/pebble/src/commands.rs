@@ -177,20 +177,30 @@ impl RunContext {
     }
 }
 
-/// Emit the highest-scoring ready task according to the default ranking.
-pub fn run_next(ctx: &RunContext) -> Result<()> {
+/// Emit the highest-scoring ready tasks according to the default ranking.
+pub fn run_next(ctx: &RunContext, limit: usize) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let next_tasks = graph.get_next_tasks();
+    let tasks: Vec<&TaskNode> = next_tasks.into_iter().take(limit).collect();
 
-    if let Some(task) = next_tasks.first() {
-        if ctx.json {
-            let obj = TaskObject::from_node(task, &graph, &ctx.tasks_dir);
-            println!("{}", serde_json::to_string(&obj)?);
-        } else {
-            println!("{} {}", task.frontmatter.id, task.frontmatter.title);
-        }
-    } else {
+    if ctx.json {
+        let objects: Vec<TaskObject> = tasks
+            .into_iter()
+            .map(|n| TaskObject::from_node(n, &graph, &ctx.tasks_dir))
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
+        );
+        return Ok(());
+    }
+
+    if tasks.is_empty() {
         return Err(NotFoundError("No ready tasks found.".to_string()).into());
+    }
+
+    for task in tasks {
+        println!("{} {}", task.frontmatter.id, task.frontmatter.title);
     }
     Ok(())
 }
