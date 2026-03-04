@@ -1,10 +1,8 @@
-pub mod support;
-
+use crate::support::setup_test_env;
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::process::Command;
-use support::setup_test_env;
 
 #[test]
 fn test_next_stdout_is_clean_when_no_tasks() {

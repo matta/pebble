@@ -1,8 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use crate::support::{TaskBuilder, setup_test_env, write_task};
 use serde_json::Value;
-use support::{TaskBuilder, setup_test_env, write_task};
 
 #[test]
 fn test_list_status_filter_includes_done_without_all() {

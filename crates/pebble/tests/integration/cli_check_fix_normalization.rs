@@ -2,8 +2,7 @@ use anyhow::Result;
 use predicates::prelude::*;
 use std::fs;
 
-pub mod support;
-use support::setup_test_env;
+use crate::support::setup_test_env;
 
 #[test]
 fn test_check_fix_normalizes_frontmatter() -> Result<()> {

@@ -1,8 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use crate::support::setup_test_env;
 use serde_json::Value;
-use support::setup_test_env;
 
 #[test]
 fn test_add_body_from_stdin() {

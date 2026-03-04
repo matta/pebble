@@ -2,8 +2,7 @@
 use std::fs;
 use std::process::Output;
 
-pub mod support;
-use support::{TestEnv, setup_test_env};
+use crate::support::{TestEnv, setup_test_env};
 
 fn run_fix(env: &TestEnv, json: bool) -> Output {
     let mut cmd = env.pebble();

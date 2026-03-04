@@ -1,9 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use crate::support::{setup_test_env, write_task};
 use assert_cmd::cargo_bin;
 use serde_json::Value;
-use support::{setup_test_env, write_task};
 
 #[test]
 fn test_search_json_stdout_only() {

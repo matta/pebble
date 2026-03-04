@@ -1,10 +1,9 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use crate::support::setup_test_env;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use support::setup_test_env;
 
 /// Write a task file with an explicit `resolved_at` field.
 fn write_resolved_task(tasks_dir: &Path, id: &str, status: &str, resolved_at: Option<&str>) {

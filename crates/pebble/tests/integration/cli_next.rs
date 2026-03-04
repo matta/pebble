@@ -3,8 +3,6 @@
 use crate::support::{TaskBuilder, setup_test_env, write_task, write_task_with_id};
 use serde_json::Value;
 
-mod support;
-
 #[test]
 fn test_next_with_limit() {
     let env = setup_test_env();

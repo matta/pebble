@@ -1,8 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use crate::support::{TaskBuilder, setup_test_env};
 use serde_json::Value;
-use support::{TaskBuilder, setup_test_env};
 
 #[test]
 fn test_show_json_blocking_field_contains_direct_non_terminal_dependents() {

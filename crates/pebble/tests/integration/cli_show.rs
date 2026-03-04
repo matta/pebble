@@ -1,9 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use crate::support::{setup_test_env, write_task};
 use predicates::prelude::*;
 use std::fs;
-use support::{setup_test_env, write_task};
 
 #[test]
 fn test_show_path_only_relative() {
