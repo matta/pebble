@@ -1,10 +1,9 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use super::support::{setup_test_env, write_task};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use support::{setup_test_env, write_task};
 
 fn write_task_with_body(tasks_dir: &Path, id: &str, title: &str, status: &str, body: &str) {
     let content = format!(

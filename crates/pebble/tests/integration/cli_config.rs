@@ -1,8 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use super::support::setup_test_env;
 use serde_json::Value;
-use support::setup_test_env;
 
 #[test]
 fn test_config_get_issue_prefix_human_output() {

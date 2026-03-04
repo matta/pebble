@@ -1,9 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 
-use crate::support::{TaskBuilder, setup_test_env, write_task, write_task_with_id};
+use super::support::{TaskBuilder, setup_test_env, write_task, write_task_with_id};
 use serde_json::Value;
-
-mod support;
 
 #[test]
 fn test_next_with_limit() {

@@ -1,8 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use super::support::{TestEnv, setup_test_env};
 use serde_json::Value;
-use support::setup_test_env;
 
 #[test]
 fn test_cli_add_need_renaming() {
@@ -264,7 +263,7 @@ fn test_update_remove_blocks_roundtrip() {
     );
 }
 
-fn add_task(env: &support::TestEnv, title: &str) -> String {
+fn add_task(env: &TestEnv, title: &str) -> String {
     let output = env
         .pebble()
         .args(["add", title, "--json", "--dir", "tasks"])

@@ -1,9 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use super::support::{setup_test_env, write_task_with_id};
 use assert_cmd::cargo_bin;
 use std::process::Command;
-use support::{setup_test_env, write_task_with_id};
 
 #[test]
 fn test_show_json_missing_id_reports_error_on_stderr() {

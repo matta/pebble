@@ -1,8 +1,7 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use super::support::{TaskBuilder, setup_test_env};
 use serde_json::Value;
-use support::{TaskBuilder, setup_test_env};
 
 #[test]
 fn test_list_sort_title_descending() {

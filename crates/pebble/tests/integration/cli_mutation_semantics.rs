@@ -1,11 +1,10 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-pub mod support;
 
+use super::support::{setup_test_env, write_task};
 use serde_json::Value;
 use std::fs;
 use std::thread::sleep;
 use std::time::Duration;
-use support::{setup_test_env, write_task};
 
 #[test]
 fn test_add_terminal_status_sets_resolved_at() {
