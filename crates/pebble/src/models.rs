@@ -357,6 +357,52 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Writes a new task to disk, ensuring no existing file is overwritten.
+    ///
+    /// This function uses atomic creation operations to prevent Time-of-Check to Time-of-Use
+    /// (TOCTOU) vulnerabilities when generating unique task files.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file already exists, if generating the serialized content fails,
+    /// or if the file write operation fails due to I/O issues.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use tempfile::tempdir;
+    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let dir = tempdir()?;
+    /// let task_path = dir.path().join("issue-123.md");
+    ///
+    /// let node = TaskNode {
+    ///     path: task_path.clone(),
+    ///     frontmatter: TaskFrontmatter {
+    ///         id: "issue-123".into(),
+    ///         title: "New Task".into(),
+    ///         status: TaskStatus::todo(),
+    ///         priority: None,
+    ///         created_at: None,
+    ///         modified_at: None,
+    ///         resolved_at: None,
+    ///         needs: vec![],
+    ///         tags: vec![],
+    ///         extra: Default::default(),
+    ///     },
+    ///     body: "Detailed description".into(),
+    /// };
+    ///
+    /// // First creation succeeds
+    /// assert!(node.create_new_to_disk().is_ok());
+    /// assert!(task_path.exists());
+    ///
+    /// // Second creation fails because the file already exists
+    /// assert!(node.create_new_to_disk().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
@@ -369,6 +415,19 @@ impl TaskNode {
     }
 }
 
+/// Returns the standardized default timestamp for the project.
+///
+/// This function is used as a fallback when a creation timestamp is not explicitly provided.
+/// It returns `UNIX_EPOCH` to ensure deterministic sorting in the task graph.
+///
+/// # Examples
+///
+/// ```
+/// # use pebble::models::default_datetime;
+/// # use chrono::{DateTime, Utc};
+/// let dt: DateTime<Utc> = default_datetime();
+/// assert_eq!(dt, DateTime::<Utc>::UNIX_EPOCH);
+/// ```
 pub fn default_datetime() -> DateTime<Utc> {
     DateTime::<Utc>::UNIX_EPOCH
 }
