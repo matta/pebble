@@ -1,6 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 
-use crate::support::{setup_test_env, write_task};
+use crate::support::{TaskBuilder, setup_test_env, write_task, write_task_with_id};
 use serde_json::Value;
 
 mod support;
@@ -63,4 +63,31 @@ fn test_next_with_limit_human_readable() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("PROJ-1 Task 1"));
     assert!(stdout.contains("PROJ-2 Task 2"));
+}
+
+#[test]
+fn test_support_helpers_build_tasks_for_next_target() {
+    let env = setup_test_env();
+
+    write_task_with_id(&env.tasks_dir, "PROJ-BASE");
+    TaskBuilder::new("PROJ-BUILDER")
+        .title("Builder Task")
+        .status("in_progress")
+        .created_at("2024-02-02T00:00:00Z")
+        .priority(7)
+        .needs(&["PROJ-BASE"])
+        .tags(&["cli", "next"])
+        .body("Builder body")
+        .write(&env.tasks_dir);
+
+    let output = env
+        .pebble()
+        .args(["show", "PROJ-BUILDER", "--json"])
+        .output()
+        .expect("show command should execute successfully");
+
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    assert_eq!(value["id"].as_str(), Some("PROJ-BUILDER"));
+    assert_eq!(value["title"].as_str(), Some("Builder Task"));
 }
