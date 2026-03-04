@@ -1,3 +1,5 @@
+#![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
+
 use crate::support::{setup_test_env, write_task};
 use serde_json::Value;
 
@@ -34,7 +36,10 @@ fn test_next_with_limit() {
 
     assert!(output.status.success());
     let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
-    assert!(value.is_object(), "Next with limit > 1 should return a wrapped object");
+    assert!(
+        value.is_object(),
+        "Next with limit > 1 should return a wrapped object"
+    );
     let tasks = value["tasks"].as_array().expect("tasks should be an array");
     assert_eq!(tasks.len(), 2);
     assert_eq!(tasks[0]["id"].as_str(), Some("PROJ-1"));
