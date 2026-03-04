@@ -28,7 +28,7 @@ fn run_list_command(ctx: &RunContext, options: ListOptions) -> Result<()> {
 enum DispatchCommand {
     ConfigGet { key: String },
     List(ListOptions),
-    Next,
+    Next { limit: usize },
     Search { query: String },
     Add(RunAddInput),
     Update(RunUpdateInput),
@@ -85,7 +85,7 @@ fn to_dispatch_command(command: Commands) -> DispatchCommand {
             limit,
             sort,
         }),
-        Commands::Next => DispatchCommand::Next,
+        Commands::Next { limit } => DispatchCommand::Next { limit },
         Commands::Search { query } => DispatchCommand::Search { query },
         Commands::Add {
             title,
@@ -195,7 +195,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
     match &command {
         DispatchCommand::Add(_)
         | DispatchCommand::List(_)
-        | DispatchCommand::Next
+        | DispatchCommand::Next { .. }
         | DispatchCommand::Search { .. }
         | DispatchCommand::Update(_)
         | DispatchCommand::Archive
@@ -211,7 +211,7 @@ fn dispatch_command(ctx: &RunContext, command: DispatchCommand) -> Result<()> {
     match command {
         DispatchCommand::ConfigGet { key } => run_config_get(ctx, &key),
         DispatchCommand::List(options) => run_list_command(ctx, options),
-        DispatchCommand::Next => run_next(ctx),
+        DispatchCommand::Next { limit } => run_next(ctx, limit),
         DispatchCommand::Search { query } => run_search(ctx, &query),
         DispatchCommand::Add(input) => run_add(ctx, input),
         DispatchCommand::Update(input) => run_update(ctx, input),

@@ -33,9 +33,16 @@ fn test_next_json_stdout_only() {
         .output()
         .expect("pebble command should execute successfully");
 
-    assert!(!output.status.success());
-    assert!(!output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
+    assert_eq!(
+        value["tasks"]
+            .as_array()
+            .expect("tasks should be an array")
+            .len(),
+        0
+    );
 }
 
 #[test]

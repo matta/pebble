@@ -182,7 +182,8 @@ fn test_next_promotes_blocker_of_higher_priority_downstream_work() {
     );
 
     let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid JSON");
-    assert_eq!(value["id"].as_str(), Some("PROJ-BLOCKER"));
+    let tasks = value["tasks"].as_array().expect("tasks should be an array");
+    assert_eq!(tasks[0]["id"].as_str(), Some("PROJ-BLOCKER"));
 }
 
 #[test]

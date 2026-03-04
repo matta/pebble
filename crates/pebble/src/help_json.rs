@@ -108,7 +108,7 @@ fn help_json_output_schema(command_name: &str, subcommand_name: Option<&str>) ->
         }),
         ("config", Some("get")) => json!({ "key": "string", "value": "string" }),
         ("list", None) => json!({ "tasks": ["TaskObject"] }),
-        ("next", None) => json!("TaskObject|null"),
+        ("next", None) => json!({ "tasks": ["TaskObject"] }),
         ("search", None) => json!({ "tasks": ["TaskObject"] }),
         ("show", None) => json!("TaskObject|{path:string}"),
         ("add", None) => json!("TaskObject"),
