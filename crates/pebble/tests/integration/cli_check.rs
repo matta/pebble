@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::fs;
 use std::process::Output;
 
-use crate::support::{TestEnv, setup_test_env};
+use super::support::{TestEnv, setup_test_env};
 
 #[derive(Clone, Copy, Debug)]
 enum CheckMode {

@@ -1,6 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 
-use crate::support::{setup_test_env, write_task};
+use super::support::{setup_test_env, write_task};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;

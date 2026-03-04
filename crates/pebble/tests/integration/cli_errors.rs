@@ -1,6 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 
-use crate::support::{setup_test_env, write_task_with_id};
+use super::support::{setup_test_env, write_task_with_id};
 use assert_cmd::cargo_bin;
 use std::process::Command;
 

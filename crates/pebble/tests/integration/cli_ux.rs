@@ -1,4 +1,4 @@
-use crate::support::setup_test_env;
+use super::support::setup_test_env;
 use assert_cmd::cargo_bin;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
