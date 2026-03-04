@@ -79,7 +79,7 @@ pub enum Commands {
         long_about = "Return the highest-ranked ready tasks using Pebble's default scoring: (effective_priority ASC, base_priority ASC, transitive_blocking_count DESC, created_at ASC, id ASC). effective_priority is min(base_priority, downstream_min_priority).",
         after_help = "Examples:\n  pebble next\n  pebble next --limit 5\n  pebble next --json"
     )]
-    /// Return the single highest-priority task that is ready to work on.
+    /// Return the highest-priority task(s) that are ready to work on.
     Next {
         /// Limit the number of tasks returned (default: 1).
         #[arg(long, short, value_name = "COUNT", default_value = "1")]
