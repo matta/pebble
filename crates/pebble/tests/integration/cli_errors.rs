@@ -1,8 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 
-use super::support::{setup_test_env, write_task_with_id};
-use assert_cmd::cargo_bin;
-use std::process::Command;
+use super::support::{self, setup_test_env, write_task_with_id};
 
 #[test]
 fn test_show_json_missing_id_reports_error_on_stderr() {
@@ -83,8 +81,7 @@ fn test_list_fails_when_no_project_found() {
     let temp = tempfile::tempdir().expect("Failed to create temp dir");
     let root = temp.path();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(root)
+    let output = support::pebble(root)
         .args(["list"])
         .output()
         .expect("Failed to execute pebble list");
@@ -99,8 +96,7 @@ fn test_add_fails_when_no_project_found() {
     let temp = tempfile::tempdir().expect("Failed to create temp dir");
     let root = temp.path();
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(root)
+    let output = support::pebble(root)
         .args(["add", "New Task"])
         .output()
         .expect("Failed to execute pebble add");
@@ -171,7 +167,7 @@ fn test_update_missing_id_is_runtime_error() {
 
 #[test]
 fn test_search_missing_query_is_usage_error() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["search"])
         .output()
         .expect("pebble command should execute successfully");
@@ -183,7 +179,7 @@ fn test_search_missing_query_is_usage_error() {
 
 #[test]
 fn test_show_missing_id_arg_is_usage_error() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["show"])
         .output()
         .expect("pebble command should execute successfully");
@@ -197,8 +193,7 @@ fn test_show_missing_id_arg_is_usage_error() {
 fn test_init_absolute_dir_is_usage_error() {
     let temp = tempfile::tempdir().expect("Failed to create temp dir");
 
-    let output = Command::new(cargo_bin!())
-        .current_dir(temp.path())
+    let output = support::pebble(temp.path())
         .args(["init", "--dir", "/absolute/path"])
         .output()
         .expect("pebble command should execute successfully");
