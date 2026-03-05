@@ -92,10 +92,7 @@ fn test_top_level_help_commands_have_one_line_summaries() {
 
 #[test]
 fn test_config_help_commands_have_one_line_summaries() {
-    let output = match support::pebble_cli()
-        .args(["config", "--help"])
-        .output()
-    {
+    let output = match support::pebble_cli().args(["config", "--help"]).output() {
         Ok(output) => output,
         Err(error) => panic!("pebble config --help should execute: {error}"),
     };
