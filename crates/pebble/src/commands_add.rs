@@ -1,4 +1,7 @@
-use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
+use crate::commands::{
+    RunContext, TaskObject, read_stdin_if_dash, update_reverse_dependencies,
+    validate_task_references,
+};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_task_time;
@@ -23,35 +26,6 @@ fn required_random_id_length(n: usize) -> usize {
     let alphabet_size: f64 = 36.0;
     let l: f64 = ((n_f * n_f) / (2.0 * target_prob)).ln() / alphabet_size.ln();
     l.ceil().max(8.0) as usize
-}
-
-fn apply_reverse_blocks(
-    graph: &mut TaskGraph,
-    block_targets: Vec<String>,
-    new_id: &str,
-) -> Result<()> {
-    for target_id in block_targets {
-        let mut target_node = graph
-            .nodes
-            .get(&target_id)
-            .cloned()
-            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
-
-        if target_node
-            .frontmatter
-            .needs
-            .iter()
-            .any(|need| need == new_id)
-        {
-            continue;
-        }
-
-        target_node.frontmatter.needs.push(new_id.to_string());
-        target_node.frontmatter.modified_at = Some(current_task_time());
-        target_node.write_to_disk()?;
-        graph.nodes.insert(target_id, target_node);
-    }
-    Ok(())
 }
 
 pub fn slugify(s: &str) -> String {
@@ -180,7 +154,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
 
     let node = create_node_with_unique_filename(&ctx.tasks_dir, &title, frontmatter, body)?;
 
-    apply_reverse_blocks(&mut graph, deduped_blocks, &new_id)?;
+    update_reverse_dependencies(&mut graph, &new_id, deduped_blocks, Vec::<String>::new())?;
     graph
         .nodes
         .insert(node.frontmatter.id.clone(), node.clone());
