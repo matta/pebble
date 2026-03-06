@@ -54,6 +54,26 @@ fn apply_reverse_blocks(
     Ok(())
 }
 
+/// Converts a given string into a URL-friendly slug.
+///
+/// Transliterates unicode characters to ASCII, removes non-alphanumeric characters
+/// (except underscores), converts everything to lowercase, and collapses multiple
+/// spaces or dashes into a single dash. The resulting slug is truncated to a maximum
+/// of 80 characters. If the resulting slug is empty, it returns `"task"`.
+///
+/// # Arguments
+///
+/// * `s` - The string to slugify.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::commands_add::slugify;
+///
+/// assert_eq!(slugify("Hello World!"), "hello-world");
+/// assert_eq!(slugify("test_with_underscore"), "test_with_underscore");
+/// assert_eq!(slugify("  multiple   spaces  "), "multiple-spaces");
+/// ```
 pub fn slugify(s: &str) -> String {
     let transliterated = deunicode::deunicode(s);
     let mut slug = String::with_capacity(transliterated.len());
