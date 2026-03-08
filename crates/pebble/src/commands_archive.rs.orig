@@ -2,7 +2,6 @@ use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use color_eyre::eyre::{Result, eyre};
 use std::fs;
-use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 
 /// Moves completed or canceled tasks older than the configured threshold into an `archive/` subdirectory.
@@ -29,11 +28,11 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
                 match fs::OpenOptions::new().write(true).create_new(true).open(p) {
                     Ok(mut dest) => {
                         let mut src = fs::File::open(&node.path)?;
-                        io::copy(&mut src, &mut dest)?;
+                        std::io::copy(&mut src, &mut dest)?;
                         fs::remove_file(&node.path)?;
                         Ok(true)
                     }
-                    Err(e) if e.kind() == ErrorKind::AlreadyExists => Ok(false),
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
                     Err(e) => Err(e),
                 }
             })?;
@@ -62,7 +61,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
 fn get_archive_path(
     archive_dir: &Path,
     original_path: &Path,
-    mut try_create: impl FnMut(&Path) -> io::Result<bool>,
+    mut try_create: impl FnMut(&Path) -> std::io::Result<bool>,
 ) -> Result<PathBuf> {
     let stem = original_path
         .file_stem()
