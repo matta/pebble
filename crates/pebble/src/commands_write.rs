@@ -1,4 +1,6 @@
-use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
+use crate::commands::{
+    RunContext, TaskObject, emit_json, read_stdin_if_dash, validate_task_references,
+};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus, UsageError};
@@ -313,7 +315,7 @@ pub fn run_update(ctx: &RunContext, mut input: RunUpdateInput) -> Result<()> {
             .insert(node.frontmatter.id.clone(), node.clone());
         let updated_graph = TaskGraph::new(graph.nodes);
         let obj = TaskObject::from_node(&node, &updated_graph, &ctx.tasks_dir);
-        println!("{}", serde_json::to_string(&obj)?);
+        emit_json(&obj)?;
     } else {
         eprintln!("Updated task {}", node.frontmatter.id);
     }

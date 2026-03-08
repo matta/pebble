@@ -4,7 +4,7 @@ use color_eyre::eyre::{Result, eyre};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-use super::{RunContext, TaskObject};
+use super::{RunContext, TaskObject, emit_json};
 
 /// Filters and switches accepted by `pebble list`.
 pub struct ListOptions {
@@ -189,10 +189,7 @@ fn emit_task_list(ctx: &RunContext, graph: &TaskGraph, tasks: Vec<&TaskNode>) ->
             .into_iter()
             .map(|n| TaskObject::from_node(n, graph, &ctx.tasks_dir))
             .collect();
-        println!(
-            "{}",
-            serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
-        );
+        emit_json(&serde_json::json!({ "tasks": objects }))?;
     } else {
         for task in tasks {
             println!(

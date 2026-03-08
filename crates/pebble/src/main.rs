@@ -3,7 +3,7 @@ use clap::error::ErrorKind;
 use color_eyre::eyre::Result;
 use pebble::cli::{Cli, Commands, ConfigCommands};
 use pebble::commands::{
-    ListOptions, RunContext, run_config_get, run_list, run_next, run_search, run_show,
+    ListOptions, RunContext, emit_json, run_config_get, run_list, run_next, run_search, run_show,
 };
 use pebble::commands_add::{RunAddInput, run_add};
 use pebble::commands_archive::run_archive;
@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 fn run_help_json() -> Result<()> {
-    println!("{}", serde_json::to_string(&help_json_schema())?);
+    emit_json(&help_json_schema())?;
     Ok(())
 }
 
