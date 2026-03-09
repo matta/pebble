@@ -357,6 +357,12 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Creates and writes the task content to a new file on disk.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails, if the file already exists,
+    /// or if the file write operation fails.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
