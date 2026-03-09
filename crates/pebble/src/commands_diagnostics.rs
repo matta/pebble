@@ -1,4 +1,4 @@
-use crate::commands::RunContext;
+use crate::commands::{RunContext, emit_json};
 use crate::graph::TaskGraph;
 use crate::models::TaskNode;
 use color_eyre::eyre::Result;
@@ -53,9 +53,9 @@ fn report_diagnostics(ctx: &RunContext, errors: Vec<DiagnosticError>) -> Result<
 
     if ctx.json {
         let out = DiagnosticsOutput { ok, errors };
-        println!("{}", serde_json::to_string(&out)?);
+        emit_json(&out)?;
     } else if ok {
-        println!("Graph is healthy. No issues found.");
+        eprintln!("Graph is healthy. No issues found.");
     } else {
         eprintln!("Graph is unhealthy.");
         for err in &errors {

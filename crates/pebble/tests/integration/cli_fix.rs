@@ -43,7 +43,8 @@ Body"#;
         output.status.success(),
         "fix should succeed even if it modifies files"
     );
-    assert_eq!(stdout_text(&output), "Fixed 1 task(s).\n");
+    assert_eq!(stderr_text(&output), "Fixed 1 task(s).\n");
+    assert_eq!(stdout_text(&output), "");
 
     let updated_content =
         fs::read_to_string(env.tasks_dir.join("A.md")).expect("file should be readable");
