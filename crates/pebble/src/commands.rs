@@ -23,6 +23,15 @@ pub use listing::{ListOptions, run_list, run_search};
 /// # Errors
 ///
 /// Returns an error if reading from standard input fails.
+///
+/// # Examples
+///
+/// ```
+/// use pebble::commands::read_stdin_if_dash;
+///
+/// let result = read_stdin_if_dash(Some("hello".to_string())).unwrap();
+/// assert_eq!(result, Some("hello".to_string()));
+/// ```
 pub fn read_stdin_if_dash(value: Option<String>) -> Result<Option<String>> {
     match value {
         Some(s) if s == "-" => {

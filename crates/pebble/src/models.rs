@@ -100,6 +100,17 @@ impl TaskStatus {
     }
 
     /// Returns `true` if the status represents a terminal state (`done` or `canceled`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pebble::models::TaskStatus;
+    ///
+    /// assert!(TaskStatus::done().is_closed());
+    /// assert!(TaskStatus::canceled().is_closed());
+    /// assert!(!TaskStatus::todo().is_closed());
+    /// assert!(!TaskStatus::in_progress().is_closed());
+    /// ```
     pub fn is_closed(&self) -> bool {
         matches!(self, Self::Closed(_))
     }
@@ -369,6 +380,20 @@ impl TaskNode {
     }
 }
 
+/// Returns the standard default timestamp for the project.
+///
+/// This is utilized whenever a missing timestamp needs to be backfilled.
+/// It corresponds to the Unix epoch.
+///
+/// # Examples
+///
+/// ```
+/// use chrono::{DateTime, Utc};
+/// use pebble::models::default_datetime;
+///
+/// let dt = default_datetime();
+/// assert_eq!(dt, DateTime::<Utc>::UNIX_EPOCH);
+/// ```
 pub fn default_datetime() -> DateTime<Utc> {
     DateTime::<Utc>::UNIX_EPOCH
 }
