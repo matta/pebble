@@ -102,10 +102,10 @@ fn assert_issue_stderr(
     );
 
     if mode.expects_failure_on_issues() {
-        assert!(stderr.contains("Runtime error:"));
+        assert!(stderr.contains("error: "));
         assert!(stderr.contains("Check failed: graph has issues."));
     } else {
-        assert!(!stderr.contains("Runtime error:"));
+        assert!(!stderr.contains("error: "));
         assert!(!stderr.contains("Check failed: graph has issues."));
     }
 }
@@ -338,7 +338,7 @@ fn test_check_modes_issue_json_payload_is_identical() {
     let warn_stderr = stderr_text(&warn_output);
     let strict_stderr = stderr_text(&strict_output);
     assert_eq!(warn_stderr, "");
-    assert!(strict_stderr.contains("Runtime error:"));
+    assert!(strict_stderr.contains("error: "));
     assert!(strict_stderr.contains("Check failed: graph has issues."));
 }
 
