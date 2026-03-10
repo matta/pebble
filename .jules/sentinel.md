@@ -27,3 +27,10 @@
 **Vulnerability:** Initially identified the use of the Debug formatter (`{:?}`) for `color_eyre::eyre::Result` errors as an information disclosure vulnerability because it leaked stack traces and file paths to stderr.
 **Learning:** For a local, open-source CLI tool that processes data from the user's local disk, internal implementation file paths and stack traces are non-secrets. The codebase is already public. Leaking this information is a UX concern (overly verbose errors), not a security vulnerability.
 **Prevention:** When evaluating potential information disclosure vulnerabilities, consider the application's execution context (local vs. server), the data it processes, and whether the "leaked" information is actually secret or sensitive. Do not flag stack traces as security issues in local, open-source tools.
+
+## 2026-03-10 - TOCTOU Race Condition in File Rename During Archive
+**Vulnerability:** A Time-of-Check to Time-of-Use (TOCTOU) vulnerability existed in `run_archive` when checking if an archived file path already existed. The code checked `if exists(&new_path)` in a loop, then generated a unique filename and later used `fs::rename(&node.path, &new_path)` to move the file. This allowed an attacker to create a file or a symlink at `new_path` after the check but before the rename, causing `fs::rename` to overwrite or write to sensitive locations across file systems.
+**Learning:** Checking for file existence and then renaming a file to that destination in a separate step is unsafe and leads to race conditions. There is no cross-platform equivalent of an atomic `rename(2)` with a "no replace" flag in `std::fs`.
+**Prevention:**
+1. Use a safe file move operation instead of `fs::rename`. This strategy requires reading the file metadata and contents into memory, using atomic `fs::OpenOptions::new().write(true).create_new(true).open(...)` to create the destination file in a retry loop without overwriting, writing the data, copying original permissions, and deleting the source file.
+2. Ensure you read source metadata/content first before opening the destination to prevent leaving empty destination files on read failures.
