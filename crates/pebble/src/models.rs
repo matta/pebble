@@ -12,8 +12,9 @@ use std::path::PathBuf;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
-/// Error representing an invalid user invocation or configuration value.
-/// Should results in exit code 2.
+/// Represents an invalid user invocation or configuration value.
+///
+/// Should result in exit code 2.
 #[derive(Debug)]
 pub struct UsageError(pub String);
 impl fmt::Display for UsageError {
@@ -23,7 +24,8 @@ impl fmt::Display for UsageError {
 }
 impl error::Error for UsageError {}
 
-/// Error representing a search or retrieval failure when the item is not found.
+/// Represents a search or retrieval failure when the item is not found.
+///
 /// Should result in exit code 1 without a stack trace.
 #[derive(Debug)]
 pub struct NotFoundError(pub String);
@@ -357,6 +359,13 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Writes the task content to a new file on disk.
+    ///
+    /// Ensures atomic file creation using `create_new(true)` to mitigate Time-of-Check to Time-of-Use (TOCTOU) vulnerabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails, if the file already exists, or if the write operation fails.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
