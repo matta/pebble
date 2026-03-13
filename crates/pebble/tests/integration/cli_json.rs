@@ -26,6 +26,20 @@ fn test_list_json_stdout_only() {
 fn test_next_json_stdout_only() {
     let env = setup_test_env();
 
+    // With no tasks, next --json should fail (exit code 1) and output error to stderr
+    let output = env
+        .pebble()
+        .args(["next", "--json", "--dir", "tasks"])
+        .output()
+        .expect("pebble command should execute successfully");
+
+    assert!(!output.status.success());
+    assert!(!output.stderr.is_empty());
+    assert!(output.stdout.is_empty());
+
+    // With tasks, it should succeed
+    write_task(&env.tasks_dir, "PROJ-1", "Next Task", "todo");
+
     let output = env
         .pebble()
         .args(["next", "--json", "--dir", "tasks"])
@@ -40,7 +54,7 @@ fn test_next_json_stdout_only() {
             .as_array()
             .expect("tasks should be an array")
             .len(),
-        0
+        1
     );
 }
 
