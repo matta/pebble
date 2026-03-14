@@ -26,6 +26,9 @@ fn test_list_json_stdout_only() {
 fn test_next_json_stdout_only() {
     let env = setup_test_env();
 
+    // Create a task so it returns success instead of failure when looking for next tasks
+    super::support::write_task(&env.tasks_dir, "PROJ-1", "Task 1", "todo");
+
     let output = env
         .pebble()
         .args(["next", "--json", "--dir", "tasks"])
@@ -40,7 +43,7 @@ fn test_next_json_stdout_only() {
             .as_array()
             .expect("tasks should be an array")
             .len(),
-        0
+        1
     );
 }
 
