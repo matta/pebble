@@ -1,4 +1,4 @@
-use crate::commands::RunContext;
+use crate::commands::{RunContext, emit_json};
 use crate::graph::TaskGraph;
 use color_eyre::eyre::{Result, eyre};
 use std::fs;
@@ -39,10 +39,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     }
 
     if ctx.json {
-        println!(
-            "{}",
-            serde_json::to_string(&serde_json::json!({ "archived": archived }))?
-        );
+        emit_json(&serde_json::json!({ "archived": archived }))?;
     }
 
     Ok(())

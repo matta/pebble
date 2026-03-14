@@ -1,0 +1,26 @@
+<<<<<<< SEARCH
+/// Resolved runtime configuration and paths for command execution.
+pub struct RunContext {
+=======
+/// Emits a JSON-serializable payload to standard output.
+///
+/// Serializes the provided generic payload as a JSON string and writes it to `stdout`
+/// followed by a newline. This centralizes the standard pattern of converting
+/// structured data into machine-readable output for CLI commands.
+///
+/// # Arguments
+///
+/// * `payload` - A reference to any type that implements `serde::Serialize`.
+///
+/// # Errors
+///
+/// Returns an error if serialization fails (e.g., if the type contains a map with
+/// non-string keys, though this is rare for standard API objects).
+pub fn emit_json<T: Serialize>(payload: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(payload)?);
+    Ok(())
+}
+
+/// Resolved runtime configuration and paths for command execution.
+pub struct RunContext {
+>>>>>>> REPLACE

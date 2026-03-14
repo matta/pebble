@@ -1,4 +1,6 @@
-use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
+use crate::commands::{
+    RunContext, TaskObject, emit_json, read_stdin_if_dash, validate_task_references,
+};
 use crate::graph::TaskGraph;
 use crate::models::{Priority, TaskFrontmatter, TaskNode, TaskStatus};
 use crate::task_io::current_task_time;
@@ -193,7 +195,7 @@ pub fn run_add(ctx: &RunContext, input: RunAddInput) -> Result<()> {
         let updated_graph = TaskGraph::new(graph.nodes);
         let mut obj = TaskObject::from_node(&node, &updated_graph, &ctx.tasks_dir);
         obj.path = display_path;
-        println!("{}", serde_json::to_string(&obj)?);
+        emit_json(&obj)?;
     } else {
         eprintln!("Created task {} at {}", new_id, display_path);
     }
