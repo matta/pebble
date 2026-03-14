@@ -176,7 +176,15 @@ impl RunContext {
         })
     }
 
-    /// Ensure that we are in a valid project context (root exists or tasks dir exists).
+    /// Ensures that the execution is within a valid project context.
+    ///
+    /// This checks whether a project root was found or if the designated tasks
+    /// directory currently exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no project root is found and the tasks directory does
+    /// not exist, indicating that the command was run outside of a Pebble project.
     pub fn ensure_project(&self) -> Result<()> {
         if self.project_root.is_some() || self.tasks_dir.exists() {
             Ok(())

@@ -357,6 +357,53 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Writes the task content to a new file on disk atomically.
+    ///
+    /// This uses an atomic creation operation to ensure that the file is only written
+    /// if it does not already exist, preventing Time-of-Check to Time-of-Use (TOCTOU)
+    /// vulnerabilities when generating unique task files.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails, if the file already
+    /// exists, or if the underlying creation and write operations fail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
+    /// # use chrono::Utc;
+    /// # fn main() -> color_eyre::eyre::Result<()> {
+    /// let temp = tempfile::tempdir()?;
+    /// let path = temp.path().join("issue-123.md");
+    ///
+    /// let node = TaskNode {
+    ///     path: path.clone(),
+    ///     frontmatter: TaskFrontmatter {
+    ///         id: "issue-123".into(),
+    ///         title: "Test Task".into(),
+    ///         status: TaskStatus::todo(),
+    ///         priority: None,
+    ///         created_at: Some(Utc::now()),
+    ///         modified_at: None,
+    ///         resolved_at: None,
+    ///         needs: vec![],
+    ///         tags: vec![],
+    ///         extra: Default::default(),
+    ///     },
+    ///     body: "Task description".into(),
+    /// };
+    ///
+    /// // First creation succeeds
+    /// node.create_new_to_disk()?;
+    /// assert!(path.exists());
+    ///
+    /// // Second creation fails because the file already exists
+    /// assert!(node.create_new_to_disk().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
@@ -369,6 +416,18 @@ impl TaskNode {
     }
 }
 
+/// Returns the default fallback timestamp for the project.
+///
+/// This provides a standardized fallback value (`UNIX_EPOCH`) for tasks missing
+/// an explicit creation timestamp.
+///
+/// # Examples
+///
+/// ```
+/// # use pebble::models::default_datetime;
+/// # use chrono::{DateTime, Utc};
+/// assert_eq!(default_datetime(), DateTime::<Utc>::UNIX_EPOCH);
+/// ```
 pub fn default_datetime() -> DateTime<Utc> {
     DateTime::<Utc>::UNIX_EPOCH
 }
