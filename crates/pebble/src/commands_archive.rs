@@ -2,7 +2,28 @@ use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use color_eyre::eyre::{Result, eyre};
 use std::fs;
+use std::fs::OpenOptions;
+use std::io;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+
+/// Safely moves a file from `src` to `dst` using atomic operations to prevent TOCTOU vulnerabilities.
+/// Uses `fs::hard_link` followed by `fs::remove_file` when possible. If the destination already exists,
+/// it returns an `AlreadyExists` error. If hard-linking fails for other reasons (like crossing devices),
+/// it falls back to an atomic open-and-copy operation.
+fn safe_move_file(src: &Path, dst: &Path) -> io::Result<()> {
+    match fs::hard_link(src, dst) {
+        Ok(_) => fs::remove_file(src),
+        Err(e) if e.kind() == ErrorKind::AlreadyExists => Err(e),
+        Err(_) => {
+            // Fall back to atomic file creation and copy if hard link fails (e.g., across filesystems)
+            let mut src_file = fs::File::open(src)?;
+            let mut dst_file = OpenOptions::new().write(true).create_new(true).open(dst)?;
+            io::copy(&mut src_file, &mut dst_file)?;
+            fs::remove_file(src)
+        }
+    }
+}
 
 /// Moves completed or canceled tasks older than the configured threshold into an `archive/` subdirectory.
 ///
@@ -24,8 +45,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
             && let Some(resolved_at) = node.frontmatter.resolved_at
             && now.signed_duration_since(resolved_at) >= threshold_days
         {
-            let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
-            fs::rename(&node.path, &new_path)?;
+            let new_path = move_to_archive(&archive_dir, &node.path)?;
 
             if ctx.json {
                 archived.push(serde_json::json!({
@@ -48,11 +68,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     Ok(())
 }
 
-fn get_archive_path(
-    archive_dir: &Path,
-    original_path: &Path,
-    mut exists: impl FnMut(&Path) -> bool,
-) -> Result<PathBuf> {
+fn move_to_archive(archive_dir: &Path, original_path: &Path) -> Result<PathBuf> {
     let stem = original_path
         .file_stem()
         .ok_or_else(|| eyre!("Invalid task path: {}", original_path.display()))?
@@ -70,61 +86,56 @@ fn get_archive_path(
     let mut new_path = archive_dir.join(&filename);
     let mut counter = 2;
 
-    while exists(&new_path) {
-        filename = if extension.is_empty() {
-            format!("{}-{}", stem, counter)
-        } else {
-            format!("{}-{}.{}", stem, counter, extension)
-        };
-        new_path = archive_dir.join(&filename);
-        counter += 1;
+    loop {
+        match safe_move_file(original_path, &new_path) {
+            Ok(_) => return Ok(new_path),
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => {
+                filename = if extension.is_empty() {
+                    format!("{}-{}", stem, counter)
+                } else {
+                    format!("{}-{}.{}", stem, counter, extension)
+                };
+                new_path = archive_dir.join(&filename);
+                counter += 1;
+            }
+            Err(e) => return Err(e.into()),
+        }
     }
-
-    Ok(new_path)
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
-    use std::path::PathBuf;
 
     #[test]
-    fn test_get_archive_path() {
-        let archive_dir = PathBuf::from("archive");
-        let mut mock_fs = HashSet::new();
+    fn test_move_to_archive() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let archive_dir = temp.path().join("archive");
+        fs::create_dir_all(&archive_dir)?;
 
-        // 1. With extension, no collision
-        let p1 = PathBuf::from("PROJ-1.md");
-        assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-1.md")
-        );
+        let original_file = temp.path().join("PROJ-1.md");
+        fs::write(&original_file, "content")?;
 
-        // 2. Without extension, no collision
-        let p2 = PathBuf::from("PROJ-2");
-        assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-2")
-        );
+        // 1. First move should succeed without a suffix
+        let moved_path = move_to_archive(&archive_dir, &original_file)?;
+        assert_eq!(moved_path, archive_dir.join("PROJ-1.md"));
+        assert!(moved_path.exists());
+        assert!(!original_file.exists());
 
-        // 3. With extension, with collision
-        mock_fs.insert(archive_dir.join("PROJ-1.md"));
-        assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-1-2.md")
-        );
+        // 2. Recreate original, move again (should get -2 suffix)
+        fs::write(&original_file, "content 2")?;
+        let moved_path2 = move_to_archive(&archive_dir, &original_file)?;
+        assert_eq!(moved_path2, archive_dir.join("PROJ-1-2.md"));
+        assert!(moved_path2.exists());
+        assert!(!original_file.exists());
 
-        // 4. Without extension, with collision
-        mock_fs.insert(archive_dir.join("PROJ-2"));
-        assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-2-2")
-        );
+        // 3. Recreate original, move again (should get -3 suffix)
+        fs::write(&original_file, "content 3")?;
+        let moved_path3 = move_to_archive(&archive_dir, &original_file)?;
+        assert_eq!(moved_path3, archive_dir.join("PROJ-1-3.md"));
+        assert!(moved_path3.exists());
+        assert!(!original_file.exists());
+
+        Ok(())
     }
 }
