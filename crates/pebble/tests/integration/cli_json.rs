@@ -25,6 +25,7 @@ fn test_list_json_stdout_only() {
 #[test]
 fn test_next_json_stdout_only() {
     let env = setup_test_env();
+    write_task(&env.tasks_dir, "PROJ-1", "Next Task", "todo");
 
     let output = env
         .pebble()
@@ -40,7 +41,7 @@ fn test_next_json_stdout_only() {
             .as_array()
             .expect("tasks should be an array")
             .len(),
-        0
+        1
     );
 }
 
