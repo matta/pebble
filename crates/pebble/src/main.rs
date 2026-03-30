@@ -11,7 +11,7 @@ use pebble::commands_diagnostics;
 use pebble::commands_fix::run_fix;
 use pebble::commands_write::{RunUpdateInput, run_init, run_update};
 use pebble::help_json::help_json_schema;
-use pebble::models::{NotFoundError, UsageError};
+use pebble::models::UsageError;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -156,15 +156,11 @@ fn main() -> ExitCode {
         }
 
         if err.is::<UsageError>() {
-            eprintln!("Usage error: {}", err);
+            eprintln!("error: {}", err);
             return ExitCode::from(2);
         }
 
-        if err.is::<NotFoundError>() {
-            eprintln!("{}", err);
-        } else {
-            eprintln!("Runtime error: {:?}", err);
-        }
+        eprintln!("error: {}", err);
         return ExitCode::from(1);
     }
     ExitCode::SUCCESS
