@@ -27,3 +27,8 @@
 **Vulnerability:** Initially identified the use of the Debug formatter (`{:?}`) for `color_eyre::eyre::Result` errors as an information disclosure vulnerability because it leaked stack traces and file paths to stderr.
 **Learning:** For a local, open-source CLI tool that processes data from the user's local disk, internal implementation file paths and stack traces are non-secrets. The codebase is already public. Leaking this information is a UX concern (overly verbose errors), not a security vulnerability.
 **Prevention:** When evaluating potential information disclosure vulnerabilities, consider the application's execution context (local vs. server), the data it processes, and whether the "leaked" information is actually secret or sensitive. Do not flag stack traces as security issues in local, open-source tools.
+
+## 2025-03-07 - TOCTOU Race Condition in Archive Logic
+**Vulnerability:** A Time-of-Check to Time-of-Use (TOCTOU) vulnerability existed in `run_archive` when moving an archived task file to a unique filename. The code used `exists()` followed by `fs::rename()`, leaving a race window where a malicious user or process could create a symlink or file at the destination path, causing unintended overwrites.
+**Learning:** Checking for file existence before writing or moving files creates a race condition that can lead to security vulnerabilities in shared environments.
+**Prevention:** Avoid separating the existence check from the action. Use atomic file operations like `fs::OpenOptions::new().write(true).create_new(true).open(...)` to safely reserve and create a file, and handle the `AlreadyExists` error to implement safe retry logic for finding a unique path.
