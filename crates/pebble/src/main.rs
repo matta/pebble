@@ -163,7 +163,7 @@ fn main() -> ExitCode {
         if err.is::<NotFoundError>() {
             eprintln!("{}", err);
         } else {
-            eprintln!("Runtime error: {:?}", err);
+            eprintln!("Runtime error: {}", err);
         }
         return ExitCode::from(1);
     }
