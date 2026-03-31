@@ -23,8 +23,27 @@ fn test_list_json_stdout_only() {
 }
 
 #[test]
+fn test_next_json_no_ready_tasks_exits_1() {
+    let env = setup_test_env();
+
+    let output = env
+        .pebble()
+        .args(["next", "--json", "--dir", "tasks"])
+        .output()
+        .expect("pebble command should execute successfully");
+
+    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("No ready tasks found."));
+}
+
+#[test]
 fn test_next_json_stdout_only() {
     let env = setup_test_env();
+
+    write_task(&env.tasks_dir, "PROJ-1", "First Task", "todo");
 
     let output = env
         .pebble()
@@ -40,7 +59,7 @@ fn test_next_json_stdout_only() {
             .as_array()
             .expect("tasks should be an array")
             .len(),
-        0
+        1
     );
 }
 
