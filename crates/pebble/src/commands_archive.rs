@@ -24,8 +24,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
             && let Some(resolved_at) = node.frontmatter.resolved_at
             && now.signed_duration_since(resolved_at) >= threshold_days
         {
-            let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
-            fs::rename(&node.path, &new_path)?;
+            let new_path = safe_rename(&node.path, &archive_dir)?;
 
             if ctx.json {
                 archived.push(serde_json::json!({
@@ -48,11 +47,7 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     Ok(())
 }
 
-fn get_archive_path(
-    archive_dir: &Path,
-    original_path: &Path,
-    mut exists: impl FnMut(&Path) -> bool,
-) -> Result<PathBuf> {
+fn safe_rename(original_path: &Path, archive_dir: &Path) -> Result<PathBuf> {
     let stem = original_path
         .file_stem()
         .ok_or_else(|| eyre!("Invalid task path: {}", original_path.display()))?
@@ -70,61 +65,83 @@ fn get_archive_path(
     let mut new_path = archive_dir.join(&filename);
     let mut counter = 2;
 
-    while exists(&new_path) {
-        filename = if extension.is_empty() {
-            format!("{}-{}", stem, counter)
-        } else {
-            format!("{}-{}.{}", stem, counter, extension)
-        };
-        new_path = archive_dir.join(&filename);
-        counter += 1;
-    }
+    loop {
+        match fs::hard_link(original_path, &new_path) {
+            Ok(_) => {
+                fs::remove_file(original_path)?;
+                return Ok(new_path);
+            }
+            Err(e) => {
+                use std::io::ErrorKind;
+                // If hard_link is unsupported by the filesystem (e.g. FAT32), fallback to a non-atomic rename
+                // assuming that the probability of a TOCTOU collision is low in such environments.
+                if e.kind() == ErrorKind::Unsupported || e.kind() == ErrorKind::InvalidInput {
+                    if !new_path.exists() {
+                        fs::rename(original_path, &new_path)?;
+                        return Ok(new_path);
+                    }
+                    // Fall through to collision logic if exists
+                } else if e.kind() != ErrorKind::AlreadyExists {
+                    return Err(e.into());
+                }
 
-    Ok(new_path)
+                // Collision occurred
+                filename = if extension.is_empty() {
+                    format!("{}-{}", stem, counter)
+                } else {
+                    format!("{}-{}.{}", stem, counter, extension)
+                };
+                new_path = archive_dir.join(&filename);
+                counter += 1;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
-    use std::path::PathBuf;
+    use tempfile::tempdir;
 
     #[test]
-    fn test_get_archive_path() {
-        let archive_dir = PathBuf::from("archive");
-        let mut mock_fs = HashSet::new();
+    fn test_safe_rename_paths() -> Result<()> {
+        let temp = tempdir()?;
+        let source_dir = temp.path().join("source");
+        let archive_dir = temp.path().join("archive");
+        fs::create_dir_all(&source_dir)?;
+        fs::create_dir_all(&archive_dir)?;
 
-        // 1. With extension, no collision
-        let p1 = PathBuf::from("PROJ-1.md");
-        assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-1.md")
-        );
+        let original_file = source_dir.join("PROJ-1.md");
+        fs::write(&original_file, "content")?;
 
-        // 2. Without extension, no collision
-        let p2 = PathBuf::from("PROJ-2");
-        assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-2")
-        );
+        // 1. No collision
+        let new_path = safe_rename(&original_file, &archive_dir)?;
+        assert_eq!(new_path, archive_dir.join("PROJ-1.md"));
+        assert!(!original_file.exists());
+        assert!(new_path.exists());
 
-        // 3. With extension, with collision
-        mock_fs.insert(archive_dir.join("PROJ-1.md"));
-        assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-1-2.md")
-        );
+        // Setup for collision test
+        let original_file = source_dir.join("PROJ-1.md");
+        fs::write(&original_file, "content2")?;
 
-        // 4. Without extension, with collision
-        mock_fs.insert(archive_dir.join("PROJ-2"));
-        assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-2-2")
-        );
+        // 2. Collision with "PROJ-1.md"
+        let new_path2 = safe_rename(&original_file, &archive_dir)?;
+        assert_eq!(new_path2, archive_dir.join("PROJ-1-2.md"));
+        assert!(!original_file.exists());
+        assert!(new_path2.exists());
+
+        // 3. Without extension
+        let original_file_no_ext = source_dir.join("PROJ-2");
+        fs::write(&original_file_no_ext, "content3")?;
+        let new_path3 = safe_rename(&original_file_no_ext, &archive_dir)?;
+        assert_eq!(new_path3, archive_dir.join("PROJ-2"));
+
+        // 4. Without extension collision
+        let original_file_no_ext = source_dir.join("PROJ-2");
+        fs::write(&original_file_no_ext, "content4")?;
+        let new_path4 = safe_rename(&original_file_no_ext, &archive_dir)?;
+        assert_eq!(new_path4, archive_dir.join("PROJ-2-2"));
+
+        Ok(())
     }
 }

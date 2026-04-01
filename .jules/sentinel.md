@@ -27,3 +27,8 @@
 **Vulnerability:** Initially identified the use of the Debug formatter (`{:?}`) for `color_eyre::eyre::Result` errors as an information disclosure vulnerability because it leaked stack traces and file paths to stderr.
 **Learning:** For a local, open-source CLI tool that processes data from the user's local disk, internal implementation file paths and stack traces are non-secrets. The codebase is already public. Leaking this information is a UX concern (overly verbose errors), not a security vulnerability.
 **Prevention:** When evaluating potential information disclosure vulnerabilities, consider the application's execution context (local vs. server), the data it processes, and whether the "leaked" information is actually secret or sensitive. Do not flag stack traces as security issues in local, open-source tools.
+
+## 2026-03-03 - TOCTOU using fs::rename
+**Vulnerability:** A Time-of-Check to Time-of-Use (TOCTOU) vulnerability existed in `commands_archive.rs` where an availability check (`Path::exists()`) was performed before moving a file using `fs::rename()`. Because `fs::rename()` blindly overwrites existing files at the destination, another process could create the destination file between the check and the rename, leading to data loss.
+**Learning:** `fs::rename` is not safe for moving files into directories where name collisions must be avoided and preserved.
+**Prevention:** Use `fs::hard_link` to link the original file to the new path (which atomically fails if the destination already exists) and then use `fs::remove_file` to remove the original file. When filesystem limitations prevent hard links (e.g. FAT32), safely fallback with a well-tested collision strategy.
