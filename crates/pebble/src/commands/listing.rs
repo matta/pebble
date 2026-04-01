@@ -204,7 +204,12 @@ fn emit_task_list(ctx: &RunContext, graph: &TaskGraph, tasks: Vec<&TaskNode>) ->
     Ok(())
 }
 
-/// List tasks using the default ordering, with optional filters.
+/// Lists tasks using the default ordering, with optional filters.
+///
+/// # Errors
+///
+/// Returns an error if the task graph cannot be loaded from the directory,
+/// if the requested sort field is invalid, or if JSON serialization fails.
 pub fn run_list(ctx: &RunContext, options: &ListOptions) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let tasks = filter_list_tasks(&graph, options);
@@ -215,7 +220,12 @@ pub fn run_list(ctx: &RunContext, options: &ListOptions) -> Result<()> {
     emit_task_list(ctx, &graph, tasks)
 }
 
-/// Search tasks by case-insensitive substring across title and body.
+/// Searches tasks by case-insensitive substring across title and body.
+///
+/// # Errors
+///
+/// Returns a [`NotFoundError`] if no matching tasks are found. It also returns an
+/// error if the task graph cannot be loaded or if JSON serialization fails.
 pub fn run_search(ctx: &RunContext, query: &str) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let needle = query.to_lowercase();
