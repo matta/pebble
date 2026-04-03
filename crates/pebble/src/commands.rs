@@ -131,7 +131,18 @@ pub struct RunContext {
 }
 
 impl RunContext {
-    /// Load configuration and resolve paths based on CLI overrides and the current directory.
+    /// Loads configuration and resolves paths based on CLI overrides and the current directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `current_dir` - The current working directory.
+    /// * `cli_dir_override` - An optional path override for the tasks directory.
+    /// * `cli_config_override` - An optional path override for the configuration file.
+    /// * `json` - Whether JSON output is enabled.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading or parsing the configuration file fails.
     pub fn load(
         current_dir: PathBuf,
         cli_dir_override: Option<PathBuf>,
@@ -176,7 +187,11 @@ impl RunContext {
         })
     }
 
-    /// Ensure that we are in a valid project context (root exists or tasks dir exists).
+    /// Ensures that we are in a valid project context (root exists or tasks dir exists).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no project root is found and the tasks directory does not exist.
     pub fn ensure_project(&self) -> Result<()> {
         if self.project_root.is_some() || self.tasks_dir.exists() {
             Ok(())
