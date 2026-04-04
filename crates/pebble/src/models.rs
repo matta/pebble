@@ -357,6 +357,15 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Writes a new task to disk, ensuring no existing file is overwritten.
+    ///
+    /// This function uses atomic creation operations to prevent Time-of-Check to Time-of-Use
+    /// (TOCTOU) vulnerabilities when generating unique task files.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file already exists, if generating the serialized content fails,
+    /// or if the file write operation fails due to I/O issues.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
@@ -369,6 +378,10 @@ impl TaskNode {
     }
 }
 
+/// Returns the standardized default timestamp for the project.
+///
+/// This function is used as a fallback when a creation timestamp is not explicitly provided.
+/// It returns `UNIX_EPOCH` to ensure deterministic sorting in the task graph.
 pub fn default_datetime() -> DateTime<Utc> {
     DateTime::<Utc>::UNIX_EPOCH
 }
