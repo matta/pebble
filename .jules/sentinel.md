@@ -27,3 +27,8 @@
 **Vulnerability:** Initially identified the use of the Debug formatter (`{:?}`) for `color_eyre::eyre::Result` errors as an information disclosure vulnerability because it leaked stack traces and file paths to stderr.
 **Learning:** For a local, open-source CLI tool that processes data from the user's local disk, internal implementation file paths and stack traces are non-secrets. The codebase is already public. Leaking this information is a UX concern (overly verbose errors), not a security vulnerability.
 **Prevention:** When evaluating potential information disclosure vulnerabilities, consider the application's execution context (local vs. server), the data it processes, and whether the "leaked" information is actually secret or sensitive. Do not flag stack traces as security issues in local, open-source tools.
+
+## 2025-05-18 - Replacing panic with graceful Result propagation
+**Vulnerability:** The use of `unwrap_or_else(|| panic!(...))` inside internal graph mutation functions (`apply_reverse_blocks`, `apply_reverse_update`) could cause an abrupt termination (Denial of Service) if a validated ID somehow goes missing from the graph due to a bug or concurrent modification.
+**Learning:** Abrupt program termination via `panic!` inside core application logic handles errors poorly, leading to a degraded user experience or abrupt crashing of automated workflows. Graceful error propagation using `Result` allows the caller to handle and report the error cleanly without killing the whole process.
+**Prevention:** Replace instances of `unwrap_or_else(|| panic!(...))` with `ok_or_else(|| eyre!(...))?` in functions that return `color_eyre::eyre::Result`, allowing errors to propagate safely.

@@ -36,7 +36,7 @@ fn apply_reverse_update(
             .nodes
             .get(&target_id)
             .cloned()
-            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
+            .ok_or_else(|| eyre!("BUG: validated task ID should exist in graph"))?;
         if target_node
             .frontmatter
             .needs
@@ -63,7 +63,7 @@ fn apply_reverse_update(
             .nodes
             .get(&target_id)
             .cloned()
-            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
+            .ok_or_else(|| eyre!("BUG: validated task ID should exist in graph"))?;
         let before_len = target_node.frontmatter.needs.len();
         target_node
             .frontmatter

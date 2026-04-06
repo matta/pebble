@@ -35,7 +35,7 @@ fn apply_reverse_blocks(
             .nodes
             .get(&target_id)
             .cloned()
-            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
+            .ok_or_else(|| eyre!("BUG: validated task ID should exist in graph"))?;
 
         if target_node
             .frontmatter
