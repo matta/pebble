@@ -188,7 +188,14 @@ impl RunContext {
     }
 }
 
-/// Emit the highest-scoring ready tasks according to the default ranking.
+/// Emits the highest-scoring ready tasks according to the default ranking.
+///
+/// # Errors
+///
+/// Returns an error in the following cases:
+/// * The task graph cannot be loaded from the tasks directory.
+/// * No ready tasks are found (returns a [`NotFoundError`]).
+/// * Serialization fails when outputting JSON.
 pub fn run_next(ctx: &RunContext, limit: usize) -> Result<()> {
     let graph = TaskGraph::load_from_dir(&ctx.tasks_dir)?;
     let next_tasks = graph.get_next_tasks();
