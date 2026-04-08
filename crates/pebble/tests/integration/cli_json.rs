@@ -26,6 +26,22 @@ fn test_list_json_stdout_only() {
 fn test_next_json_stdout_only() {
     let env = setup_test_env();
 
+    // Verify when no tasks exist, it should return exit code 1 with message on stderr
+    let output = env
+        .pebble()
+        .args(["next", "--json", "--dir", "tasks"])
+        .output()
+        .expect("pebble command should execute successfully");
+
+    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!output.stderr.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("No ready tasks found."));
+
+    // Add a ready task to verify success output
+    write_task(&env.tasks_dir, "PROJ-NEXT-1", "Ready Task", "todo");
+
     let output = env
         .pebble()
         .args(["next", "--json", "--dir", "tasks"])
@@ -40,7 +56,7 @@ fn test_next_json_stdout_only() {
             .as_array()
             .expect("tasks should be an array")
             .len(),
-        0
+        1
     );
 }
 
