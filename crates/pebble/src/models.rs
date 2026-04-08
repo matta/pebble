@@ -12,6 +12,9 @@ use std::path::PathBuf;
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
+/// The YAML frontmatter delimiter used in task files.
+pub const FRONTMATTER_DELIMITER: &str = "---";
+
 /// Error representing an invalid user invocation or configuration value.
 /// Should results in exit code 2.
 #[derive(Debug)]
@@ -328,7 +331,7 @@ impl TaskNode {
         };
 
         let mut yaml_payload = serde_saphyr::to_string(&yaml_frontmatter)?;
-        if let Some(stripped) = yaml_payload.strip_prefix("---\n") {
+        if let Some(stripped) = yaml_payload.strip_prefix(&format!("{}\n", FRONTMATTER_DELIMITER)) {
             yaml_payload = stripped.to_string();
         }
         if let Some(stripped) = yaml_payload.strip_suffix("...\n") {
@@ -340,9 +343,15 @@ impl TaskNode {
 
         let body = self.body.trim();
         if body.is_empty() {
-            Ok(format!("---\n{}---\n", yaml_payload))
+            Ok(format!(
+                "{}\n{}{}\n",
+                FRONTMATTER_DELIMITER, yaml_payload, FRONTMATTER_DELIMITER
+            ))
         } else {
-            Ok(format!("---\n{}---\n\n{}\n", yaml_payload, body))
+            Ok(format!(
+                "{}\n{}{}\n\n{}\n",
+                FRONTMATTER_DELIMITER, yaml_payload, FRONTMATTER_DELIMITER, body
+            ))
         }
     }
 
