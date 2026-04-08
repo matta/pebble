@@ -346,6 +346,17 @@ impl TaskNode {
         }
     }
 
+    /// Checks if the file's disk content matches its canonical format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails or if the file read operation fails.
+    pub fn is_canonical(&self) -> Result<bool> {
+        let canonical_content = self.get_content_for_disk()?;
+        let disk_content = fs::read_to_string(&self.path)?;
+        Ok(disk_content == canonical_content)
+    }
+
     /// Writes the task content to its file path on disk.
     ///
     /// # Errors
