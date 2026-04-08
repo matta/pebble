@@ -3,7 +3,6 @@ use crate::graph::TaskGraph;
 use crate::models::TaskNode;
 use color_eyre::eyre::Result;
 use serde::Serialize;
-use std::fs;
 
 /// A standard error shape emitted by diagnostics checks (suitable for JSON).
 /// Contains a human-readable message, an identifier for the file (if applicable),
@@ -145,10 +144,7 @@ fn check_node_diagnostics(
     }
 
     // 4. Check for uncanonical task file content (e.g., frontmatter formatting or trailing newlines)
-    if let Ok(disk_content) = fs::read_to_string(&node.path)
-        && let Ok(canonical_content) = node.get_content_for_disk()
-        && disk_content != canonical_content
-    {
+    if node.is_canonical().is_ok_and(|canonical| !canonical) {
         errors.push(DiagnosticError {
             file: rel_path.clone(),
             line: None,
