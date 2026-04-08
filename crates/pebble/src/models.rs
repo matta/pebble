@@ -367,6 +367,17 @@ impl TaskNode {
         file.write_all(content.as_bytes())?;
         Ok(())
     }
+
+    /// Checks if the file's disk content matches its canonical format.
+    ///
+    /// Returns `Ok(true)` if the file content matches the canonical format.
+    /// Returns `Ok(false)` if the content differs.
+    /// Returns an error if the file cannot be read or if canonical content generation fails.
+    pub fn is_canonical(&self) -> Result<bool> {
+        let disk_content = fs::read_to_string(&self.path)?;
+        let canonical_content = self.get_content_for_disk()?;
+        Ok(disk_content == canonical_content)
+    }
 }
 
 pub fn default_datetime() -> DateTime<Utc> {
