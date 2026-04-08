@@ -357,6 +357,16 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Writes the task content to a new file on disk atomically.
+    ///
+    /// This method uses [`std::fs::OpenOptions`] to ensure the file is created atomically,
+    /// preventing Time-of-Check to Time-of-Use (TOCTOU) vulnerabilities when generating
+    /// and writing to unique files.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails, if the file already exists,
+    /// or if the file creation or write operation fails.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 

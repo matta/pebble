@@ -54,7 +54,16 @@ pub struct TaskObject<'a> {
 }
 
 impl<'a> TaskObject<'a> {
-    /// Build a serializable task view from a graph node and tasks directory.
+    /// Builds a serializable task view from a graph node and tasks directory.
+    ///
+    /// This resolves the task's readiness state and current dependent tasks
+    /// based on the full graph topology.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The task node to convert into a JSON-serializable object.
+    /// * `graph` - The complete task graph for resolving dependency status.
+    /// * `tasks_dir` - The root directory of tasks, used to compute a relative path.
     pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &Path) -> Self {
         let is_ready = graph.is_ready(&node.frontmatter.id);
 
@@ -131,7 +140,21 @@ pub struct RunContext {
 }
 
 impl RunContext {
-    /// Load configuration and resolve paths based on CLI overrides and the current directory.
+    /// Loads configuration and resolves paths based on CLI overrides and the current directory.
+    ///
+    /// The function searches for the project root and merges it with optional CLI flags
+    /// to determine the exact path to tasks and configuration settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `current_dir` - The directory from which the command was invoked.
+    /// * `cli_dir_override` - An optional explicit path to the tasks directory provided by the user.
+    /// * `cli_config_override` - An optional explicit path to the config file provided by the user.
+    /// * `json` - Whether JSON output mode was requested.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an explicit config override path exists but cannot be read or parsed.
     pub fn load(
         current_dir: PathBuf,
         cli_dir_override: Option<PathBuf>,
