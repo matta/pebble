@@ -351,12 +351,90 @@ impl TaskNode {
     /// # Errors
     ///
     /// Returns an error if generating the serialized content fails or if the file write operation fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let temp = tempfile::tempdir()?;
+    /// # let path = temp.path().join("issue-123.md");
+    /// let node = TaskNode {
+    ///     path: path.clone(),
+    ///     frontmatter: TaskFrontmatter {
+    ///         id: "issue-123".into(),
+    ///         title: "Test Task".into(),
+    ///         status: TaskStatus::todo(),
+    ///         priority: None,
+    ///         created_at: None,
+    ///         modified_at: None,
+    ///         resolved_at: None,
+    ///         needs: vec![],
+    ///         tags: vec![],
+    ///         extra: Default::default(),
+    ///     },
+    ///     body: "Body content".into(),
+    /// };
+    /// node.write_to_disk()?;
+    /// assert!(path.exists());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
         fs::write(&self.path, content)?;
         Ok(())
     }
 
+    /// Writes the task content to a new file on disk.
+    ///
+    /// This uses an atomic file creation operation (`O_CREAT | O_EXCL` on Unix) to
+    /// ensure the file is created only if it does not already exist. This prevents
+    /// Time-of-Check to Time-of-Use (TOCTOU) vulnerabilities when generating
+    /// unique filenames for new tasks.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * Generating the serialized content fails.
+    /// * The file already exists at the specified `path`.
+    /// * The file write operation fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pebble::models::{TaskNode, TaskFrontmatter, TaskStatus};
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let temp = tempfile::tempdir()?;
+    /// # let path = temp.path().join("issue-new.md");
+    /// let node = TaskNode {
+    ///     path: path.clone(),
+    ///     frontmatter: TaskFrontmatter {
+    ///         id: "issue-new".into(),
+    ///         title: "New Task".into(),
+    ///         status: TaskStatus::todo(),
+    ///         priority: None,
+    ///         created_at: None,
+    ///         modified_at: None,
+    ///         resolved_at: None,
+    ///         needs: vec![],
+    ///         tags: vec![],
+    ///         extra: Default::default(),
+    ///     },
+    ///     body: "Body content".into(),
+    /// };
+    ///
+    /// // First attempt should succeed
+    /// node.create_new_to_disk()?;
+    /// assert!(path.exists());
+    ///
+    /// // Second attempt with the same path should fail
+    /// assert!(node.create_new_to_disk().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
