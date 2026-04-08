@@ -357,6 +357,15 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Creates a new task file on disk.
+    ///
+    /// This method atomically creates a new file at the specified path and writes the task's
+    /// frontmatter and body.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file already exists, if the serialized content fails to generate,
+    /// or if the file write operation fails.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
@@ -369,6 +378,18 @@ impl TaskNode {
     }
 }
 
+/// Returns the default UTC datetime used across the application.
+///
+/// This serves as a standardized timestamp for missing or uninitialized dates.
+///
+/// # Examples
+///
+/// ```
+/// use chrono::{DateTime, Utc};
+/// use pebble::models::default_datetime;
+///
+/// assert_eq!(default_datetime(), DateTime::<Utc>::UNIX_EPOCH);
+/// ```
 pub fn default_datetime() -> DateTime<Utc> {
     DateTime::<Utc>::UNIX_EPOCH
 }
