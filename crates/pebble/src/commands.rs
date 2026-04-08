@@ -13,12 +13,12 @@ pub use listing::{ListOptions, run_list, run_search};
 
 /// Reads standard input if the provided argument requests it.
 ///
-/// If `value` is `Some("-")`, this function reads the entire contents of `stdin`
-/// into a string and returns it. Otherwise, it returns `value` unchanged.
+/// If `value` is `Some("-")`, this function reads the entire contents of standard
+/// input into a string and returns it. Otherwise, it returns `value` unchanged.
 ///
 /// # Arguments
 ///
-/// * `value` - An optional string argument. If it equals `"-"`, the function reads from `stdin`.
+/// * `value` - An optional string argument. If it equals `"-"`, the function reads from standard input.
 ///
 /// # Errors
 ///
@@ -54,7 +54,13 @@ pub struct TaskObject<'a> {
 }
 
 impl<'a> TaskObject<'a> {
-    /// Build a serializable task view from a graph node and tasks directory.
+    /// Builds a serializable task view from a graph node and tasks directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `node` - The [`TaskNode`] representing the task to serialize.
+    /// * `graph` - The [`TaskGraph`] used to compute dependency relationships.
+    /// * `tasks_dir` - The directory path where tasks are stored.
     pub fn from_node(node: &'a TaskNode, graph: &TaskGraph, tasks_dir: &Path) -> Self {
         let is_ready = graph.is_ready(&node.frontmatter.id);
 
@@ -131,7 +137,19 @@ pub struct RunContext {
 }
 
 impl RunContext {
-    /// Load configuration and resolve paths based on CLI overrides and the current directory.
+    /// Loads configuration and resolves paths based on CLI overrides and the current directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `current_dir` - The directory from which the command is executed.
+    /// * `cli_dir_override` - An optional directory path provided via CLI override.
+    /// * `cli_config_override` - An optional path to a configuration file provided via CLI override.
+    /// * `json` - A boolean indicating whether to output in JSON format.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading or parsing the configuration file fails, or if
+    /// the resolved tasks directory validation fails.
     pub fn load(
         current_dir: PathBuf,
         cli_dir_override: Option<PathBuf>,
