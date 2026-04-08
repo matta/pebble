@@ -350,13 +350,24 @@ impl TaskNode {
     ///
     /// # Errors
     ///
-    /// Returns an error if generating the serialized content fails or if the file write operation fails.
+    /// Returns an error if generating the serialized content fails, or if writing to the file fails.
     pub fn write_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
         fs::write(&self.path, content)?;
         Ok(())
     }
 
+    /// Creates a new task file on disk with the node's serialized content.
+    ///
+    /// The file creation is atomic to prevent Time-of-Check to Time-of-Use
+    /// (TOCTOU) vulnerabilities and ensure no existing file is overwritten.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * Generating the serialized content fails.
+    /// * A file already exists at the target path.
+    /// * The file creation or write operation fails.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
