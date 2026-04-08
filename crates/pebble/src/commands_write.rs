@@ -1,4 +1,7 @@
-use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
+use crate::commands::{
+    RunContext, TaskObject, read_stdin_if_dash, update_reverse_dependencies,
+    validate_task_references,
+};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus, UsageError};
@@ -19,6 +22,7 @@ fn apply_reverse_update(
     remove_targets: Vec<String>,
 ) -> Result<()> {
     let source_id = source_node.frontmatter.id.clone();
+    let mut add_others = Vec::new();
 
     for target_id in add_targets {
         if target_id == source_id {
@@ -32,25 +36,10 @@ fn apply_reverse_update(
             }
             continue;
         }
-        let mut target_node = graph
-            .nodes
-            .get(&target_id)
-            .cloned()
-            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
-        if target_node
-            .frontmatter
-            .needs
-            .iter()
-            .any(|need| need == &source_id)
-        {
-            continue;
-        }
-        target_node.frontmatter.needs.push(source_id.clone());
-        target_node.frontmatter.modified_at = Some(current_task_time());
-        target_node.write_to_disk()?;
-        graph.nodes.insert(target_id, target_node);
+        add_others.push(target_id);
     }
 
+    let mut remove_others = Vec::new();
     for target_id in remove_targets {
         if target_id == source_id {
             source_node
@@ -59,23 +48,10 @@ fn apply_reverse_update(
                 .retain(|need| need != &source_id);
             continue;
         }
-        let mut target_node = graph
-            .nodes
-            .get(&target_id)
-            .cloned()
-            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
-        let before_len = target_node.frontmatter.needs.len();
-        target_node
-            .frontmatter
-            .needs
-            .retain(|need| need != &source_id);
-        if target_node.frontmatter.needs.len() == before_len {
-            continue;
-        }
-        target_node.frontmatter.modified_at = Some(current_task_time());
-        target_node.write_to_disk()?;
-        graph.nodes.insert(target_id, target_node);
+        remove_others.push(target_id);
     }
+
+    update_reverse_dependencies(graph, &source_id, add_others, remove_others)?;
 
     Ok(())
 }

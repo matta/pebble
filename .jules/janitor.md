@@ -1,0 +1,4 @@
+## 2025-03-06 - [Refactored Reverse Dependency Mutation Logic]
+**Duplication:** Found nearly identical boilerplate in `apply_reverse_blocks` (`commands_add.rs`) and `apply_reverse_update` (`commands_write.rs`) for retrieving a target task node, safely pushing or removing a dependency (preventing duplicate or self-references), updating `modified_at`, writing the file to disk, and inserting it back into the graph.
+**Learning:** Operations on reverse dependencies (which mutate task files belonging to different tasks) naturally led to manual iteration patterns that duplicated the same boilerplate "check for changes and persist" logic in commands that manipulate the task graph.
+**Abstraction:** Introduced `update_reverse_dependencies` in `commands.rs` to provide a single API that atomically manages the addition and removal of reverse dependencies for sets of targets, encapsulating node retrieval, mutation, timestamps, and IO.

@@ -1,6 +1,7 @@
 use crate::config::{Config, find_project_root, parse_config};
 use crate::graph::TaskGraph;
 use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus, UsageError};
+use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
@@ -332,6 +333,60 @@ pub fn validate_task_references(
     }
 
     Ok(deduped)
+}
+
+/// Updates the reverse dependencies (needs) of the target nodes.
+/// For each target in `add_targets`, `source_id` is added to its needs.
+/// For each target in `remove_targets`, `source_id` is removed from its needs.
+pub fn update_reverse_dependencies(
+    graph: &mut TaskGraph,
+    source_id: &str,
+    add_targets: impl IntoIterator<Item = impl AsRef<str>>,
+    remove_targets: impl IntoIterator<Item = impl AsRef<str>>,
+) -> Result<()> {
+    for target_id in add_targets {
+        let target_id = target_id.as_ref();
+        let mut target_node = graph
+            .nodes
+            .get(target_id)
+            .cloned()
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
+
+        if !target_node
+            .frontmatter
+            .needs
+            .iter()
+            .any(|need| need == source_id)
+        {
+            target_node.frontmatter.needs.push(source_id.to_string());
+            target_node.frontmatter.modified_at = Some(current_task_time());
+            target_node.write_to_disk()?;
+            graph.nodes.insert(target_id.to_string(), target_node);
+        }
+    }
+
+    for target_id in remove_targets {
+        let target_id = target_id.as_ref();
+        let mut target_node = graph
+            .nodes
+            .get(target_id)
+            .cloned()
+            .unwrap_or_else(|| panic!("BUG: validated task ID should exist in graph"));
+
+        let before_len = target_node.frontmatter.needs.len();
+        target_node
+            .frontmatter
+            .needs
+            .retain(|need| need != source_id);
+
+        if target_node.frontmatter.needs.len() != before_len {
+            target_node.frontmatter.modified_at = Some(current_task_time());
+            target_node.write_to_disk()?;
+            graph.nodes.insert(target_id.to_string(), target_node);
+        }
+    }
+
+    Ok(())
 }
 
 fn config_values_map(config: &Config) -> Result<BTreeMap<String, String>> {
