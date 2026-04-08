@@ -194,6 +194,23 @@ pub fn run_next(ctx: &RunContext, limit: usize) -> Result<()> {
     let next_tasks = graph.get_next_tasks();
     let tasks: Vec<&TaskNode> = next_tasks.into_iter().take(limit).collect();
 
+    if tasks.is_empty() {
+        let blocked_count = graph
+            .nodes
+            .values()
+            .filter(|n| n.frontmatter.status.is_actionable() && !graph.is_ready(&n.frontmatter.id))
+            .count();
+        if blocked_count > 0 {
+            return Err(NotFoundError(format!(
+                "No ready tasks found. ({} tasks blocked)",
+                blocked_count
+            ))
+            .into());
+        } else {
+            return Err(NotFoundError("No ready tasks found.".to_string()).into());
+        }
+    }
+
     if ctx.json {
         let objects: Vec<TaskObject> = tasks
             .into_iter()
@@ -204,10 +221,6 @@ pub fn run_next(ctx: &RunContext, limit: usize) -> Result<()> {
             serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
         );
         return Ok(());
-    }
-
-    if tasks.is_empty() {
-        return Err(NotFoundError("No ready tasks found.".to_string()).into());
     }
 
     for task in tasks {
