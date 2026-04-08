@@ -4,7 +4,6 @@ use crate::graph::TaskGraph;
 use crate::models::TaskNode;
 use crate::task_io::current_task_time;
 use color_eyre::eyre::{Result, eyre};
-use std::fs;
 
 /// Executes repair behavior for `pebble check --fix`.
 pub fn run_fix(ctx: &RunContext) -> Result<()> {
@@ -63,10 +62,7 @@ fn repair_node(node: &mut TaskNode, _ctx: &RunContext) -> Result<bool> {
     }
 
     // Check for normalization (elided fields, formatting, trailing newlines)
-    if let Ok(disk_content) = fs::read_to_string(&node.path)
-        && let Ok(canonical_content) = node.get_content_for_disk()
-        && disk_content != canonical_content
-    {
+    if let Ok(false) = node.is_canonical() {
         modified = true;
     }
 

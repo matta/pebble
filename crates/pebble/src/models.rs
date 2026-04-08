@@ -313,6 +313,18 @@ struct YamlTaskFrontmatter {
 }
 
 impl TaskNode {
+    /// Checks if the task's content on disk matches its canonical representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read from disk or if the canonical
+    /// content cannot be generated.
+    pub fn is_canonical(&self) -> Result<bool> {
+        let disk_content = fs::read_to_string(&self.path)?;
+        let canonical_content = self.get_content_for_disk()?;
+        Ok(disk_content == canonical_content)
+    }
+
     pub(crate) fn get_content_for_disk(&self) -> Result<String> {
         let yaml_frontmatter = YamlTaskFrontmatter {
             id: self.frontmatter.id.clone(),
