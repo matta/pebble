@@ -204,8 +204,8 @@ fn test_check_modes_healthy_human_output() {
 
         let output = run_check(mode, &env, false);
         assert!(output.status.success(), "mode {}", mode.label());
-        assert_eq!(stdout_text(&output), "Graph is healthy. No issues found.\n");
-        assert_eq!(stderr_text(&output), "");
+        assert_eq!(stdout_text(&output), "");
+        assert_eq!(stderr_text(&output), "Graph is healthy. No issues found.\n");
     }
 }
 

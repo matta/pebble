@@ -1,4 +1,6 @@
-use crate::commands::{RunContext, TaskObject, read_stdin_if_dash, validate_task_references};
+use crate::commands::{
+    RunContext, TaskObject, emit_json, read_stdin_if_dash, validate_task_references,
+};
 use crate::config::{Config, validate_tasks_dir};
 use crate::graph::TaskGraph;
 use crate::models::{NotFoundError, Priority, TaskNode, TaskStatus, UsageError};
@@ -226,15 +228,12 @@ All commands support `--json` for structured output. Prefer `--json` for agent w
     fs::create_dir_all(current_dir.join(&tasks_dir_path))?;
 
     if json {
-        println!(
-            "{}",
-            serde_json::json!({
-                "status": "success",
-                "project_root": path_to_lossy_json_string(current_dir.as_path()),
-                "tasks_dir": path_to_lossy_json_string(tasks_dir_path.as_path()),
-                "issue_prefix": prefix,
-            })
-        );
+        emit_json(&serde_json::json!({
+            "status": "success",
+            "project_root": path_to_lossy_json_string(current_dir.as_path()),
+            "tasks_dir": path_to_lossy_json_string(tasks_dir_path.as_path()),
+            "issue_prefix": prefix,
+        }))?;
     } else {
         eprintln!("Initialized Pebble repository in {}", current_dir.display());
     }
@@ -313,7 +312,7 @@ pub fn run_update(ctx: &RunContext, mut input: RunUpdateInput) -> Result<()> {
             .insert(node.frontmatter.id.clone(), node.clone());
         let updated_graph = TaskGraph::new(graph.nodes);
         let obj = TaskObject::from_node(&node, &updated_graph, &ctx.tasks_dir);
-        println!("{}", serde_json::to_string(&obj)?);
+        emit_json(&obj)?;
     } else {
         eprintln!("Updated task {}", node.frontmatter.id);
     }

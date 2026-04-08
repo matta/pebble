@@ -11,6 +11,23 @@ use std::path::{Path, PathBuf};
 mod listing;
 pub use listing::{ListOptions, run_list, run_search};
 
+/// Serializes and emits data to standard output as a JSON string.
+///
+/// Ensures consistent JSON formatting across all CLI commands and prevents
+/// manual `serde_json::to_string` boilerplate.
+///
+/// # Arguments
+///
+/// * `data` - The serializable data structure to emit.
+///
+/// # Errors
+///
+/// Returns an error if the data cannot be serialized to JSON.
+pub fn emit_json<T: Serialize>(data: &T) -> Result<()> {
+    println!("{}", serde_json::to_string(data)?);
+    Ok(())
+}
+
 /// Reads standard input if the provided argument requests it.
 ///
 /// If `value` is `Some("-")`, this function reads the entire contents of `stdin`
@@ -199,10 +216,7 @@ pub fn run_next(ctx: &RunContext, limit: usize) -> Result<()> {
             .into_iter()
             .map(|n| TaskObject::from_node(n, &graph, &ctx.tasks_dir))
             .collect();
-        println!(
-            "{}",
-            serde_json::to_string(&serde_json::json!({ "tasks": objects }))?
-        );
+        emit_json(&serde_json::json!({ "tasks": objects }))?;
         return Ok(());
     }
 
@@ -227,18 +241,13 @@ pub fn run_show(ctx: &RunContext, id: &str, path_only: bool) -> Result<()> {
     if path_only {
         let rel_path = node.path.strip_prefix(&ctx.tasks_dir).unwrap_or(&node.path);
         if ctx.json {
-            println!(
-                "{}",
-                serde_json::to_string(
-                    &serde_json::json!({ "path": rel_path.display().to_string() })
-                )?
-            );
+            emit_json(&serde_json::json!({ "path": rel_path.display().to_string() }))?;
         } else {
             println!("{}", rel_path.display());
         }
     } else if ctx.json {
         let obj = TaskObject::from_node(node, &graph, &ctx.tasks_dir);
-        println!("{}", serde_json::to_string(&obj)?);
+        emit_json(&obj)?;
     } else {
         let obj = TaskObject::from_node(node, &graph, &ctx.tasks_dir);
         println!("Task: {} ({})", obj.title, obj.id);
@@ -266,10 +275,7 @@ pub fn run_config_get(ctx: &RunContext, key: &str) -> Result<()> {
     })?;
 
     if ctx.json {
-        println!(
-            "{}",
-            serde_json::to_string(&serde_json::json!({ "key": key, "value": value }))?
-        );
+        emit_json(&serde_json::json!({ "key": key, "value": value }))?;
     } else {
         println!("{value}");
     }

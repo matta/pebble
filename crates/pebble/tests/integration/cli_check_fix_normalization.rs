@@ -36,7 +36,7 @@ Body content"; // No trailing newline here
         .args(["check", "--fix"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Fixed 1 task(s)"));
+        .stderr(predicate::str::contains("Fixed 1 task(s)"));
 
     // 3. Verify file content is now normalized
     let normalized_content = fs::read_to_string(&task_path)?;
@@ -57,7 +57,7 @@ Body content"; // No trailing newline here
         .arg("check")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Graph is healthy"));
+        .stderr(predicate::str::contains("Graph is healthy"));
 
     Ok(())
 }

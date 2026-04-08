@@ -1,4 +1,4 @@
-use crate::commands::RunContext;
+use crate::commands::{RunContext, emit_json};
 use crate::commands_diagnostics::collect_diagnostics;
 use crate::graph::TaskGraph;
 use crate::models::TaskNode;
@@ -34,16 +34,11 @@ pub fn run_fix(ctx: &RunContext) -> Result<()> {
     }
 
     if ctx.json {
-        println!(
-            "{}",
-            serde_json::to_string(
-                &serde_json::json!({ "ok": ok, "fixed_tasks": modified_ids, "errors": errors })
-            )?
-        );
+        emit_json(&serde_json::json!({ "ok": ok, "fixed_tasks": modified_ids, "errors": errors }))?;
     } else if modified_ids.is_empty() {
-        println!("No repairs needed.");
+        eprintln!("No repairs needed.");
     } else {
-        println!("Fixed {} task(s).", modified_ids.len());
+        eprintln!("Fixed {} task(s).", modified_ids.len());
     }
 
     if ok {
