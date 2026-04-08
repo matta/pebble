@@ -2,7 +2,7 @@ use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use color_eyre::eyre::{Result, eyre};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::io::{ErrorKind, Write};
 
 /// Moves completed or canceled tasks older than the configured threshold into an `archive/` subdirectory.
 ///
@@ -24,8 +24,48 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
             && let Some(resolved_at) = node.frontmatter.resolved_at
             && now.signed_duration_since(resolved_at) >= threshold_days
         {
-            let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
-            fs::rename(&node.path, &new_path)?;
+            let mut new_path = archive_dir.join(
+                node.path
+                    .file_name()
+                    .ok_or_else(|| eyre!("Invalid task path: {}", node.path.display()))?,
+            );
+
+            // Read source metadata and content first to prevent leaving empty destination files
+            let metadata = fs::metadata(&node.path)?;
+            let content = fs::read(&node.path)?;
+
+            let stem = node.path.file_stem().unwrap_or_default().to_string_lossy();
+            let extension = node
+                .path
+                .extension()
+                .map(|e| e.to_string_lossy())
+                .unwrap_or_default();
+
+            let mut counter = 2;
+            loop {
+                match fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&new_path)
+                {
+                    Ok(mut file) => {
+                        file.write_all(&content)?;
+                        file.set_permissions(metadata.permissions())?;
+                        fs::remove_file(&node.path)?;
+                        break;
+                    }
+                    Err(e) if e.kind() == ErrorKind::AlreadyExists => {
+                        let filename = if extension.is_empty() {
+                            format!("{stem}-{counter}")
+                        } else {
+                            format!("{stem}-{counter}.{extension}")
+                        };
+                        new_path = archive_dir.join(&filename);
+                        counter += 1;
+                    }
+                    Err(e) => return Err(e.into()),
+                }
+            }
 
             if ctx.json {
                 archived.push(serde_json::json!({
@@ -46,85 +86,4 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn get_archive_path(
-    archive_dir: &Path,
-    original_path: &Path,
-    mut exists: impl FnMut(&Path) -> bool,
-) -> Result<PathBuf> {
-    let stem = original_path
-        .file_stem()
-        .ok_or_else(|| eyre!("Invalid task path: {}", original_path.display()))?
-        .to_string_lossy();
-    let extension = original_path
-        .extension()
-        .map(|e| e.to_string_lossy())
-        .unwrap_or_default();
-
-    let mut filename = if extension.is_empty() {
-        stem.to_string()
-    } else {
-        format!("{}.{}", stem, extension)
-    };
-    let mut new_path = archive_dir.join(&filename);
-    let mut counter = 2;
-
-    while exists(&new_path) {
-        filename = if extension.is_empty() {
-            format!("{}-{}", stem, counter)
-        } else {
-            format!("{}-{}.{}", stem, counter, extension)
-        };
-        new_path = archive_dir.join(&filename);
-        counter += 1;
-    }
-
-    Ok(new_path)
-}
-
-#[cfg(test)]
-#[expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-mod tests {
-    use super::*;
-    use std::collections::HashSet;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_get_archive_path() {
-        let archive_dir = PathBuf::from("archive");
-        let mut mock_fs = HashSet::new();
-
-        // 1. With extension, no collision
-        let p1 = PathBuf::from("PROJ-1.md");
-        assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-1.md")
-        );
-
-        // 2. Without extension, no collision
-        let p2 = PathBuf::from("PROJ-2");
-        assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-2")
-        );
-
-        // 3. With extension, with collision
-        mock_fs.insert(archive_dir.join("PROJ-1.md"));
-        assert_eq!(
-            get_archive_path(&archive_dir, &p1, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-1-2.md")
-        );
-
-        // 4. Without extension, with collision
-        mock_fs.insert(archive_dir.join("PROJ-2"));
-        assert_eq!(
-            get_archive_path(&archive_dir, &p2, |p| mock_fs.contains(p))
-                .expect("archive path should be generated"),
-            archive_dir.join("PROJ-2-2")
-        );
-    }
 }
