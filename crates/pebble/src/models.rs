@@ -357,6 +357,16 @@ impl TaskNode {
         Ok(())
     }
 
+    /// Creates a new task file on disk atomically.
+    ///
+    /// This method uses atomic creation operations to prevent Time-of-Check to Time-of-Use
+    /// (TOCTOU) vulnerabilities when generating and writing to unique files. It fails if
+    /// the file already exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if generating the serialized content fails, if the file already exists,
+    /// or if the file write operation fails.
     pub fn create_new_to_disk(&self) -> Result<()> {
         let content = self.get_content_for_disk()?;
 
@@ -369,6 +379,21 @@ impl TaskNode {
     }
 }
 
+/// Returns the standard default timestamp for the project.
+///
+/// This provides a uniform `UNIX_EPOCH` value across the codebase, typically used
+/// as a fallback when a creation timestamp is absent or cannot be parsed.
+///
+/// # Examples
+///
+/// ```
+/// # use pebble::models::default_datetime;
+/// # use chrono::{DateTime, Utc};
+/// # fn main() {
+/// let dt = default_datetime();
+/// assert_eq!(dt, DateTime::<Utc>::UNIX_EPOCH);
+/// # }
+/// ```
 pub fn default_datetime() -> DateTime<Utc> {
     DateTime::<Utc>::UNIX_EPOCH
 }

@@ -55,7 +55,28 @@ impl Default for Config {
 
 /// Resolves the project root by walking up from the given directory.
 ///
-/// It searches until it finds a `.pebble` directory and returns `None` if it hits the filesystem root.
+/// It searches until it finds a `.pebble` directory and returns `None` if it hits the
+/// filesystem root. The search begins at `start_dir`.
+///
+/// # Examples
+///
+/// ```
+/// # use std::path::PathBuf;
+/// # use std::fs;
+/// # use pebble::config::find_project_root;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let temp = tempfile::tempdir()?;
+/// let pebble_dir = temp.path().join(".pebble");
+/// fs::create_dir(&pebble_dir)?;
+///
+/// let nested = temp.path().join("src");
+/// fs::create_dir(&nested)?;
+///
+/// let root = find_project_root(&nested);
+/// assert_eq!(root, Some(temp.path().to_path_buf()));
+/// # Ok(())
+/// # }
+/// ```
 pub fn find_project_root(start_dir: &Path) -> Option<PathBuf> {
     for ancestor in start_dir.ancestors() {
         if ancestor.join(".pebble").is_dir() {
