@@ -2,6 +2,7 @@ use crate::commands::RunContext;
 use crate::graph::TaskGraph;
 use color_eyre::eyre::{Result, eyre};
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 /// Moves completed or canceled tasks older than the configured threshold into an `archive/` subdirectory.
@@ -24,8 +25,24 @@ pub fn run_archive(ctx: &RunContext) -> Result<()> {
             && let Some(resolved_at) = node.frontmatter.resolved_at
             && now.signed_duration_since(resolved_at) >= threshold_days
         {
-            let new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
-            fs::rename(&node.path, &new_path)?;
+            let mut new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
+
+            loop {
+                match fs::hard_link(&node.path, &new_path) {
+                    Ok(_) => {
+                        fs::remove_file(&node.path)?;
+                        break;
+                    }
+                    Err(e) if e.kind() == ErrorKind::AlreadyExists => {
+                        new_path = get_archive_path(&archive_dir, &node.path, |p| p.exists())?;
+                    }
+                    Err(_) => {
+                        // Fallback to rename for CrossesDevices or other FS issues
+                        fs::rename(&node.path, &new_path)?;
+                        break;
+                    }
+                }
+            }
 
             if ctx.json {
                 archived.push(serde_json::json!({
