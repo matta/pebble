@@ -1,16 +1,12 @@
-use super::support::setup_test_env;
-use assert_cmd::cargo_bin;
-use assert_cmd::prelude::*;
+use super::support::{self, setup_test_env};
 use predicates::prelude::*;
-use std::process::Command;
 
 #[test]
 fn test_next_stdout_is_clean_when_no_tasks() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(&env.root)
-        .arg("next")
+    let mut cmd = support::pebble(&env.root);
+    cmd.arg("next")
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
@@ -21,9 +17,8 @@ fn test_next_stdout_is_clean_when_no_tasks() {
 fn test_add_stdout_is_clean_non_json() {
     let env = setup_test_env();
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(&env.root)
-        .arg("add")
+    let mut cmd = support::pebble(&env.root);
+    cmd.arg("add")
         .arg("Clean Task")
         .assert()
         .success()
@@ -33,7 +28,7 @@ fn test_add_stdout_is_clean_non_json() {
 
 #[test]
 fn test_global_help_descriptions() {
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble_cli();
     cmd.arg("--help")
         .assert()
         .success()

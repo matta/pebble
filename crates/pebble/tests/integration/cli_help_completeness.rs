@@ -1,10 +1,8 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-use assert_cmd::cargo_bin;
-use assert_cmd::prelude::*;
+use super::support;
 use pebble::config::CONFIG_KEYS;
 use predicates::prelude::*;
 use serde_json::Value;
-use std::process::Command;
 
 /// Recursively collect all leaf command paths from the help-json schema.
 ///
@@ -33,7 +31,7 @@ fn collect_command_paths(commands: &[Value], prefix: &[String]) -> Vec<Vec<Strin
 #[test]
 fn test_all_subcommands_include_examples_section() {
     // Dynamically discover every leaf subcommand from help-json.
-    let help_output = Command::new(cargo_bin!())
+    let help_output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("help-json should execute");
@@ -54,7 +52,7 @@ fn test_all_subcommands_include_examples_section() {
         let mut args: Vec<&str> = path.iter().map(String::as_str).collect();
         args.push("--help");
 
-        let output = Command::new(cargo_bin!())
+        let output = support::pebble_cli()
             .args(&args)
             .output()
             .expect("pebble command should execute successfully");
@@ -75,7 +73,7 @@ fn test_all_subcommands_include_examples_section() {
 
 #[test]
 fn test_list_help_describes_combined_filter_semantics() {
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble_cli();
     cmd.args(["list", "--help"])
         .assert()
         .success()
@@ -86,7 +84,7 @@ fn test_list_help_describes_combined_filter_semantics() {
 }
 #[test]
 fn test_config_get_help_documents_keys() {
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble_cli();
     let mut assert = cmd
         .args(["config", "get", "--help"])
         .assert()

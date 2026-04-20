@@ -18,10 +18,20 @@ pub struct TestEnv {
 impl TestEnv {
     /// Returns a pre-configured `assert_cmd::Command` for the pebble CLI.
     pub fn pebble(&self) -> Command {
-        let mut cmd = Command::new(cargo_bin!());
-        cmd.current_dir(&self.root);
-        cmd
+        pebble(&self.root)
     }
+}
+
+/// Returns a pre-configured `assert_cmd::Command` for the pebble CLI.
+pub fn pebble_cli() -> Command {
+    Command::new(cargo_bin!("pebble"))
+}
+
+/// Returns a pre-configured `assert_cmd::Command` for the pebble CLI in the given directory.
+pub fn pebble<P: AsRef<Path>>(dir: P) -> Command {
+    let mut cmd = pebble_cli();
+    cmd.current_dir(dir.as_ref());
+    cmd
 }
 
 /// Create a temp Pebble project with a config and empty tasks dir.

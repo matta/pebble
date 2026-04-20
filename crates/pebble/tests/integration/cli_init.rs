@@ -1,6 +1,5 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-use assert_cmd::Command;
-use assert_cmd::cargo_bin;
+use super::support;
 use std::fs;
 
 // These tests cannot use the shared `TestEnv` fixture from `support.rs`
@@ -13,8 +12,8 @@ fn test_init_generates_useful_agents_md() {
     let temp = tempfile::tempdir().expect("temp directory should be created");
     let root = temp.path();
 
-    let mut cmd = Command::new(cargo_bin!());
-    cmd.current_dir(root).args(["init"]).assert().success();
+    let mut cmd = support::pebble(root);
+    cmd.args(["init"]).assert().success();
 
     let agents_content =
         fs::read_to_string(root.join(".pebble/AGENTS.md")).expect("AGENTS.md should exist");
@@ -47,9 +46,8 @@ fn test_init_path_traversal_prevention() {
 
     // Try to init inside 'project' but point tasks dir to '../outside'
     // 'outside' would be a sibling of 'project', i.e. directly under 'root'.
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble(&subdir);
     let output = cmd
-        .current_dir(&subdir)
         .args(["init", "--dir", "../outside"])
         .output()
         .expect("pebble command should execute successfully");

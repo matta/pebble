@@ -1,11 +1,10 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
-use assert_cmd::cargo_bin;
+use super::support;
 use serde_json::Value;
-use std::process::Command;
 
 #[test]
 fn test_help_json_emits_valid_schema_to_stdout_only() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -21,7 +20,7 @@ fn test_help_json_emits_valid_schema_to_stdout_only() {
 
 #[test]
 fn test_help_json_lists_core_commands() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -46,7 +45,7 @@ fn test_help_json_lists_core_commands() {
 
 #[test]
 fn test_help_json_treats_help_json_as_command_not_global_flag() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -73,7 +72,7 @@ fn test_help_json_treats_help_json_as_command_not_global_flag() {
 
 #[test]
 fn test_help_json_includes_command_descriptions() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -101,7 +100,7 @@ fn test_help_json_includes_command_descriptions() {
 
 #[test]
 fn test_help_json_includes_options_for_add_command() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -133,7 +132,7 @@ fn test_help_json_includes_options_for_add_command() {
 
 #[test]
 fn test_help_json_replaces_doctor_and_fix_with_check_flags() {
-    let output = Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");

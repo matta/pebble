@@ -1,7 +1,6 @@
 #![expect(clippy::expect_used, reason = "TODO: remove all calls to expect")]
 
-use super::support::{setup_test_env, write_task};
-use assert_cmd::cargo_bin;
+use super::support::{self, setup_test_env, write_task};
 use serde_json::Value;
 
 #[test]
@@ -70,7 +69,7 @@ fn test_archive_json_stdout_only() {
 
 #[test]
 fn test_help_json_stdout_only() {
-    let output = assert_cmd::Command::new(cargo_bin!())
+    let output = support::pebble_cli()
         .args(["help-json"])
         .output()
         .expect("pebble command should execute successfully");
@@ -86,8 +85,7 @@ fn test_help_json_stdout_only() {
 #[test]
 fn test_init_json_stdout_only() {
     let dir = tempfile::tempdir().expect("temp directory should be created");
-    let output = assert_cmd::Command::new(cargo_bin!())
-        .current_dir(dir.path())
+    let output = support::pebble(dir.path())
         .args(["init", "--json"])
         .output()
         .expect("pebble command should execute successfully");

@@ -1,7 +1,5 @@
-use assert_cmd::cargo_bin;
-use assert_cmd::prelude::*;
+use super::support;
 use predicates::prelude::*;
-use std::process::Command;
 
 fn commands_section_rows(help_stdout: &str) -> Vec<&str> {
     let mut in_commands = false;
@@ -32,7 +30,7 @@ fn commands_section_rows(help_stdout: &str) -> Vec<&str> {
 
 #[test]
 fn test_help_output_contains_show() {
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble_cli();
     cmd.arg("--help")
         .assert()
         .success()
@@ -42,7 +40,7 @@ fn test_help_output_contains_show() {
 
 #[test]
 fn test_show_help_output_contains_path_only_flag() {
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble_cli();
     cmd.arg("show")
         .arg("--help")
         .assert()
@@ -55,7 +53,7 @@ fn test_show_help_output_contains_path_only_flag() {
 
 #[test]
 fn test_check_help_includes_warn_only_flag() {
-    let mut cmd = Command::new(cargo_bin!());
+    let mut cmd = support::pebble_cli();
     cmd.arg("check")
         .arg("--help")
         .assert()
@@ -67,7 +65,7 @@ fn test_check_help_includes_warn_only_flag() {
 
 #[test]
 fn test_top_level_help_commands_have_one_line_summaries() {
-    let output = match Command::new(cargo_bin!()).arg("--help").output() {
+    let output = match support::pebble_cli().arg("--help").output() {
         Ok(output) => output,
         Err(error) => panic!("pebble --help should execute: {error}"),
     };
@@ -94,10 +92,7 @@ fn test_top_level_help_commands_have_one_line_summaries() {
 
 #[test]
 fn test_config_help_commands_have_one_line_summaries() {
-    let output = match Command::new(cargo_bin!())
-        .args(["config", "--help"])
-        .output()
-    {
+    let output = match support::pebble_cli().args(["config", "--help"]).output() {
         Ok(output) => output,
         Err(error) => panic!("pebble config --help should execute: {error}"),
     };
