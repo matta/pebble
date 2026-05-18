@@ -10,7 +10,7 @@ edition = "2024"
 rust-version = "1.93.1"
 
 [workspace.dependencies]
-tempfile = "=3.25.0"
+tempfile = "=3.27.0"
 toml = "0.9"
 color-eyre = "0.6"
 serde = "1.0.228"
