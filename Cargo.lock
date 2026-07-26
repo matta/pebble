@@ -757,9 +757,9 @@ checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.150.0"
+version = "0.174.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "798846b5bb9cf4e514e5edc27fa897d5f1c839716fe216bd6c2ca172d678c4d0"
+checksum = "4e3150be7e79139b0f085e886dd71b0bb9cd6b35da0a61fca1042ac400b1687e"
 dependencies = [
  "memchr",
  "unicode-ident",
