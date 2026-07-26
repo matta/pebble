@@ -10,7 +10,7 @@ workspace = true
 [dependencies]
 color-eyre.workspace = true
 clap = { workspace = true, features = ["derive"] }
-ra-ap-rustc_lexer = "0.150.0"
+ra-ap-rustc_lexer = "0.174.0"
 anyhow = "1.0"
 regex = "1.12.3"
 serde = { workspace = true, features = ["derive"] }
