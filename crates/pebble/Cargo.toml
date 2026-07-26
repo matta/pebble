@@ -14,7 +14,7 @@ toml.workspace = true
 nanoid.workspace = true
 bounded-integer.workspace = true
 const_format.workspace = true
-serde-saphyr = "0.0.21"
+serde-saphyr = "0.0.29"
 deunicode.workspace = true
 
 [dev-dependencies]
